@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* Strict class-based dark mode (disables system prefers-color-scheme auto-detection) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --bg-light: #FFF9EB;
+    --surface-light: #E8D8C4;
+    --text-light: #27272A;
+    --accent: #5D0D18;
+  }
+
+  .dark {
+    --bg-dark: #18181B;
+    --surface-dark: #27272A;
+    --text-dark: #FFF9EB;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #FFF9EB;
+    color: #27272A;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body,
+  body.dark {
+    background-color: #18181B;
+    color: #FFF9EB;
+  }
+  
+  h1, h2, h3, h4, .font-serif, .font-display {
+    font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+    color: #5D0D18;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark .font-serif, .dark .font-display {
+    color: #FFF9EB;
+  }
+}
+
+/* Custom scrollbar styling for slick artistic feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #C7B7A3;
+  border-radius: 9999px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(199, 183, 163, 0.35);
+}
+

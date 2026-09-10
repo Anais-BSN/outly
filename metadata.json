@@ -1,0 +1,6 @@
+{
+  "name": "Outly",
+  "description": "Application de planification de sorties et d'activités entre amis avec agenda, discussion, sondages, galerie, logistique et partage des frais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
