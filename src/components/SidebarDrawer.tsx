@@ -62,11 +62,12 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
         <div className="flex-1 flex flex-col">
           {/* Header of Drawer */}
           <div className="p-4 border-b border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#6D2932] dark:bg-[#E8D8C4]"></span>
-              <span className="text-2xl font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif italic tracking-tight">
-                Outly
-              </span>
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/Logo_Outly.png"
+                alt="Outly"
+                className="h-8 sm:h-9 w-auto max-w-[130px] object-contain select-none"
+              />
             </div>
             <button
               id="drawer-close-btn"

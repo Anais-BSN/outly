@@ -175,42 +175,44 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
             </div>
           </div>
 
-          {/* Time Filter Pills: À venir / Passé / Tout */}
-          <div className="flex items-center gap-1.5 pt-1">
-            <button
-              id="cal-filter-upcoming"
-              onClick={() => setFilterTime('upcoming')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterTime === 'upcoming'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB]'
-                  : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
-              }`}
-            >
-              À venir
-            </button>
-            <button
-              id="cal-filter-past"
-              onClick={() => setFilterTime('past')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterTime === 'past'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB]'
-                  : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
-              }`}
-            >
-              Passé
-            </button>
-            <button
-              id="cal-filter-all"
-              onClick={() => setFilterTime('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterTime === 'all'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB]'
-                  : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
-              }`}
-            >
-              Tout
-            </button>
-          </div>
+          {/* Time Filter Pills: À venir / Passé / Tout (affiché uniquement en vue Liste) */}
+          {viewMode === 'list' && (
+            <div className="flex items-center gap-1.5 pt-1">
+              <button
+                id="cal-filter-upcoming"
+                onClick={() => setFilterTime('upcoming')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterTime === 'upcoming'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
+                }`}
+              >
+                À venir
+              </button>
+              <button
+                id="cal-filter-past"
+                onClick={() => setFilterTime('past')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterTime === 'past'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
+                }`}
+              >
+                Passé
+              </button>
+              <button
+                id="cal-filter-all"
+                onClick={() => setFilterTime('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterTime === 'all'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
+                }`}
+              >
+                Tout
+              </button>
+            </div>
+          )}
         </div>
 
         {/* View Mode 1: Grille mensuelle responsive avec pastilles bordeaux (#5D0D18) */}

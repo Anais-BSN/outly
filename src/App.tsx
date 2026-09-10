@@ -56,10 +56,51 @@ export default function App() {
 
   // Global App States - Default to null for clean unauthenticated state
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('agenda');
+
+  // Local Saved Sessions (Isolement strict des sessions locales mémorisées sur cet appareil)
+  const [savedSessions, setSavedSessions] = useState<UserProfile[]>(() => {
+    try {
+      const stored = localStorage.getItem('outly_saved_sessions');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveLocalSession = useCallback((user: UserProfile) => {
+    if (!user || !user.id) return;
+    setSavedSessions((prev) => {
+      const existsIndex = prev.findIndex((u) => u.id === user.id);
+      let updated: UserProfile[];
+      if (existsIndex >= 0) {
+        updated = [...prev];
+        updated[existsIndex] = { ...updated[existsIndex], ...user };
+      } else {
+        updated = [...prev, user];
+      }
+      try {
+        localStorage.setItem('outly_saved_sessions', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to save session to localStorage:', err);
+      }
+      return updated;
+    });
+  }, []);
+
+  const removeLocalSession = useCallback((userId: string) => {
+    setSavedSessions((prev) => {
+      const updated = prev.filter((u) => u.id !== userId);
+      try {
+        localStorage.setItem('outly_saved_sessions', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to remove session from localStorage:', err);
+      }
+      return updated;
+    });
+  }, []);
 
   // Core PostgreSQL Datasets
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -124,7 +165,6 @@ export default function App() {
 
       const [
         userRes,
-        allUsersRes,
         groupsRes,
         eventsRes,
         messagesRes,
@@ -136,7 +176,6 @@ export default function App() {
         notifsRes,
       ] = await Promise.all([
         api.getUser(activeUserId),
-        api.getAllUsers().catch(() => []),
         api.getGroups(activeUserId),
         api.getEvents(undefined, activeUserId),
         api.getMessages(),
@@ -150,7 +189,7 @@ export default function App() {
 
       setCurrentUser(userRes);
       localStorage.setItem('outly_user_id', userRes.id);
-      setAllUsers(allUsersRes);
+      saveLocalSession(userRes);
       
       const themeFromDb = userRes.themePreference || (localStorage.getItem('outly_theme') as any) || 'light';
       setIsDarkMode(themeFromDb === 'dark');
@@ -181,7 +220,87 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [saveLocalSession]);
+
+  // Silent background sync without full-page spinner (Auto-refresh every 4s & Window Focus)
+  const syncData = useCallback(async (userId?: string) => {
+    const activeUserId = userId || localStorage.getItem('outly_user_id');
+    if (!activeUserId) return;
+
+    try {
+      const [
+        userRes,
+        groupsRes,
+        eventsRes,
+        messagesRes,
+        pollsRes,
+        galleryRes,
+        tasksRes,
+        expensesRes,
+        friendsRes,
+        notifsRes,
+      ] = await Promise.all([
+        api.getUser(activeUserId),
+        api.getGroups(activeUserId),
+        api.getEvents(undefined, activeUserId),
+        api.getMessages(),
+        api.getPolls(),
+        api.getGallery(),
+        api.getTasks(),
+        api.getExpenses(),
+        api.getFriends(activeUserId),
+        api.getNotifications(activeUserId),
+      ]);
+
+      setCurrentUser((prev) => {
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(userRes)) {
+          saveLocalSession(userRes);
+          return userRes;
+        }
+        return prev;
+      });
+
+      setGroups((prev) => (JSON.stringify(prev) !== JSON.stringify(groupsRes) ? groupsRes : prev));
+      setEvents((prev) => (JSON.stringify(prev) !== JSON.stringify(eventsRes) ? eventsRes : prev));
+      setMessages((prev) => (JSON.stringify(prev) !== JSON.stringify(messagesRes) ? messagesRes : prev));
+      setPolls((prev) => (JSON.stringify(prev) !== JSON.stringify(pollsRes) ? pollsRes : prev));
+      setGalleryItems((prev) => (JSON.stringify(prev) !== JSON.stringify(galleryRes) ? galleryRes : prev));
+      setTasks((prev) => (JSON.stringify(prev) !== JSON.stringify(tasksRes) ? tasksRes : prev));
+      setExpenses((prev) => (JSON.stringify(prev) !== JSON.stringify(expensesRes) ? expensesRes : prev));
+      setFriends((prev) => (JSON.stringify(prev) !== JSON.stringify(friendsRes) ? friendsRes : prev));
+      setNotifications((prev) => (JSON.stringify(prev) !== JSON.stringify(notifsRes) ? notifsRes : prev));
+    } catch (err) {
+      console.debug('Background sync update failed silently:', err);
+    }
+  }, [saveLocalSession]);
+
+  // Polling interval (every 4s) & Window Focus / Visibility Change
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const intervalId = setInterval(() => {
+      syncData(currentUser.id);
+    }, 4000);
+
+    const handleFocus = () => {
+      syncData(currentUser.id);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncData(currentUser.id);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentUser, syncData]);
 
   useEffect(() => {
     loadData();
@@ -221,6 +340,7 @@ export default function App() {
   // Handlers: Auth
   const handleAuthSuccess = (user: UserProfile) => {
     localStorage.setItem('outly_user_id', user.id);
+    saveLocalSession(user);
     setCurrentUser(user);
     setIsAuthOpen(false);
     loadData(user.id);
@@ -607,7 +727,7 @@ export default function App() {
     }
   };
 
-  // Handlers: Expenses & Settlements
+  // Handlers: Expenses & Settlements (Les transactions restent visibles uniquement dans l'onglet Partage des frais)
   const handleAddExpense = async (expenseData: Partial<Expense>) => {
     try {
       const newExp = await api.createExpense({
@@ -623,9 +743,6 @@ export default function App() {
       });
 
       setExpenses((prev) => [newExp, ...prev]);
-      handleSendMessage(
-        `Nouvelle dépense enregistrée : "${newExp.title}" de ${Number(newExp.amount).toFixed(2)} € par ${newExp.paidByName}.`
-      );
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
     }
@@ -643,12 +760,6 @@ export default function App() {
       }
       return [...prev, { ...settlement, status: isNowSettled ? 'settled' : 'pending' }];
     });
-
-    if (isNowSettled) {
-      handleSendMessage(
-        `Règlement soldé : ${settlement.fromUserName} a remboursé ${settlement.amount.toFixed(2)} € à ${settlement.toUserName}.`
-      );
-    }
   };
 
   // Handlers: Create & Edit & Delete Group
@@ -828,6 +939,7 @@ export default function App() {
   // Handlers: Profile Save
   const handleSaveProfile = async (updated: UserProfile) => {
     setCurrentUser(updated);
+    saveLocalSession(updated);
     setIsDarkMode(updated.themePreference === 'dark');
 
     // Update members profile representation in local groups
@@ -857,7 +969,9 @@ export default function App() {
   const handleDeleteAccount = async () => {
     if (!currentUser) return;
     try {
-      await api.deleteUser(currentUser.id);
+      const deletedId = currentUser.id;
+      await api.deleteUser(deletedId);
+      removeLocalSession(deletedId);
       localStorage.removeItem('outly_user_id');
       localStorage.removeItem('outly_auth_token');
       setCurrentUser(null);
@@ -1043,15 +1157,17 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* 3. Group Cover Banner */}
-            <GroupBanner
-              group={activeGroup}
-              currentUser={currentUser}
-              onInviteMember={() => setIsAddGroupMemberOpen(true)}
-              onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
-              onLeaveGroup={handleLeaveGroup}
-              onDeleteGroup={handleDeleteGroup}
-            />
+            {/* 3. Group Cover Banner (masqué sur l'onglet Discussion pour offrir une interface de messagerie plein écran et épurée) */}
+            {activeTab !== 'discussion' && (
+              <GroupBanner
+                group={activeGroup}
+                currentUser={currentUser}
+                onInviteMember={() => setIsAddGroupMemberOpen(true)}
+                onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
+                onLeaveGroup={handleLeaveGroup}
+                onDeleteGroup={handleDeleteGroup}
+              />
+            )}
 
             {/* 4. Group Tabs */}
             <GroupTabs activeTab={activeTab} onTabChange={setActiveTab} badges={tabBadges} />
@@ -1169,10 +1285,15 @@ export default function App() {
           shares: 1,
           themePreference: 'light',
         }}
-        availableUsers={allUsers}
+        availableUsers={savedSessions}
         onSaveProfile={handleSaveProfile}
         onLogout={handleLogout}
         onSwitchUser={handleSwitchUser}
+        onOpenAddAccount={() => {
+          setIsProfileOpen(false);
+          setIsAuthOpen(true);
+        }}
+        onRemoveSavedAccount={removeLocalSession}
         onDeleteAccount={handleDeleteAccount}
       />
 

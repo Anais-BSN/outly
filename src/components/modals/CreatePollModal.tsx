@@ -442,7 +442,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               <button
                 type="button"
                 onClick={addDateOption}
-                className="w-full py-2 rounded-xl bg-[#E8D8C4] text-[#27272A] text-xs font-bold hover:bg-[#C7B7A3] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                className="w-full py-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] text-xs font-bold hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 flex items-center justify-center gap-1.5 cursor-pointer transition-colors border border-[#C7B7A3]/50 dark:border-zinc-700"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Ajouter une autre date / créneau</span>
@@ -458,7 +458,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                 {choiceOptions.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span className="w-5 text-center text-xs font-bold text-[#5D0D18]">
+                    <span className="w-5 text-center text-xs font-bold text-[#5D0D18] dark:text-amber-300">
                       {idx + 1}.
                     </span>
                     <input
@@ -469,13 +469,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         updated[idx] = e.target.value;
                         setChoiceOptions(updated);
                       }}
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#E8D8C4]/50 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#E8D8C4]/50 dark:bg-zinc-800 border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
                     />
                     {choiceOptions.length > 2 && (
                       <button
                         type="button"
                         onClick={() => removeChoiceOption(idx)}
-                        className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg text-xs cursor-pointer"
+                        className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 rounded-lg text-xs cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -491,7 +491,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                   value={newChoiceInput}
                   onChange={(e) => setNewChoiceInput(e.target.value)}
                   placeholder="Ajouter une autre option..."
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -502,7 +502,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 <button
                   type="button"
                   onClick={addChoiceOption}
-                  className="px-3 py-1.5 rounded-xl bg-[#E8D8C4] text-[#27272A] text-xs font-bold hover:bg-[#C7B7A3] flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] text-xs font-bold hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Ajouter</span>
@@ -516,7 +516,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-full text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3] cursor-pointer"
+              className="px-4 py-2.5 rounded-full text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 cursor-pointer"
             >
               Annuler
             </button>

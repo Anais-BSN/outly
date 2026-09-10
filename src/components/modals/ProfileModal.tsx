@@ -15,7 +15,10 @@ import {
   KeyRound,
   LogOut,
   Users,
-  Lock
+  Lock,
+  UserPlus,
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { CARTOON_AVATARS } from '../../constants/avatars';
@@ -30,6 +33,8 @@ interface ProfileModalProps {
   onSaveProfile: (updated: UserProfile) => void;
   onLogout?: () => void;
   onSwitchUser?: (user: UserProfile) => void;
+  onOpenAddAccount?: () => void;
+  onRemoveSavedAccount?: (userId: string) => void;
   onDeleteAccount?: () => void;
 }
 
@@ -41,6 +46,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onSaveProfile,
   onLogout,
   onSwitchUser,
+  onOpenAddAccount,
+  onRemoveSavedAccount,
   onDeleteAccount,
 }) => {
   if (!isOpen) return null;
@@ -508,41 +515,103 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             )}
           </div>
 
-          {/* Switch Account Section */}
-          {availableUsers.length > 1 && onSwitchUser && (
-            <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border border-[#C7B7A3]/50 space-y-2">
+          {/* Comptes enregistrés sur cet appareil (Isolement local des sessions) */}
+          <div className="p-4 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border border-[#C7B7A3]/50 dark:border-zinc-700/60 space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
+                <ShieldCheck className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
                 <label className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
-                  Changer de compte
+                  Comptes mémorisés sur cet appareil
                 </label>
               </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {availableUsers.map((u) => (
-                  <button
+              <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400 font-medium">
+                {availableUsers.length} compte{availableUsers.length > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
+              Seuls les comptes déjà connectés avec succès avec leur mot de passe sur ce navigateur sont mémorisés ici.
+            </p>
+
+            <div className="space-y-2">
+              {availableUsers.map((u) => {
+                const isCurrent = u.id === currentUser.id;
+                return (
+                  <div
                     key={u.id}
-                    type="button"
-                    onClick={() => {
-                      onSwitchUser(u);
-                      onClose();
-                    }}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      u.id === currentUser.id
-                        ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18]'
-                        : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-200 border-[#C7B7A3]/60 hover:bg-[#E8D8C4]'
+                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                      isCurrent
+                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] dark:border-amber-300/40 shadow-xs'
+                        : 'bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border-[#C7B7A3]/40 dark:border-zinc-800 hover:bg-[#FFF9EB]'
                     }`}
                   >
-                    <img
-                      src={u.avatar}
-                      alt={u.firstName}
-                      className="w-4 h-4 rounded-full object-cover"
-                    />
-                    <span>{u.firstName} {u.lastName}</span>
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={u.avatar}
+                        alt={u.firstName}
+                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                            {u.firstName} {u.lastName}
+                          </span>
+                          {isCurrent && (
+                            <span className="px-1.5 py-0.5 bg-[#5D0D18] text-[#FFF9EB] text-[9px] font-bold rounded-full shrink-0">
+                              Actif
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 block truncate">
+                          {u.handle || u.email}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!isCurrent && onSwitchUser && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSwitchUser(u);
+                            onClose();
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer"
+                        >
+                          Basculer
+                        </button>
+                      )}
+                      {!isCurrent && onRemoveSavedAccount && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveSavedAccount(u.id)}
+                          title="Oublier ce compte de cet appareil"
+                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+
+            {/* Bouton pour connecter un autre compte (exige obligatoirement mot de passe) */}
+            {onOpenAddAccount && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAddAccount();
+                }}
+                className="w-full py-2 rounded-xl border border-dashed border-[#5D0D18]/40 dark:border-amber-300/40 text-[#5D0D18] dark:text-amber-300 text-xs font-bold hover:bg-[#5D0D18]/5 dark:hover:bg-zinc-700/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Se connecter à un autre compte</span>
+              </button>
+            )}
+          </div>
 
           {/* Zone de Danger : Suppression de Compte */}
           <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 space-y-2">

@@ -80,7 +80,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-160px)] max-w-4xl mx-auto">
+    <div className="flex flex-col h-[calc(100dvh-125px)] sm:h-[calc(100dvh-135px)] max-w-4xl mx-auto">
       {/* Messages Stream */}
       <div
         id="discussion-messages-container"
