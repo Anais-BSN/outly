@@ -66,7 +66,18 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
-  // Scroll initial tout en bas au montage
+  // Reset pagination limit on group switch
+  const currentGroupId = messages[0]?.groupId;
+  const prevGroupIdRef = useRef(currentGroupId);
+  useEffect(() => {
+    if (currentGroupId && currentGroupId !== prevGroupIdRef.current) {
+      setDisplayedLimit(15);
+      isInitialScrollDoneRef.current = false;
+      prevGroupIdRef.current = currentGroupId;
+    }
+  }, [currentGroupId]);
+
+  // Scroll initial tout en bas au montage / changement de groupe
   useEffect(() => {
     if (!isInitialScrollDoneRef.current && displayedMessages.length > 0) {
       scrollToBottom('auto');

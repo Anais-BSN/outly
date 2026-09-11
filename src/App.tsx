@@ -42,7 +42,9 @@ import {
   PollOption,
   GalleryItem,
   LogisticsTask,
+  TaskCategory,
   Expense,
+  ExpenseCategory,
   DebtSettlement,
   Friend,
   AppNotification,
@@ -841,21 +843,33 @@ export default function App() {
   // Handlers: Gallery Upload & Delete
   const handleUploadGalleryImage = async (imageUrl: string, caption?: string) => {
     if (!currentUser || !activeGroupId) return;
+    const tempId = `gal-${Date.now()}`;
+    const optimisticItem: GalleryItem = {
+      id: tempId,
+      groupId: activeGroupId,
+      imageUrl,
+      uploaderId: currentUser.id,
+      uploaderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      uploaderAvatar: currentUser.avatar,
+      timestamp: new Date().toISOString(),
+      caption,
+    };
+
+    // Optimistic UI update
+    setGalleryItems((prev) => [optimisticItem, ...prev]);
+
     try {
       const newItem = await api.uploadGalleryItem({
         groupId: activeGroupId,
         imageUrl,
         uploaderId: currentUser.id,
         caption,
-        timestamp: new Date().toISOString(),
+        timestamp: optimisticItem.timestamp,
       });
-      setGalleryItems((prev) => {
-        const exists = prev.some((item) => item.id === newItem.id || item.imageUrl === newItem.imageUrl);
-        if (exists) return prev;
-        return [newItem, ...prev];
-      });
+      setGalleryItems((prev) => prev.map((item) => (item.id === tempId ? newItem : item)));
     } catch (err) {
       console.error('Error uploading gallery image in PostgreSQL:', err);
+      setGalleryItems((prev) => prev.filter((item) => item.id !== tempId));
     }
   };
 
@@ -928,40 +942,82 @@ export default function App() {
   };
 
   const handleAddTask = async (taskData: Partial<LogisticsTask>) => {
+    if (!currentUser || !activeGroupId) return;
+    const tempId = `task-${Date.now()}`;
+    const optimisticTask: LogisticsTask = {
+      id: tempId,
+      groupId: activeGroupId,
+      title: taskData.title || 'Nouvelle tâche',
+      quantity: taskData.quantity || '1',
+      category: (taskData.category as TaskCategory) || 'Matériel',
+      assignedToId: taskData.assignedToId || null,
+      assignedToName: taskData.assignedToName || null,
+      assignedToAvatar: taskData.assignedToAvatar || null,
+      createdBy: currentUser.id,
+      completed: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistic UI update
+    setTasks((prev) => [...prev, optimisticTask]);
+
     try {
       const newTask = await api.createTask({
         groupId: activeGroupId,
         title: taskData.title || 'Nouvelle tâche',
         quantity: taskData.quantity || '1',
-        category: taskData.category || 'Matériel',
+        category: (taskData.category as TaskCategory) || 'Matériel',
         assignedToId: taskData.assignedToId || null,
         createdBy: currentUser.id,
       });
-      setTasks((prev) => [...prev, newTask]);
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? newTask : t)));
       handleSendMessage(`Nouvel objet ajouté à la logistique : "${newTask.title}" (x${newTask.quantity}).`);
     } catch (err) {
       console.error('Error adding task in PostgreSQL:', err);
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
     }
   };
 
   // Handlers: Expenses & Settlements (Les transactions restent visibles uniquement dans l'onglet Partage des frais)
   const handleAddExpense = async (expenseData: Partial<Expense>) => {
+    if (!currentUser || !activeGroupId) return;
+    const tempId = `exp-${Date.now()}`;
+    const optimisticExp: Expense = {
+      id: tempId,
+      groupId: activeGroupId,
+      title: expenseData.title || 'Dépense',
+      amount: expenseData.amount || 0,
+      date: expenseData.date || new Date().toISOString().split('T')[0],
+      category: (expenseData.category as ExpenseCategory) || 'Autre',
+      paidById: expenseData.paidById || currentUser.id,
+      paidByName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      paidByAvatar: currentUser.avatar,
+      splitMode: expenseData.splitMode || 'custom',
+      participantIds: expenseData.participantIds || activeGroup.members.map((m) => m.userId || m.id),
+      sharesSnapshot: expenseData.sharesSnapshot || {},
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistic UI update
+    setExpenses((prev) => [optimisticExp, ...prev]);
+
     try {
       const newExp = await api.createExpense({
         groupId: activeGroupId,
         title: expenseData.title || 'Dépense',
         amount: expenseData.amount || 0,
         date: expenseData.date || new Date().toISOString().split('T')[0],
-        category: expenseData.category || 'Autre',
+        category: (expenseData.category as ExpenseCategory) || 'Autre',
         paidById: expenseData.paidById || currentUser.id,
         splitMode: 'custom',
         participantIds: expenseData.participantIds || activeGroup.members.map((m) => m.userId || m.id),
         sharesSnapshot: expenseData.sharesSnapshot || {},
       });
 
-      setExpenses((prev) => [newExp, ...prev]);
+      setExpenses((prev) => prev.map((exp) => (exp.id === tempId ? newExp : exp)));
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
+      setExpenses((prev) => prev.filter((exp) => exp.id !== tempId));
     }
   };
 
@@ -981,13 +1037,40 @@ export default function App() {
 
   // Handlers: Create & Edit & Delete Group
   const handleCreateGroup = async (groupData: Partial<Group>, invitedFriendIds: string[]) => {
+    if (!currentUser) return;
+    const tempId = `grp-${Date.now()}`;
+    const optimisticGroup: Group = {
+      id: tempId,
+      name: groupData.name || 'Nouveau Groupe',
+      description: groupData.description || '',
+      coverImage: groupData.coverImage || 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=1000&auto=format&fit=crop&q=80',
+      members: [
+        {
+          id: `gm-${Date.now()}`,
+          userId: currentUser.id,
+          name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+          firstName: currentUser.firstName,
+          lastName: currentUser.lastName,
+          handle: currentUser.handle,
+          avatar: currentUser.avatar,
+          shares: currentUser.shares || 1,
+          role: 'admin',
+        },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+
+    setGroups((prev) => [optimisticGroup, ...prev]);
+    setActiveGroupId(tempId);
+    setActiveTab('agenda');
+
     try {
-      const newGroup = await api.createGroup(groupData, invitedFriendIds, currentUser?.id || 'user-me');
-      setGroups((prev) => [newGroup, ...prev]);
+      const newGroup = await api.createGroup(groupData, invitedFriendIds, currentUser.id);
+      setGroups((prev) => prev.map((g) => (g.id === tempId ? newGroup : g)));
       setActiveGroupId(newGroup.id);
-      setActiveTab('agenda');
     } catch (err) {
       console.error('Error creating group in PostgreSQL:', err);
+      setGroups((prev) => prev.filter((g) => g.id !== tempId));
     }
   };
 
@@ -1412,7 +1495,8 @@ export default function App() {
                 />
               )}
 
-              {activeTab === 'discussion' && (
+              {/* Keep-Alive for DiscussionTab to preserve state and make tab switching instant (0ms) */}
+              <div className={activeTab === 'discussion' ? 'flex flex-col h-full' : 'hidden'}>
                 <DiscussionTab
                   messages={groupMessages}
                   currentUser={currentUser}
@@ -1422,7 +1506,7 @@ export default function App() {
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
                 />
-              )}
+              </div>
 
               {activeTab === 'sondages' && (
                 <SondagesTab

@@ -146,8 +146,78 @@ var emailService = {
   }
 };
 
+// server/events.ts
+var EventBroadcaster = class {
+  constructor() {
+    this.subscribers = /* @__PURE__ */ new Map();
+    this.pingInterval = null;
+    this.pingInterval = setInterval(() => {
+      this.sendHeartbeat();
+    }, 25e3);
+  }
+  addSubscriber(id, res, userId, groupId) {
+    this.subscribers.set(id, { id, res, userId, groupId });
+  }
+  removeSubscriber(id) {
+    this.subscribers.delete(id);
+  }
+  sendHeartbeat() {
+    const data = `:ping
+
+`;
+    for (const [id, sub] of this.subscribers.entries()) {
+      try {
+        sub.res.write(data);
+      } catch (err) {
+        this.subscribers.delete(id);
+      }
+    }
+  }
+  broadcast(event) {
+    const payload = {
+      ...event,
+      timestamp: event.timestamp || (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const message = `data: ${JSON.stringify(payload)}
+
+`;
+    for (const [id, sub] of this.subscribers.entries()) {
+      try {
+        if (event.userId && sub.userId && event.userId !== sub.userId) {
+          continue;
+        }
+        sub.res.write(message);
+      } catch (err) {
+        this.subscribers.delete(id);
+      }
+    }
+  }
+};
+var realtimeBroadcaster = new EventBroadcaster();
+
 // server/api.ts
 var apiRouter = Router();
+var handleSseConnection = (req, res) => {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+    "Access-Control-Allow-Origin": "*"
+  });
+  const subId = `sub-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const userId = req.query.userId;
+  const groupId = req.query.groupId;
+  realtimeBroadcaster.addSubscriber(subId, res, userId, groupId);
+  res.write(`data: ${JSON.stringify({ type: "connected", subscriberId: subId, timestamp: (/* @__PURE__ */ new Date()).toISOString() })}
+
+`);
+  req.on("close", () => {
+    realtimeBroadcaster.removeSubscriber(subId);
+  });
+};
+apiRouter.get("/events/stream", handleSseConnection);
+apiRouter.get("/sse", handleSseConnection);
 (async () => {
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;`);
@@ -351,7 +421,13 @@ apiRouter.put("/users/:id", async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json(result.rows[0]);
+    const updatedUser = result.rows[0];
+    realtimeBroadcaster.broadcast({
+      type: "user:updated",
+      userId: id,
+      data: updatedUser
+    });
+    res.json(updatedUser);
   } catch (err) {
     console.error("Error in PUT /users/:id:", err);
     res.status(500).json({ error: err.message });
@@ -376,6 +452,11 @@ apiRouter.delete("/users/:id", async (req, res) => {
     if (delRes.rows.length === 0) {
       return res.status(404).json({ error: "Utilisateur introuvable" });
     }
+    realtimeBroadcaster.broadcast({
+      type: "user:deleted",
+      userId: id,
+      data: { userId: id }
+    });
     res.json({ success: true, userId: id });
   } catch (err) {
     console.error("Error in DELETE /users/:id:", err);
@@ -445,6 +526,23 @@ apiRouter.post("/friends", async (req, res) => {
        VALUES ($1, $2, 'invite', 'Nouvelle demande d''ami', $3, NOW(), false)`,
       [notifId, targetUser.id, notifMessage]
     );
+    realtimeBroadcaster.broadcast({
+      type: "notification:created",
+      userId: targetUser.id,
+      data: {
+        id: notifId,
+        userId: targetUser.id,
+        type: "invite",
+        title: "Nouvelle demande d'ami",
+        message: notifMessage,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        read: false
+      }
+    });
+    realtimeBroadcaster.broadcast({
+      type: "friend:requested",
+      data: { senderId: userId, targetId: targetUser.id }
+    });
     if (targetUser.email && !targetUser.email.endsWith("@outly.app")) {
       emailService.sendInvitation({
         toEmail: targetUser.email,
@@ -486,8 +584,25 @@ apiRouter.put("/friends/:friendId", async (req, res) => {
            VALUES ($1, $2, 'friend', 'Demande d''ami accept\xE9e', $3, NOW(), false)`,
           [notifId, friendId, notifMsg]
         );
+        realtimeBroadcaster.broadcast({
+          type: "notification:created",
+          userId: friendId,
+          data: {
+            id: notifId,
+            userId: friendId,
+            type: "friend",
+            title: "Demande d'ami accept\xE9e",
+            message: notifMsg,
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            read: false
+          }
+        });
       }
     }
+    realtimeBroadcaster.broadcast({
+      type: "friend:updated",
+      data: { userId, friendId, status }
+    });
     res.json({ success: true, friendId, status });
   } catch (err) {
     console.error("Error in PUT /friends/:friendId:", err);
@@ -503,6 +618,10 @@ apiRouter.delete("/friends/:friendId", async (req, res) => {
        WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
       [userId, friendId]
     );
+    realtimeBroadcaster.broadcast({
+      type: "friend:deleted",
+      data: { userId, friendId }
+    });
     res.json({ success: true, friendId });
   } catch (err) {
     console.error("Error in DELETE /friends/:friendId:", err);
@@ -601,14 +720,20 @@ apiRouter.post("/groups", async (req, res) => {
        WHERE gm.group_id = $1`,
       [groupId]
     );
-    res.json({
+    const createdGroup = {
       id: groupId,
       name,
       description,
       coverImage,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       members: membersRes.rows
+    };
+    realtimeBroadcaster.broadcast({
+      type: "group:created",
+      groupId,
+      data: createdGroup
     });
+    res.json(createdGroup);
   } catch (err) {
     console.error("Error in POST /groups:", err);
     res.status(500).json({ error: err.message });
@@ -635,7 +760,13 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
        WHERE gm.group_id = $1 AND gm.user_id = $2`,
       [id, userId]
     );
-    res.json(memberRes.rows[0] || { success: true, groupId: id, userId });
+    const memberData = memberRes.rows[0] || { success: true, groupId: id, userId, role };
+    realtimeBroadcaster.broadcast({
+      type: "group:member_added",
+      groupId: id,
+      data: { groupId: id, member: memberData }
+    });
+    res.json(memberData);
   } catch (err) {
     console.error("Error in POST /groups/:id/members:", err);
     res.status(500).json({ error: err.message });
@@ -645,6 +776,11 @@ apiRouter.delete("/groups/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await query(`DELETE FROM groups WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "group:deleted",
+      groupId: id,
+      data: { groupId: id }
+    });
     res.json({ success: true, groupId: id });
   } catch (err) {
     console.error("Error in DELETE /groups/:id:", err);
@@ -684,6 +820,11 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
         }
       }
     }
+    realtimeBroadcaster.broadcast({
+      type: "group:member_removed",
+      groupId: id,
+      data: { groupId: id, userId }
+    });
     res.json({ success: true, groupId: id, userId });
   } catch (err) {
     console.error("Error in DELETE /groups/:id/members/:userId:", err);
@@ -692,6 +833,9 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
 });
 apiRouter.get("/events", async (req, res) => {
   try {
+    if (req.headers.accept?.includes("text/event-stream") || req.query.stream === "true") {
+      return handleSseConnection(req, res);
+    }
     const groupId = req.query.groupId;
     const userId = req.query.userId;
     let sql = `
@@ -779,7 +923,7 @@ apiRouter.post("/events", async (req, res) => {
     }
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [organizerId]);
     const org = userRes.rows[0] || { first_name: "Organisateur", avatar: "" };
-    res.json({
+    const newEvent = {
       id: eventId,
       groupId,
       title,
@@ -794,7 +938,13 @@ apiRouter.post("/events", async (req, res) => {
       organizerAvatar: org.avatar,
       reminder24h,
       rsvp: initialRsvp
+    };
+    realtimeBroadcaster.broadcast({
+      type: "event:created",
+      groupId,
+      data: newEvent
     });
+    res.json(newEvent);
   } catch (err) {
     console.error("Error in POST /events:", err);
     res.status(500).json({ error: err.message });
@@ -848,7 +998,7 @@ apiRouter.put("/events/:id", async (req, res) => {
     for (const r of rsvpRes.rows) {
       rsvp[r.userId] = r.status;
     }
-    res.json({
+    const updatedEvent = {
       id: ev.id,
       groupId: ev.group_id,
       title: ev.title,
@@ -863,7 +1013,13 @@ apiRouter.put("/events/:id", async (req, res) => {
       organizerAvatar: org.avatar,
       reminder24h: ev.reminder_24h,
       rsvp
+    };
+    realtimeBroadcaster.broadcast({
+      type: "event:updated",
+      groupId: ev.group_id,
+      data: updatedEvent
     });
+    res.json(updatedEvent);
   } catch (err) {
     console.error("Error in PUT /events/:id:", err);
     res.status(500).json({ error: err.message });
@@ -872,7 +1028,14 @@ apiRouter.put("/events/:id", async (req, res) => {
 apiRouter.delete("/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM events WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
     await query(`DELETE FROM events WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "event:deleted",
+      groupId,
+      data: { eventId: id, groupId }
+    });
     res.json({ success: true, eventId: id });
   } catch (err) {
     console.error("Error in DELETE /events/:id:", err);
@@ -890,6 +1053,13 @@ apiRouter.put("/events/:id/rsvp", async (req, res) => {
        DO UPDATE SET status = EXCLUDED.status`,
       [id, userId, status]
     );
+    const evRes = await query(`SELECT group_id as "groupId" FROM events WHERE id = $1`, [id]);
+    const groupId = evRes.rows[0]?.groupId;
+    realtimeBroadcaster.broadcast({
+      type: "event:rsvp",
+      groupId,
+      data: { eventId: id, userId, status }
+    });
     res.json({ success: true, eventId: id, userId, status });
   } catch (err) {
     console.error("Error in PUT /events/:id/rsvp:", err);
@@ -959,7 +1129,9 @@ apiRouter.get("/availability", async (req, res) => {
 apiRouter.get("/messages", async (req, res) => {
   try {
     const groupId = req.query.groupId;
-    let sql = `
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : void 0;
+    const before = req.query.before;
+    let baseSql = `
       SELECT m.id, m.group_id as "groupId", m.sender_id as "senderId",
              CASE
                WHEN m.is_system THEN 'Outly Bot'
@@ -973,14 +1145,36 @@ apiRouter.get("/messages", async (req, res) => {
       FROM chat_messages m
       LEFT JOIN users u ON m.sender_id = u.id
     `;
+    const conditions = [];
     const params = [];
     if (groupId) {
-      sql += ` WHERE m.group_id = $1`;
       params.push(groupId);
+      conditions.push(`m.group_id = $${params.length}`);
     }
-    sql += ` ORDER BY m.timestamp ASC`;
-    const result = await query(sql, params);
-    res.json(result.rows);
+    if (before) {
+      params.push(before);
+      conditions.push(`m.timestamp < $${params.length}`);
+    }
+    if (conditions.length > 0) {
+      baseSql += ` WHERE ` + conditions.join(" AND ");
+    }
+    if (limit && limit > 0) {
+      params.push(limit);
+      const sql = `
+        SELECT * FROM (
+          ${baseSql}
+          ORDER BY m.timestamp DESC
+          LIMIT $${params.length}
+        ) sub
+        ORDER BY sub.timestamp ASC
+      `;
+      const result = await query(sql, params);
+      return res.json(result.rows);
+    } else {
+      baseSql += ` ORDER BY m.timestamp ASC`;
+      const result = await query(baseSql, params);
+      return res.json(result.rows);
+    }
   } catch (err) {
     console.error("Error in GET /messages:", err);
     res.status(500).json({ error: err.message });
@@ -1029,13 +1223,25 @@ apiRouter.post("/messages", async (req, res) => {
            ON CONFLICT DO NOTHING`,
           [galId, groupId, imageUrl, senderId, text || "Photo partag\xE9e dans le fil", timestamp]
         );
+        realtimeBroadcaster.broadcast({
+          type: "gallery:uploaded",
+          groupId,
+          data: {
+            id: galId,
+            groupId,
+            imageUrl,
+            uploaderId: senderId,
+            caption: text || "Photo partag\xE9e dans le fil",
+            timestamp
+          }
+        });
       }
     }
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [senderId]);
     const user = userRes.rows[0];
     const senderName = isSystem ? "Outly Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
     const senderAvatar = isSystem ? "" : user?.avatar || "";
-    res.json({
+    const newMsg = {
       id,
       groupId,
       senderId,
@@ -1048,9 +1254,73 @@ apiRouter.post("/messages", async (req, res) => {
       systemType,
       readBy,
       reactions
+    };
+    realtimeBroadcaster.broadcast({
+      type: "message:created",
+      groupId,
+      data: newMsg
     });
+    res.json(newMsg);
   } catch (err) {
     console.error("Error in POST /messages:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.put("/messages/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+    if (typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: "Le contenu du message est requis" });
+    }
+    const updatedRes = await query(
+      `UPDATE chat_messages
+       SET text = $1
+       WHERE id = $2
+       RETURNING id, group_id as "groupId", sender_id as "senderId", timestamp, text, image_url as "imageUrl", is_system as "isSystem", system_type as "systemType", read_by as "readBy", reactions`,
+      [text.trim(), id]
+    );
+    if (updatedRes.rows.length === 0) {
+      return res.status(404).json({ error: "Message introuvable" });
+    }
+    const msg = updatedRes.rows[0];
+    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [msg.senderId]);
+    const user = userRes.rows[0];
+    const senderName = msg.isSystem ? "Outly Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
+    const senderAvatar = msg.isSystem ? "" : user?.avatar || "";
+    const fullMessage = {
+      ...msg,
+      senderName,
+      senderAvatar
+    };
+    realtimeBroadcaster.broadcast({
+      type: "message:updated",
+      groupId: msg.groupId,
+      data: fullMessage
+    });
+    res.json(fullMessage);
+  } catch (err) {
+    console.error("Error in PUT /messages/:id:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.delete("/messages/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT id, group_id as "groupId" FROM chat_messages WHERE id = $1`, [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Message introuvable" });
+    }
+    const groupId = existing.rows[0].groupId;
+    await query(`DELETE FROM chat_messages WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "message:deleted",
+      groupId,
+      data: { id, groupId }
+    });
+    res.json({ success: true, id, groupId });
+  } catch (err) {
+    console.error("Error in DELETE /messages/:id:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1061,10 +1331,11 @@ apiRouter.post("/messages/:id/react", async (req, res) => {
     if (!emoji) {
       return res.status(400).json({ error: "Emoji is required" });
     }
-    const msgRes = await query(`SELECT reactions FROM chat_messages WHERE id = $1`, [id]);
+    const msgRes = await query(`SELECT group_id as "groupId", reactions FROM chat_messages WHERE id = $1`, [id]);
     if (msgRes.rows.length === 0) {
       return res.status(404).json({ error: "Message not found" });
     }
+    const groupId = msgRes.rows[0].groupId;
     let reactions = msgRes.rows[0].reactions || [];
     const existingEmojiGroup = reactions.find((r) => r.emoji === emoji);
     if (existingEmojiGroup) {
@@ -1084,6 +1355,11 @@ apiRouter.post("/messages/:id/react", async (req, res) => {
       `UPDATE chat_messages SET reactions = $1 WHERE id = $2`,
       [JSON.stringify(reactions), id]
     );
+    realtimeBroadcaster.broadcast({
+      type: "message:reaction",
+      groupId,
+      data: { messageId: id, groupId, reactions }
+    });
     res.json({ success: true, messageId: id, reactions });
   } catch (err) {
     console.error("Error in POST /messages/:id/react:", err);
@@ -1170,7 +1446,7 @@ apiRouter.post("/polls", async (req, res) => {
     }
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [createdBy]);
     const user = userRes.rows[0];
-    res.json({
+    const createdPoll = {
       id: pollId,
       groupId,
       title,
@@ -1181,7 +1457,13 @@ apiRouter.post("/polls", async (req, res) => {
       creatorAvatar: user?.avatar || "",
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       options: createdOptions
+    };
+    realtimeBroadcaster.broadcast({
+      type: "poll:created",
+      groupId,
+      data: createdPoll
     });
+    res.json(createdPoll);
   } catch (err) {
     console.error("Error in POST /polls:", err);
     res.status(500).json({ error: err.message });
@@ -1209,6 +1491,13 @@ apiRouter.post("/polls/:pollId/vote", async (req, res) => {
       }
     ];
     await query(`UPDATE poll_options SET votes = $1 WHERE id = $2`, [JSON.stringify(updatedVotes), optionId]);
+    const pRes = await query(`SELECT group_id as "groupId" FROM polls WHERE id = $1`, [pollId]);
+    const groupId = pRes.rows[0]?.groupId;
+    realtimeBroadcaster.broadcast({
+      type: "poll:voted",
+      groupId,
+      data: { pollId, optionId, votes: updatedVotes }
+    });
     res.json({ success: true, pollId, optionId, votes: updatedVotes });
   } catch (err) {
     console.error("Error in POST /polls/:pollId/vote:", err);
@@ -1260,7 +1549,7 @@ apiRouter.put("/polls/:id", async (req, res) => {
     );
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [poll.created_by]);
     const user = userRes.rows[0];
-    res.json({
+    const updatedPoll = {
       id: poll.id,
       groupId: poll.group_id,
       title: poll.title,
@@ -1279,7 +1568,13 @@ apiRouter.put("/polls/:id", async (req, res) => {
         endDate: opt.endDateValue,
         votes: opt.votes || []
       }))
+    };
+    realtimeBroadcaster.broadcast({
+      type: "poll:updated",
+      groupId: poll.group_id,
+      data: updatedPoll
     });
+    res.json(updatedPoll);
   } catch (err) {
     console.error("Error in PUT /polls/:id:", err);
     res.status(500).json({ error: err.message });
@@ -1288,8 +1583,15 @@ apiRouter.put("/polls/:id", async (req, res) => {
 apiRouter.delete("/polls/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM polls WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
     await query(`DELETE FROM poll_options WHERE poll_id = $1`, [id]);
     await query(`DELETE FROM polls WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "poll:deleted",
+      groupId,
+      data: { pollId: id, groupId }
+    });
     res.json({ success: true, pollId: id });
   } catch (err) {
     console.error("Error in DELETE /polls/:id:", err);
@@ -1338,7 +1640,7 @@ apiRouter.post("/gallery", async (req, res) => {
     );
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [uploaderId]);
     const user = userRes.rows[0];
-    res.json({
+    const newItem = {
       id,
       groupId,
       imageUrl,
@@ -1347,7 +1649,13 @@ apiRouter.post("/gallery", async (req, res) => {
       uploaderAvatar: user?.avatar || "",
       caption,
       timestamp
+    };
+    realtimeBroadcaster.broadcast({
+      type: "gallery:uploaded",
+      groupId,
+      data: newItem
     });
+    res.json(newItem);
   } catch (err) {
     console.error("Error in POST /gallery:", err);
     res.status(500).json({ error: err.message });
@@ -1356,7 +1664,14 @@ apiRouter.post("/gallery", async (req, res) => {
 apiRouter.delete("/gallery/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM gallery_items WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
     await query(`DELETE FROM gallery_items WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "gallery:deleted",
+      groupId,
+      data: { id, groupId }
+    });
     res.json({ success: true, id });
   } catch (err) {
     console.error("Error in DELETE /gallery/:id:", err);
@@ -1415,7 +1730,7 @@ apiRouter.post("/tasks", async (req, res) => {
         assignedToAvatar = uRes.rows[0].avatar;
       }
     }
-    res.json({
+    const newTask = {
       id: taskId,
       groupId,
       title,
@@ -1427,7 +1742,13 @@ apiRouter.post("/tasks", async (req, res) => {
       category,
       createdBy,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    realtimeBroadcaster.broadcast({
+      type: "task:created",
+      groupId,
+      data: newTask
     });
+    res.json(newTask);
   } catch (err) {
     console.error("Error in POST /tasks:", err);
     res.status(500).json({ error: err.message });
@@ -1440,13 +1761,19 @@ apiRouter.put("/tasks/:id/toggle", async (req, res) => {
       `UPDATE logistics_tasks
        SET completed = NOT completed
        WHERE id = $1
-       RETURNING id, completed`,
+       RETURNING id, group_id as "groupId", completed`,
       [id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Task not found" });
     }
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    realtimeBroadcaster.broadcast({
+      type: "task:toggled",
+      groupId: row.groupId,
+      data: { id: row.id, groupId: row.groupId, completed: row.completed }
+    });
+    res.json(row);
   } catch (err) {
     console.error("Error in PUT /tasks/:id/toggle:", err);
     res.status(500).json({ error: err.message });
@@ -1456,20 +1783,29 @@ apiRouter.put("/tasks/:id/claim", async (req, res) => {
   try {
     const { id } = req.params;
     const { userId = "user-me" } = req.body;
-    await query(
+    const tRes = await query(
       `UPDATE logistics_tasks
        SET assigned_to_id = $1
-       WHERE id = $2`,
+       WHERE id = $2
+       RETURNING group_id as "groupId"`,
       [userId, id]
     );
     const uRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [userId]);
     const user = uRes.rows[0];
-    res.json({
+    const groupId = tRes.rows[0]?.groupId;
+    const claimedData = {
       id,
+      groupId,
       assignedToId: userId,
       assignedToName: user?.first_name || null,
       assignedToAvatar: user?.avatar || null
+    };
+    realtimeBroadcaster.broadcast({
+      type: "task:claimed",
+      groupId,
+      data: claimedData
     });
+    res.json(claimedData);
   } catch (err) {
     console.error("Error in PUT /tasks/:id/claim:", err);
     res.status(500).json({ error: err.message });
@@ -1478,18 +1814,27 @@ apiRouter.put("/tasks/:id/claim", async (req, res) => {
 apiRouter.put("/tasks/:id/unclaim", async (req, res) => {
   try {
     const { id } = req.params;
-    await query(
+    const tRes = await query(
       `UPDATE logistics_tasks
        SET assigned_to_id = NULL
-       WHERE id = $1`,
+       WHERE id = $1
+       RETURNING group_id as "groupId"`,
       [id]
     );
-    res.json({
+    const groupId = tRes.rows[0]?.groupId;
+    const unclaimedData = {
       id,
+      groupId,
       assignedToId: null,
       assignedToName: null,
       assignedToAvatar: null
+    };
+    realtimeBroadcaster.broadcast({
+      type: "task:unclaimed",
+      groupId,
+      data: unclaimedData
     });
+    res.json(unclaimedData);
   } catch (err) {
     console.error("Error in PUT /tasks/:id/unclaim:", err);
     res.status(500).json({ error: err.message });
@@ -1556,7 +1901,7 @@ apiRouter.post("/expenses", async (req, res) => {
     );
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [paidById]);
     const user = userRes.rows[0];
-    res.json({
+    const newExpense = {
       id,
       groupId,
       title,
@@ -1570,7 +1915,13 @@ apiRouter.post("/expenses", async (req, res) => {
       participantIds,
       sharesSnapshot,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    realtimeBroadcaster.broadcast({
+      type: "expense:created",
+      groupId,
+      data: newExpense
     });
+    res.json(newExpense);
   } catch (err) {
     console.error("Error in POST /expenses:", err);
     res.status(500).json({ error: err.message });
@@ -1597,6 +1948,11 @@ apiRouter.put("/notifications/read-all", async (req, res) => {
   try {
     const userId = req.body.userId || "user-me";
     await query(`UPDATE notifications SET read = true WHERE user_id = $1`, [userId]);
+    realtimeBroadcaster.broadcast({
+      type: "notification:read_all",
+      userId,
+      data: { userId }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error("Error in PUT /notifications/read-all:", err);
@@ -1606,7 +1962,13 @@ apiRouter.put("/notifications/read-all", async (req, res) => {
 apiRouter.put("/notifications/:id/read", async (req, res) => {
   try {
     const { id } = req.params;
-    await query(`UPDATE notifications SET read = true WHERE id = $1`, [id]);
+    const notifRes = await query(`UPDATE notifications SET read = true WHERE id = $1 RETURNING user_id as "userId"`, [id]);
+    const userId = notifRes.rows[0]?.userId;
+    realtimeBroadcaster.broadcast({
+      type: "notification:read",
+      userId,
+      data: { id, userId }
+    });
     res.json({ success: true, id });
   } catch (err) {
     console.error("Error in PUT /notifications/:id/read:", err);
@@ -1616,7 +1978,13 @@ apiRouter.put("/notifications/:id/read", async (req, res) => {
 apiRouter.delete("/notifications/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    await query(`DELETE FROM notifications WHERE id = $1`, [id]);
+    const notifRes = await query(`DELETE FROM notifications WHERE id = $1 RETURNING user_id as "userId"`, [id]);
+    const userId = notifRes.rows[0]?.userId;
+    realtimeBroadcaster.broadcast({
+      type: "notification:dismissed",
+      userId,
+      data: { id, userId }
+    });
     res.json({ success: true, id });
   } catch (err) {
     console.error("Error in DELETE /notifications/:id:", err);
