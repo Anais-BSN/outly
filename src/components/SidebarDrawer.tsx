@@ -26,6 +26,53 @@ interface SidebarDrawerProps {
   notifications?: AppNotification[];
 }
 
+interface GroupDrawerItemProps {
+  group: Group;
+  isActive: boolean;
+  onSelectGroup: (groupId: string) => void;
+  onClose: () => void;
+}
+
+const GroupDrawerItem = React.memo<GroupDrawerItemProps>(({
+  group,
+  isActive,
+  onSelectGroup,
+  onClose,
+}) => {
+  return (
+    <button
+      id={`drawer-group-item-${group.id}`}
+      onClick={() => {
+        onSelectGroup(group.id);
+        onClose();
+      }}
+      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+        isActive
+          ? 'bg-[#6D2932] text-[#FFF9EB] font-bold shadow-sm'
+          : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800/80'
+      }`}
+    >
+      <img
+        src={group.coverImage}
+        alt={group.name}
+        className="w-8 h-8 rounded-lg object-cover ring-1 ring-black/10"
+        loading="lazy"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-xs font-semibold">{group.name}</div>
+        <div
+          className={`text-[10px] ${
+            isActive ? 'text-[#FFF9EB]/80' : 'text-[#6D2932]/70 dark:text-zinc-400'
+          }`}
+        >
+          {group.members.length} membres
+        </div>
+      </div>
+      {isActive && <CheckCircle2 className="w-4 h-4 shrink-0 text-[#9FB2AC]" />}
+    </button>
+  );
+});
+
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   isOpen,
   onClose,
@@ -194,41 +241,15 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                   </button>
                 </div>
               ) : (
-                groups.map((group) => {
-                  const isActive = group.id === activeGroupId;
-                  return (
-                    <button
-                      key={group.id}
-                      id={`drawer-group-item-${group.id}`}
-                      onClick={() => {
-                        onSelectGroup(group.id);
-                        onClose();
-                      }}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-[#6D2932] text-[#FFF9EB] font-bold shadow-sm'
-                          : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800/80'
-                      }`}
-                    >
-                      <img
-                        src={group.coverImage}
-                        alt={group.name}
-                        className="w-8 h-8 rounded-lg object-cover ring-1 ring-black/10"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate text-xs font-semibold">{group.name}</div>
-                        <div
-                          className={`text-[10px] ${
-                            isActive ? 'text-[#FFF9EB]/80' : 'text-[#6D2932]/70 dark:text-zinc-400'
-                          }`}
-                        >
-                          {group.members.length} membres
-                        </div>
-                      </div>
-                      {isActive && <CheckCircle2 className="w-4 h-4 shrink-0 text-[#9FB2AC]" />}
-                    </button>
-                  );
-                })
+                groups.map((group) => (
+                  <GroupDrawerItem
+                    key={group.id}
+                    group={group}
+                    isActive={group.id === activeGroupId}
+                    onSelectGroup={onSelectGroup}
+                    onClose={onClose}
+                  />
+                ))
               )}
             </div>
           </div>

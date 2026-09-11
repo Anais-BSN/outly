@@ -19,6 +19,34 @@ interface GalerieTabProps {
   onViewImage: (item: GalleryItem) => void;
 }
 
+interface PhotoCardProps {
+  item: GalleryItem;
+  onViewImage: (item: GalleryItem) => void;
+}
+
+const PhotoCard = React.memo<PhotoCardProps>(({ item, onViewImage }) => {
+  return (
+    <div
+      id={`gallery-item-thumb-${item.id}`}
+      onClick={() => onViewImage(item)}
+      className="group relative aspect-square rounded-xl overflow-hidden bg-black/5 border border-[#C7B7A3]/50 dark:border-zinc-800 cursor-pointer shadow-xs hover:shadow-md transition-all hover:scale-[1.02]"
+    >
+      <img
+        src={item.imageUrl}
+        alt="Photo galerie"
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+        loading="lazy"
+      />
+      {/* Subtle hover overlay with zoom icon */}
+      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <div className="p-2 rounded-full bg-[#FFF9EB]/90 text-[#6D2932] shadow-sm backdrop-blur-xs">
+          <Maximize2 className="w-3.5 h-3.5" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export const GalerieTab: React.FC<GalerieTabProps> = ({
   galleryItems = [],
   currentUser,
@@ -149,24 +177,11 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-2.5">
           {safeItems.map((item) => (
-            <div
+            <PhotoCard
               key={item.id}
-              id={`gallery-item-thumb-${item.id}`}
-              onClick={() => onViewImage(item)}
-              className="group relative aspect-square rounded-xl overflow-hidden bg-black/5 border border-[#C7B7A3]/50 dark:border-zinc-800 cursor-pointer shadow-xs hover:shadow-md transition-all hover:scale-[1.02]"
-            >
-              <img
-                src={item.imageUrl}
-                alt="Photo galerie"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-              {/* Subtle hover overlay with zoom icon */}
-              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="p-2 rounded-full bg-[#FFF9EB]/90 text-[#6D2932] shadow-sm backdrop-blur-xs">
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
+              item={item}
+              onViewImage={onViewImage}
+            />
           ))}
         </div>
       )}

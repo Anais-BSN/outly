@@ -26,22 +26,30 @@ interface NotificationsModalProps {
   onOpenAddFriends?: () => void;
 }
 
-export const NotificationsModal: React.FC<NotificationsModalProps> = ({
-  isOpen,
-  onClose,
-  notifications = [],
-  groups = [],
-  onMarkAllAsRead,
+interface NotificationItemProps {
+  notif: AppNotification;
+  group?: Group | null;
+  onMarkAsRead?: (id: string) => void;
+  onDismissNotification: (id: string) => void;
+  onSelectGroupFromNotif: (groupId: string) => void;
+  onOpenAddFriends?: () => void;
+  onClose: () => void;
+}
+
+const NotificationItem = React.memo<NotificationItemProps>(({
+  notif,
+  group,
   onMarkAsRead,
   onDismissNotification,
   onSelectGroupFromNotif,
   onOpenAddFriends,
+  onClose,
 }) => {
-  if (!isOpen) return null;
-
-  const safeNotifications = notifications || [];
-  const safeGroups = groups || [];
-  const unreadCount = safeNotifications.filter((n) => !n.read).length;
+  const isFriendRequest =
+    notif.type === 'invite' ||
+    notif.type === 'friend' ||
+    notif.message.toLowerCase().includes("demande d'ami") ||
+    notif.title.toLowerCase().includes("ami");
 
   const getNotifIcon = (type: string) => {
     switch (type) {
@@ -58,6 +66,104 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         return <Bell className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />;
     }
   };
+
+  return (
+    <div
+      id={`notif-item-${notif.id}`}
+      onClick={() => {
+        if (!notif.read && onMarkAsRead) {
+          onMarkAsRead(notif.id);
+        }
+        if (isFriendRequest && onOpenAddFriends) {
+          onClose();
+          onOpenAddFriends();
+        } else if (notif.groupId) {
+          onSelectGroupFromNotif(notif.groupId);
+          onClose();
+        }
+      }}
+      className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 cursor-pointer ${
+        notif.read
+          ? 'bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border-[#C7B7A3]/30 dark:border-zinc-800 opacity-80'
+          : 'bg-[#E8D8C4] dark:bg-[#27272A] border-[#C7B7A3]/70 dark:border-zinc-700 shadow-xs'
+      }`}
+    >
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <div className="p-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 shadow-xs shrink-0">
+          {getNotifIcon(notif.type)}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs sm:text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
+              {notif.title}
+            </span>
+            {group && (
+              <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-[#6D2932] text-[#FFF9EB]">
+                {group.name}
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs text-[#27272A]/85 dark:text-zinc-300 mt-0.5 leading-relaxed">
+            {notif.message}
+          </p>
+
+          <div className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+            {formatRelativeTime(notif.timestamp)}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        {notif.groupId ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!notif.read && onMarkAsRead) {
+                onMarkAsRead(notif.id);
+              }
+              onSelectGroupFromNotif(notif.groupId!);
+              onClose();
+            }}
+            className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#541C24] cursor-pointer"
+          >
+            Voir
+          </button>
+        ) : null}
+
+        <button
+          id={`dismiss-notif-btn-${notif.id}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismissNotification(notif.id);
+          }}
+          className="p-1 rounded-lg text-[#27272A]/50 dark:text-zinc-500 hover:text-red-600 cursor-pointer"
+          title="Supprimer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({
+  isOpen,
+  onClose,
+  notifications = [],
+  groups = [],
+  onMarkAllAsRead,
+  onMarkAsRead,
+  onDismissNotification,
+  onSelectGroupFromNotif,
+  onOpenAddFriends,
+}) => {
+  if (!isOpen) return null;
+
+  const safeNotifications = notifications || [];
+  const safeGroups = groups || [];
+  const unreadCount = safeNotifications.filter((n) => !n.read).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -120,7 +226,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         )}
 
         {/* Notifications List */}
-        {notifications.length === 0 ? (
+        {safeNotifications.length === 0 ? (
           <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
             <Bell className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
             <p className="text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
@@ -132,93 +238,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {notifications.map((notif) => {
-              const group = notif.groupId ? groups.find((g) => g.id === notif.groupId) : null;
-              const isFriendRequest =
-                notif.type === 'invite' ||
-                notif.type === 'friend' ||
-                notif.message.toLowerCase().includes("demande d'ami") ||
-                notif.title.toLowerCase().includes("ami");
-
+            {safeNotifications.map((notif) => {
+              const group = notif.groupId ? safeGroups.find((g) => g.id === notif.groupId) : null;
               return (
-                <div
+                <NotificationItem
                   key={notif.id}
-                  id={`notif-item-${notif.id}`}
-                  onClick={() => {
-                    if (!notif.read && onMarkAsRead) {
-                      onMarkAsRead(notif.id);
-                    }
-                    if (isFriendRequest && onOpenAddFriends) {
-                      onClose();
-                      onOpenAddFriends();
-                    } else if (notif.groupId) {
-                      onSelectGroupFromNotif(notif.groupId);
-                      onClose();
-                    }
-                  }}
-                  className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                    notif.read
-                      ? 'bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border-[#C7B7A3]/30 dark:border-zinc-800 opacity-80'
-                      : 'bg-[#E8D8C4] dark:bg-[#27272A] border-[#C7B7A3]/70 dark:border-zinc-700 shadow-xs'
-                  }`}
-                >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="p-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 shadow-xs shrink-0">
-                      {getNotifIcon(notif.type)}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                          {notif.title}
-                        </span>
-                        {group && (
-                          <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-[#6D2932] text-[#FFF9EB]">
-                            {group.name}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-[#27272A]/85 dark:text-zinc-300 mt-0.5 leading-relaxed">
-                        {notif.message}
-                      </p>
-
-                      <div className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
-                        {formatRelativeTime(notif.timestamp)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {notif.groupId ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!notif.read && onMarkAsRead) {
-                            onMarkAsRead(notif.id);
-                          }
-                          onSelectGroupFromNotif(notif.groupId!);
-                          onClose();
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#541C24] cursor-pointer"
-                      >
-                        Voir
-                      </button>
-                    ) : null}
-
-                    <button
-                      id={`dismiss-notif-btn-${notif.id}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDismissNotification(notif.id);
-                      }}
-                      className="p-1 rounded-lg text-[#27272A]/50 dark:text-zinc-500 hover:text-red-600 cursor-pointer"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+                  notif={notif}
+                  group={group}
+                  onMarkAsRead={onMarkAsRead}
+                  onDismissNotification={onDismissNotification}
+                  onSelectGroupFromNotif={onSelectGroupFromNotif}
+                  onOpenAddFriends={onOpenAddFriends}
+                  onClose={onClose}
+                />
               );
             })}
           </div>

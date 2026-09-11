@@ -24,6 +24,52 @@ interface AddGroupMemberModalProps {
   onMemberAdded: (newMember: any) => void;
 }
 
+interface EligibleFriendRowProps {
+  friend: Friend;
+  isAdding: boolean;
+  onAdd: (friend: Friend) => void;
+}
+
+const EligibleFriendRow = React.memo<EligibleFriendRowProps>(({ friend, isAdding, onAdd }) => {
+  return (
+    <div
+      className="p-3 rounded-2xl bg-[#E8D8C4]/50 dark:bg-zinc-800/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 flex items-center justify-between gap-3 hover:bg-[#E8D8C4]/80 transition-colors"
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <img
+          src={friend.avatar}
+          alt={friend.firstName}
+          className="w-9 h-9 rounded-full object-cover ring-1 ring-[#6D2932]"
+          referrerPolicy="no-referrer"
+        />
+        <div className="min-w-0">
+          <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
+            {friend.firstName} {friend.lastName}
+          </div>
+          <div className="text-[10px] text-[#6D2932] dark:text-zinc-400 truncate">
+            {friend.handle}
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={isAdding}
+        onClick={() => onAdd(friend)}
+        className="px-3 py-1.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs shrink-0 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95"
+      >
+        {isAdding ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <UserPlus className="w-3.5 h-3.5" />
+        )}
+        <span>Ajouter</span>
+      </button>
+    </div>
+  );
+});
+EligibleFriendRow.displayName = 'EligibleFriendRow';
+
 export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   isOpen,
   onClose,
@@ -262,46 +308,14 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                   Aucun ami correspondant à votre recherche.
                 </p>
               ) : (
-                filteredFriends.map((friend) => {
-                  const isAdding = addingFriendId === friend.id;
-                  return (
-                    <div
-                      key={friend.id}
-                      className="p-3 rounded-2xl bg-[#E8D8C4]/50 dark:bg-zinc-800/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 flex items-center justify-between gap-3 hover:bg-[#E8D8C4]/80 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={friend.avatar}
-                          alt={friend.firstName}
-                          className="w-9 h-9 rounded-full object-cover ring-1 ring-[#6D2932]"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-                            {friend.firstName} {friend.lastName}
-                          </div>
-                          <div className="text-[10px] text-[#6D2932] dark:text-zinc-400 truncate">
-                            {friend.handle}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={isAdding}
-                        onClick={() => handleAddFriend(friend)}
-                        className="px-3 py-1.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs shrink-0 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95"
-                      >
-                        {isAdding ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <UserPlus className="w-3.5 h-3.5" />
-                        )}
-                        <span>Ajouter</span>
-                      </button>
-                    </div>
-                  );
-                })
+                filteredFriends.map((friend) => (
+                  <EligibleFriendRow
+                    key={friend.id}
+                    friend={friend}
+                    isAdding={addingFriendId === friend.id}
+                    onAdd={handleAddFriend}
+                  />
+                ))
               )}
             </div>
           </div>
