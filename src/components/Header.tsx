@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 w-full bg-[#E8D8C4] dark:bg-[#18181B] border-b border-[#C7B7A3] dark:border-zinc-800 transition-colors">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Left: Burger Menu */}
         <div className="flex items-center gap-4">
           <button
@@ -40,11 +40,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center: Brand Logo */}
-        <div className="flex items-center justify-center h-full py-1 cursor-pointer select-none">
+        <div className="flex items-center justify-center h-full cursor-pointer select-none">
           <img
             src="/Logo_Outly.png"
             alt="Outly"
-            className="h-[85%] max-h-[90px] w-auto object-contain py-1 select-none transition-transform hover:scale-105"
+            className="h-[90%] max-h-full w-auto object-contain select-none transition-transform hover:scale-105"
           />
         </div>
 

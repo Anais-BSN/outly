@@ -225,59 +225,7 @@ export default function App() {
     }
   }, [saveLocalSession]);
 
-  // Silent background sync without full-page spinner (Auto-refresh every 4s & Window Focus)
-  const syncData = useCallback(async (userId?: string) => {
-    const activeUserId = userId || localStorage.getItem('outly_user_id');
-    if (!activeUserId) return;
-
-    try {
-      const [
-        userRes,
-        groupsRes,
-        eventsRes,
-        messagesRes,
-        pollsRes,
-        galleryRes,
-        tasksRes,
-        expensesRes,
-        friendsRes,
-        notifsRes,
-      ] = await Promise.all([
-        api.getUser(activeUserId),
-        api.getGroups(activeUserId),
-        api.getEvents(undefined, activeUserId),
-        api.getMessages(),
-        api.getPolls(),
-        api.getGallery(),
-        api.getTasks(),
-        api.getExpenses(),
-        api.getFriends(activeUserId),
-        api.getNotifications(activeUserId),
-      ]);
-
-      setCurrentUser((prev) => {
-        if (!prev || JSON.stringify(prev) !== JSON.stringify(userRes)) {
-          saveLocalSession(userRes);
-          return userRes;
-        }
-        return prev;
-      });
-
-      setGroups((prev) => (JSON.stringify(prev) !== JSON.stringify(groupsRes) ? groupsRes : prev));
-      setEvents((prev) => (JSON.stringify(prev) !== JSON.stringify(eventsRes) ? eventsRes : prev));
-      setMessages((prev) => (JSON.stringify(prev) !== JSON.stringify(messagesRes) ? messagesRes : prev));
-      setPolls((prev) => (JSON.stringify(prev) !== JSON.stringify(pollsRes) ? pollsRes : prev));
-      setGalleryItems((prev) => (JSON.stringify(prev) !== JSON.stringify(galleryRes) ? galleryRes : prev));
-      setTasks((prev) => (JSON.stringify(prev) !== JSON.stringify(tasksRes) ? tasksRes : prev));
-      setExpenses((prev) => (JSON.stringify(prev) !== JSON.stringify(expensesRes) ? expensesRes : prev));
-      setFriends((prev) => (JSON.stringify(prev) !== JSON.stringify(friendsRes) ? friendsRes : prev));
-      setNotifications((prev) => (JSON.stringify(prev) !== JSON.stringify(notifsRes) ? notifsRes : prev));
-    } catch (err) {
-      console.debug('Background sync update failed silently:', err);
-    }
-  }, [saveLocalSession]);
-
-  // Flux d'événements temps réel (Server-Sent Events) & Focus
+  // Flux d'événements temps réel (Server-Sent Events)
   useEffect(() => {
     if (!currentUser) {
       realtimeService.disconnect();
@@ -478,26 +426,11 @@ export default function App() {
       }
     });
 
-    const handleFocus = () => {
-      syncData(currentUser.id);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncData(currentUser.id);
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       unsubscribe();
       realtimeService.disconnect();
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [currentUser, syncData]);
+  }, [currentUser]);
 
   useEffect(() => {
     loadData();
@@ -1471,9 +1404,9 @@ export default function App() {
             {/* 4. Group Tabs */}
             <GroupTabs activeTab={activeTab} onTabChange={setActiveTab} badges={tabBadges} />
 
-            {/* 5. Active Tab View */}
+            {/* 5. Active Tab Views with Keep-Alive (0ms Instant Switching) */}
             <div className="flex-1">
-              {activeTab === 'agenda' && (
+              <div className={activeTab === 'agenda' ? 'block' : 'hidden'}>
                 <AgendaTab
                   events={groupEvents}
                   currentUser={currentUser}
@@ -1493,7 +1426,7 @@ export default function App() {
                   }}
                   onDeleteEvent={handleDeleteEvent}
                 />
-              )}
+              </div>
 
               {/* Keep-Alive for DiscussionTab to preserve state and make tab switching instant (0ms) */}
               <div className={activeTab === 'discussion' ? 'flex flex-col h-full' : 'hidden'}>
@@ -1508,7 +1441,7 @@ export default function App() {
                 />
               </div>
 
-              {activeTab === 'sondages' && (
+              <div className={activeTab === 'sondages' ? 'block' : 'hidden'}>
                 <SondagesTab
                   polls={groupPolls}
                   currentUser={currentUser}
@@ -1525,9 +1458,9 @@ export default function App() {
                   }}
                   onDeletePoll={handleDeletePoll}
                 />
-              )}
+              </div>
 
-              {activeTab === 'galerie' && (
+              <div className={activeTab === 'galerie' ? 'block' : 'hidden'}>
                 <GalerieTab
                   galleryItems={groupGallery}
                   currentUser={currentUser}
@@ -1535,9 +1468,9 @@ export default function App() {
                   onUploadImage={handleUploadGalleryImage}
                   onViewImage={(item) => setViewingImage(item)}
                 />
-              )}
+              </div>
 
-              {activeTab === 'logistique' && (
+              <div className={activeTab === 'logistique' ? 'block' : 'hidden'}>
                 <LogistiqueTab
                   tasks={groupTasks}
                   currentUser={currentUser}
@@ -1547,9 +1480,9 @@ export default function App() {
                   onClaimTask={handleClaimTask}
                   onUnclaimTask={handleUnclaimTask}
                 />
-              )}
+              </div>
 
-              {activeTab === 'partage_frais' && (
+              <div className={activeTab === 'partage_frais' ? 'block' : 'hidden'}>
                 <PartageFraisTab
                   expenses={groupExpenses}
                   currentUser={currentUser}
@@ -1558,7 +1491,7 @@ export default function App() {
                   onOpenAddExpense={() => setIsAddExpenseOpen(true)}
                   onToggleSettlementStatus={handleToggleSettlementStatus}
                 />
-              )}
+              </div>
             </div>
           </>
         )}
