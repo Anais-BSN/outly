@@ -31,6 +31,7 @@ import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
 import { api } from './services/api';
+import { realtimeService } from './services/realtime';
 import {
   TabType,
   UserProfile,
@@ -274,13 +275,206 @@ export default function App() {
     }
   }, [saveLocalSession]);
 
-  // Polling interval (every 4s) & Window Focus / Visibility Change
+  // Flux d'événements temps réel (Server-Sent Events) & Focus
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      realtimeService.disconnect();
+      return;
+    }
 
-    const intervalId = setInterval(() => {
-      syncData(currentUser.id);
-    }, 4000);
+    realtimeService.connect(currentUser.id);
+
+    const unsubscribe = realtimeService.subscribe((event) => {
+      switch (event.type) {
+        case 'message:created':
+          setMessages((prev) => {
+            const exists = prev.some((m) => m.id === event.data?.id);
+            if (exists) return prev;
+            return [...prev, event.data];
+          });
+          break;
+        case 'message:updated':
+          setMessages((prev) =>
+            prev.map((m) => (m.id === event.data?.id ? event.data : m))
+          );
+          break;
+        case 'message:deleted':
+          setMessages((prev) => prev.filter((m) => m.id !== event.data?.id));
+          break;
+        case 'message:reaction':
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === event.data?.messageId
+                ? { ...m, reactions: event.data.reactions }
+                : m
+            )
+          );
+          break;
+        case 'notification:created':
+          setNotifications((prev) => {
+            const exists = prev.some((n) => n.id === event.data?.id);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'notification:read':
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === event.data?.id ? { ...n, read: true } : n))
+          );
+          break;
+        case 'notification:read_all':
+          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+          break;
+        case 'notification:dismissed':
+          setNotifications((prev) => prev.filter((n) => n.id !== event.data?.id));
+          break;
+        case 'group:created':
+          setGroups((prev) => {
+            const exists = prev.some((g) => g.id === event.data?.id);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'group:member_added':
+          setGroups((prev) =>
+            prev.map((g) => {
+              if (g.id === event.groupId) {
+                const members = g.members || [];
+                const exists = members.some((m) => m.id === event.data?.member?.id || m.userId === event.data?.member?.userId);
+                if (exists) return g;
+                return { ...g, members: [...members, event.data.member] };
+              }
+              return g;
+            })
+          );
+          break;
+        case 'group:member_removed':
+          setGroups((prev) =>
+            prev.map((g) => {
+              if (g.id === event.groupId) {
+                return {
+                  ...g,
+                  members: (g.members || []).filter((m) => m.userId !== event.data?.userId && m.id !== event.data?.userId),
+                };
+              }
+              return g;
+            })
+          );
+          break;
+        case 'group:deleted':
+          setGroups((prev) => prev.filter((g) => g.id !== event.groupId));
+          break;
+        case 'gallery:uploaded':
+          setGalleryItems((prev) => {
+            const exists = prev.some((item) => item.id === event.data?.id || item.imageUrl === event.data?.imageUrl);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'gallery:deleted':
+          setGalleryItems((prev) => prev.filter((item) => item.id !== event.data?.id));
+          break;
+        case 'poll:created':
+          setPolls((prev) => {
+            const exists = prev.some((p) => p.id === event.data?.id);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'poll:updated':
+          setPolls((prev) =>
+            prev.map((p) => (p.id === event.data?.id ? event.data : p))
+          );
+          break;
+        case 'poll:voted':
+          setPolls((prev) =>
+            prev.map((p) => {
+              if (p.id === event.data?.pollId) {
+                return {
+                   ...p,
+                   options: (p.options || []).map((opt) =>
+                     opt.id === event.data?.optionId ? { ...opt, votes: event.data.votes } : opt
+                   ),
+                 };
+              }
+              return p;
+            })
+          );
+          break;
+        case 'poll:deleted':
+          setPolls((prev) => prev.filter((p) => p.id !== event.data?.pollId));
+          break;
+        case 'event:created':
+          setEvents((prev) => {
+            const exists = prev.some((e) => e.id === event.data?.id);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'event:updated':
+          setEvents((prev) =>
+            prev.map((e) => (e.id === event.data?.id ? event.data : e))
+          );
+          break;
+        case 'event:deleted':
+          setEvents((prev) => prev.filter((e) => e.id !== event.data?.eventId));
+          break;
+        case 'event:rsvp':
+          setEvents((prev) =>
+            prev.map((e) => {
+              if (e.id === event.data?.eventId) {
+                return {
+                  ...e,
+                  rsvp: { ...e.rsvp, [event.data.userId]: event.data.status },
+                };
+              }
+              return e;
+            })
+          );
+          break;
+        case 'task:created':
+          setTasks((prev) => {
+            const exists = prev.some((t) => t.id === event.data?.id);
+            if (exists) return prev;
+            return [...prev, event.data];
+          });
+          break;
+        case 'task:toggled':
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.data?.id ? { ...t, completed: event.data.completed } : t
+            )
+          );
+          break;
+        case 'task:claimed':
+        case 'task:unclaimed':
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.data?.id
+                ? {
+                    ...t,
+                    assignedToId: event.data.assignedToId,
+                    assignedToName: event.data.assignedToName,
+                    assignedToAvatar: event.data.assignedToAvatar,
+                  }
+                : t
+            )
+          );
+          break;
+        case 'expense:created':
+          setExpenses((prev) => {
+            const exists = prev.some((exp) => exp.id === event.data?.id);
+            if (exists) return prev;
+            return [event.data, ...prev];
+          });
+          break;
+        case 'friend:requested':
+        case 'friend:updated':
+        case 'friend:deleted':
+          api.getFriends(currentUser.id).then(setFriends).catch(() => {});
+          break;
+      }
+    });
 
     const handleFocus = () => {
       syncData(currentUser.id);
@@ -296,7 +490,8 @@ export default function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(intervalId);
+      unsubscribe();
+      realtimeService.disconnect();
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -481,6 +676,28 @@ export default function App() {
       await api.toggleMessageReaction(messageId, emoji, currentUser.id);
     } catch (err) {
       console.error('Error toggling reaction in PostgreSQL:', err);
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newText: string) => {
+    if (!currentUser) return;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, text: newText } : m))
+    );
+    try {
+      await api.editMessage(messageId, newText);
+    } catch (err) {
+      console.error('Error editing message in PostgreSQL:', err);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!currentUser) return;
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    try {
+      await api.deleteMessage(messageId);
+    } catch (err) {
+      console.error('Error deleting message in PostgreSQL:', err);
     }
   };
 
@@ -1032,7 +1249,6 @@ export default function App() {
     agenda: groupEvents.length,
     discussion: 0,
     sondages: groupPolls.length,
-    galerie: groupGallery.length,
     logistique: groupTasks.filter((t) => !t.completed).length,
     partage_frais: 0,
   };
@@ -1203,6 +1419,8 @@ export default function App() {
                   members={activeGroup.members}
                   onSendMessage={handleSendMessage}
                   onAddReaction={handleAddReaction}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
                 />
               )}
 

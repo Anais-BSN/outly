@@ -379,7 +379,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 </label>
               </div>
 
-              <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+              <div className="space-y-3">
                 {dateOptions.map((opt, idx) => (
                   <div
                     key={opt.id}
@@ -455,7 +455,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 Options *
               </label>
 
-              <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+              <div className="space-y-1.5">
                 {choiceOptions.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <span className="w-5 text-center text-xs font-bold text-[#5D0D18] dark:text-amber-300">

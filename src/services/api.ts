@@ -232,8 +232,12 @@ export const api = {
   },
 
   // 6. Messages de Chat & Réactions
-  async getMessages(groupId?: string): Promise<ChatMessage[]> {
-    const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+  async getMessages(groupId?: string, limit?: number, before?: string): Promise<ChatMessage[]> {
+    const params = new URLSearchParams();
+    if (groupId) params.append('groupId', groupId);
+    if (limit) params.append('limit', String(limit));
+    if (before) params.append('before', before);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return request<ChatMessage[]>(`/messages${query}`);
   },
 
@@ -241,6 +245,19 @@ export const api = {
     return request<ChatMessage>('/messages', {
       method: 'POST',
       body: JSON.stringify(msgData),
+    });
+  },
+
+  async editMessage(messageId: string, text: string): Promise<ChatMessage> {
+    return request<ChatMessage>(`/messages/${messageId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    });
+  },
+
+  async deleteMessage(messageId: string): Promise<{ success: boolean; id: string; groupId: string }> {
+    return request<{ success: boolean; id: string; groupId: string }>(`/messages/${messageId}`, {
+      method: 'DELETE',
     });
   },
 

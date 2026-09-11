@@ -76,7 +76,7 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
             >
               <div className="relative flex items-center justify-center">
                 <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
-                {typeof badgeCount === 'number' && badgeCount > 0 && (
+                {tab.id !== 'galerie' && typeof badgeCount === 'number' && badgeCount > 0 && (
                   <span className="absolute -top-1.5 -right-3 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#5D0D18] text-[#FFF9EB] flex items-center justify-center shadow-xs">
                     {badgeCount}
                   </span>
