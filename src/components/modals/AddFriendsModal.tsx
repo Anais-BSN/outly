@@ -13,13 +13,14 @@ import {
   Trash2
 } from 'lucide-react';
 import { Friend, UserProfile } from '../../types';
+import { MultiEmailInput } from '../ui/MultiEmailInput';
 
 interface AddFriendsModalProps {
   isOpen: boolean;
   onClose: () => void;
   friends?: Friend[];
   currentUser: UserProfile;
-  onSendFriendRequest: (handleOrEmail: string) => Promise<any>;
+  onSendFriendRequest: (handleOrEmail: string | string[]) => Promise<any>;
   onAcceptFriendRequest: (friendId: string) => void;
   onDeclineFriendRequest: (friendId: string) => void;
   onDeleteFriend?: (friendId: string) => void;
@@ -141,7 +142,8 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
 
   const safeFriends = friends || [];
   const [searchQuery, setSearchQuery] = useState('');
-  const [inviteInput, setInviteInput] = useState('');
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [inputError, setInputError] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -163,18 +165,24 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteInput.trim()) return;
+    if (recipients.length === 0 || isSending) return;
 
     setFeedbackMsg(null);
     setErrorMsg(null);
+    setInputError(null);
     setIsSending(true);
 
     try {
-      await onSendFriendRequest(inviteInput.trim());
-      setFeedbackMsg(`Demande d'ami envoyée avec succès à ${inviteInput.trim()}.`);
-      setInviteInput('');
+      const result = await onSendFriendRequest(recipients);
+      const count = result?.count || recipients.length;
+      setFeedbackMsg(
+        count === 1
+          ? `Invitation / Demande d'ami envoyée avec succès à ${recipients[0]}. 🎉`
+          : `${count} invitations / demandes d'ami envoyées avec succès ! 🎉`
+      );
+      setRecipients([]);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Utilisateur introuvable');
+      setErrorMsg(err.message || 'Impossible d\'envoyer les invitations.');
     } finally {
       setIsSending(false);
       setTimeout(() => {
@@ -182,6 +190,19 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
         setErrorMsg(null);
       }, 5000);
     }
+  };
+
+  const getButtonText = () => {
+    if (isSending) {
+      return `Envoi de ${recipients.length} invitation${recipients.length > 1 ? 's' : ''}...`;
+    }
+    if (recipients.length === 0) {
+      return 'Envoyer les invitations';
+    }
+    if (recipients.length === 1) {
+      return 'Envoyer 1 invitation';
+    }
+    return `Envoyer ${recipients.length} invitations`;
   };
 
   return (
@@ -222,31 +243,43 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Form to invite via Handle or Email */}
-        <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-2.5">
-          <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-            Ajouter un ami (par pseudo @ ou email)
-          </label>
-          <form onSubmit={handleSendInvite} className="flex gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                id="friends-invite-input"
-                value={inviteInput}
-                onChange={(e) => setInviteInput(e.target.value)}
-                placeholder="@pseudo ou ami@exemple.com"
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-              />
-              <AtSign className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
-            </div>
+        {/* Form to invite via Handle or Email with MultiEmailInput */}
+        <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+              Ajouter des amis (par pseudo @ ou email)
+            </label>
+            {recipients.length > 0 && (
+              <span className="text-[11px] font-bold text-[#5D0D18] dark:text-amber-300">
+                {recipients.length} destinataire{recipients.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSendInvite} className="space-y-2.5">
+            <MultiEmailInput
+              id="friends-recipients-input"
+              values={recipients}
+              onChange={setRecipients}
+              allowHandles={true}
+              error={inputError}
+              onErrorChange={setInputError}
+              disabled={isSending}
+              placeholder="@pseudo, ami@exemple.com..."
+            />
+
             <button
               type="submit"
               id="friends-send-invite-btn"
-              disabled={isSending || !inviteInput.trim()}
-              className="px-4 py-2 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
+              disabled={isSending || recipients.length === 0}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>{isSending ? 'Envoi...' : 'Ajouter'}</span>
+              {isSending ? (
+                <UserPlus className="w-4 h-4 animate-spin" />
+              ) : (
+                <UserPlus className="w-4 h-4" />
+              )}
+              <span>{getButtonText()}</span>
             </button>
           </form>
 

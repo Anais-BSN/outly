@@ -9,6 +9,7 @@ import dotenv3 from "dotenv";
 
 // server/api.ts
 import { Router } from "express";
+import crypto from "crypto";
 
 // server/db.ts
 import pg from "pg";
@@ -46,12 +47,17 @@ var isConfigured = apiKey && apiKey.startsWith("re_") && !apiKey.includes("12345
 var resend = isConfigured ? new Resend(apiKey) : null;
 var emailService = {
   /**
-   * Envoi d'un e-mail d'invitation à un groupe ou en ami
+   * Envoi d'un e-mail d'invitation individuel à un groupe ou en ami
+   * Confidentialité : chaque e-mail est envoyé de façon indépendante avec un seul destinataire dans To:
    */
-  async sendInvitation({ toEmail, senderName, groupName, inviteLink }) {
+  async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outly` : `Demande d'ami de ${senderName} sur Outly`;
     const appBaseUrl = process.env.APP_URL || "http://localhost:3000";
-    const finalInviteLink = inviteLink || appBaseUrl;
+    let finalInviteLink = inviteLink || appBaseUrl;
+    if (token && !finalInviteLink.includes(`token=`)) {
+      const separator = finalInviteLink.includes("?") ? "&" : "?";
+      finalInviteLink = `${finalInviteLink}${separator}token=${encodeURIComponent(token)}`;
+    }
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -74,8 +80,8 @@ var emailService = {
       </div>
     `;
     if (!resend) {
-      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName}`);
-      return { success: true, simulated: true, id: `sim-${Date.now()}` };
+      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 individuellement \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName} (Lien : ${finalInviteLink})`);
+      return { success: true, simulated: true, id: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, toEmail };
     }
     try {
       const data = await resend.emails.send({
@@ -84,11 +90,31 @@ var emailService = {
         subject,
         html: htmlContent
       });
-      return { success: true, data };
+      return { success: true, data, toEmail };
     } catch (error) {
-      console.error("Erreur lors de l'envoi via Resend:", error);
-      return { success: false, error: error.message };
+      console.error(`Erreur lors de l'envoi via Resend \xE0 ${toEmail}:`, error);
+      return { success: false, error: error.message, toEmail };
     }
+  },
+  /**
+   * Envoi par lot d'invitations : chaque destinataire reçoit un e-mail individuel
+   * Garantit une stricte confidentialité (aucun autre destinataire dans l'en-tête To:)
+   */
+  async sendBatchInvitations(invites) {
+    if (!invites || invites.length === 0) {
+      return { success: true, count: 0, total: 0, results: [] };
+    }
+    console.log(`[Resend Batch] Envoi individuel de ${invites.length} invitations...`);
+    const results = await Promise.all(
+      invites.map((invite) => this.sendInvitation(invite))
+    );
+    const successCount = results.filter((r) => r.success).length;
+    return {
+      success: successCount > 0 || invites.length === 0,
+      count: successCount,
+      total: invites.length,
+      results
+    };
   },
   /**
    * Envoi d'un rappel 24 h avant un événement
@@ -223,6 +249,19 @@ apiRouter.get("/sse", handleSseConnection);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
+    await query(`
+      CREATE TABLE IF NOT EXISTS invitations (
+        id VARCHAR(50) PRIMARY KEY,
+        token VARCHAR(100) UNIQUE NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
+        inviter_id VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+        type VARCHAR(50) DEFAULT 'group',
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        expires_at TIMESTAMP WITH TIME ZONE
+      );
+    `);
   } catch (e) {
     console.error("Migration error (can be ignored if table locked):", e);
   }
@@ -480,78 +519,127 @@ apiRouter.get("/friends", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-apiRouter.post("/friends", async (req, res) => {
+apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
   try {
-    const { userId = "user-me", handleOrEmail } = req.body;
-    if (!handleOrEmail || !handleOrEmail.trim()) {
-      return res.status(400).json({ error: "Veuillez saisir un @pseudo ou une adresse e-mail" });
+    const { userId = "user-me", handleOrEmail, handlesOrEmails, emails } = req.body;
+    const rawList = Array.isArray(handlesOrEmails) ? handlesOrEmails : Array.isArray(emails) ? emails : typeof handleOrEmail === "string" && handleOrEmail ? [handleOrEmail] : [];
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const cleanedList = [...new Set(rawList.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean))];
+    if (cleanedList.length === 0) {
+      return res.status(400).json({ error: "Veuillez saisir au moins un @pseudo ou une adresse e-mail" });
     }
-    const trimmed = handleOrEmail.trim();
-    const cleanHandle = trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-    const targetUserRes = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", handle, email, avatar, shares
-       FROM users
-       WHERE handle ILIKE $1 OR handle ILIKE $2 OR email ILIKE $2
-       LIMIT 1`,
-      [cleanHandle, trimmed]
-    );
-    const targetUser = targetUserRes.rows[0];
-    if (!targetUser) {
+    const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
+    const sender = senderRes.rows[0] || { firstName: "Un ami", lastName: "", handle: "@ami" };
+    const senderName = `${sender.firstName || "Un ami"} ${sender.lastName || ""}`.trim();
+    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
+    const results = [];
+    const isSingleLegacyMode = !Array.isArray(handlesOrEmails) && !Array.isArray(emails) && cleanedList.length === 1;
+    for (const item of cleanedList) {
+      const cleanHandle = item.startsWith("@") ? item : `@${item}`;
+      const targetUserRes = await query(
+        `SELECT id, first_name as "firstName", last_name as "lastName", handle, email, avatar, shares
+         FROM users
+         WHERE handle ILIKE $1 OR handle ILIKE $2 OR email ILIKE $2
+         LIMIT 1`,
+        [cleanHandle, item]
+      );
+      const targetUser = targetUserRes.rows[0];
+      if (targetUser) {
+        if (targetUser.id === userId) {
+          if (isSingleLegacyMode) {
+            return res.status(400).json({ error: "Vous ne pouvez pas vous ajouter vous-m\xEAme en ami" });
+          }
+          continue;
+        }
+        await query(
+          `INSERT INTO friends (user_id, friend_id, status)
+           VALUES ($1, $2, 'pending_sent')
+           ON CONFLICT (user_id, friend_id)
+           DO UPDATE SET status = 'pending_sent'`,
+          [userId, targetUser.id]
+        );
+        await query(
+          `INSERT INTO friends (user_id, friend_id, status)
+           VALUES ($1, $2, 'pending_received')
+           ON CONFLICT (user_id, friend_id)
+           DO UPDATE SET status = 'pending_received'`,
+          [targetUser.id, userId]
+        );
+        const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+        const notifMessage = `${senderName} (${sender.handle || "@pseudo"}) vous a envoy\xE9 une demande d'ami.`;
+        await query(
+          `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read)
+           VALUES ($1, $2, 'invite', 'Nouvelle demande d''ami', $3, NOW(), false)`,
+          [notifId, targetUser.id, notifMessage]
+        );
+        realtimeBroadcaster.broadcast({
+          type: "notification:created",
+          userId: targetUser.id,
+          data: {
+            id: notifId,
+            userId: targetUser.id,
+            type: "invite",
+            title: "Nouvelle demande d'ami",
+            message: notifMessage,
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            read: false
+          }
+        });
+        realtimeBroadcaster.broadcast({
+          type: "friend:requested",
+          data: { senderId: userId, targetId: targetUser.id }
+        });
+        if (targetUser.email && !targetUser.email.endsWith("@outly.app")) {
+          emailService.sendInvitation({
+            toEmail: targetUser.email,
+            senderName
+          }).catch((e) => console.error("Background Resend email invite failed:", e));
+        }
+        results.push({
+          ...targetUser,
+          status: "pending_sent",
+          type: "user"
+        });
+      } else if (EMAIL_REGEX.test(item)) {
+        const invId = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const token = crypto.randomUUID();
+        await query(
+          `INSERT INTO invitations (id, token, email, inviter_id, type, status, created_at)
+           VALUES ($1, $2, $3, $4, 'friend', 'pending', NOW())`,
+          [invId, token, item.toLowerCase(), userId]
+        );
+        const personalInviteLink = `${appBaseUrl}/join?token=${token}&type=friend`;
+        emailService.sendInvitation({
+          toEmail: item.toLowerCase(),
+          senderName,
+          inviteLink: personalInviteLink,
+          token
+        }).catch((e) => console.error("Background Resend friend invite failed:", e));
+        results.push({
+          id: invId,
+          email: item.toLowerCase(),
+          token,
+          firstName: item.split("@")[0],
+          lastName: "",
+          handle: `@${item.split("@")[0]}`,
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${item}`,
+          status: "pending_sent",
+          type: "invite_pending"
+        });
+      } else if (isSingleLegacyMode) {
+        return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+    }
+    if (results.length === 0 && isSingleLegacyMode) {
       return res.status(404).json({ error: "Utilisateur introuvable" });
     }
-    if (targetUser.id === userId) {
-      return res.status(400).json({ error: "Vous ne pouvez pas vous ajouter vous-m\xEAme en ami" });
-    }
-    await query(
-      `INSERT INTO friends (user_id, friend_id, status)
-       VALUES ($1, $2, 'pending_sent')
-       ON CONFLICT (user_id, friend_id)
-       DO UPDATE SET status = 'pending_sent'`,
-      [userId, targetUser.id]
-    );
-    await query(
-      `INSERT INTO friends (user_id, friend_id, status)
-       VALUES ($1, $2, 'pending_received')
-       ON CONFLICT (user_id, friend_id)
-       DO UPDATE SET status = 'pending_received'`,
-      [targetUser.id, userId]
-    );
-    const senderRes = await query(`SELECT first_name, last_name, handle FROM users WHERE id = $1`, [userId]);
-    const sender = senderRes.rows[0] || { first_name: "Un ami", handle: "@ami" };
-    const senderName = sender.first_name || "Un membre";
-    const notifId = `notif-${Date.now()}`;
-    const notifMessage = `${senderName} (${sender.handle || "@pseudo"}) vous a envoy\xE9 une demande d'ami.`;
-    await query(
-      `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read)
-       VALUES ($1, $2, 'invite', 'Nouvelle demande d''ami', $3, NOW(), false)`,
-      [notifId, targetUser.id, notifMessage]
-    );
-    realtimeBroadcaster.broadcast({
-      type: "notification:created",
-      userId: targetUser.id,
-      data: {
-        id: notifId,
-        userId: targetUser.id,
-        type: "invite",
-        title: "Nouvelle demande d'ami",
-        message: notifMessage,
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        read: false
-      }
-    });
-    realtimeBroadcaster.broadcast({
-      type: "friend:requested",
-      data: { senderId: userId, targetId: targetUser.id }
-    });
-    if (targetUser.email && !targetUser.email.endsWith("@outly.app")) {
-      emailService.sendInvitation({
-        toEmail: targetUser.email,
-        senderName: `${sender.first_name} ${sender.last_name || ""}`.trim()
-      }).catch((e) => console.error("Background Resend email invite failed:", e));
+    if (isSingleLegacyMode && results[0]) {
+      return res.json(results[0]);
     }
     res.json({
-      ...targetUser,
-      status: "pending_sent"
+      success: true,
+      count: results.length,
+      results
     });
   } catch (err) {
     console.error("Error in POST /friends:", err);
@@ -769,6 +857,67 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
     res.json(memberData);
   } catch (err) {
     console.error("Error in POST /groups/:id/members:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/groups/:id/invite", async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const { emails, email, toEmail, senderName, senderId = "user-me" } = req.body;
+    const rawEmails = Array.isArray(emails) ? emails : typeof email === "string" && email ? [email] : typeof toEmail === "string" && toEmail ? [toEmail] : [];
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const cleaned = rawEmails.map((e) => typeof e === "string" ? e.trim().toLowerCase() : "").filter((e) => EMAIL_REGEX.test(e));
+    const uniqueEmails = [...new Set(cleaned)];
+    if (uniqueEmails.length === 0) {
+      return res.status(400).json({ error: "Veuillez renseigner au moins une adresse e-mail valide" });
+    }
+    const groupRes = await query(`SELECT id, name FROM groups WHERE id = $1`, [groupId]);
+    const group = groupRes.rows[0];
+    const groupName = group?.name || "Groupe";
+    const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`, [senderId]);
+    const sender = senderRes.rows[0];
+    const resolvedSenderName = senderName || (sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Un ami");
+    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
+    const emailBatchPayload = [];
+    const generatedInvitations = [];
+    for (const targetEmail of uniqueEmails) {
+      const invId = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const token = crypto.randomUUID();
+      await query(
+        `INSERT INTO invitations (id, token, email, group_id, inviter_id, type, status, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'group', 'pending', NOW())`,
+        [invId, token, targetEmail, groupId, senderId]
+      );
+      const inviteLink = `${appBaseUrl}/join/${groupId}?token=${token}`;
+      emailBatchPayload.push({
+        toEmail: targetEmail,
+        senderName: resolvedSenderName,
+        groupName,
+        inviteLink,
+        token
+      });
+      generatedInvitations.push({
+        id: invId,
+        token,
+        email: targetEmail,
+        groupId,
+        inviteLink
+      });
+    }
+    const sendResult = await emailService.sendBatchInvitations(emailBatchPayload);
+    realtimeBroadcaster.broadcast({
+      type: "group:invitations_sent",
+      groupId,
+      data: { groupId, count: uniqueEmails.length, emails: uniqueEmails }
+    });
+    res.json({
+      success: true,
+      count: uniqueEmails.length,
+      results: sendResult.results,
+      invitations: generatedInvitations
+    });
+  } catch (err) {
+    console.error("Error in POST /groups/:id/invite:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1993,20 +2142,120 @@ apiRouter.delete("/notifications/:id", async (req, res) => {
 });
 apiRouter.post("/invitations/send-email", async (req, res) => {
   try {
-    const { toEmail, senderName, groupName, inviteLink } = req.body;
-    if (!toEmail) {
-      return res.status(400).json({ error: "toEmail is required" });
+    const { emails, toEmail, senderName, groupName, inviteLink, groupId, senderId = "user-me" } = req.body;
+    const rawEmails = Array.isArray(emails) ? emails : typeof toEmail === "string" && toEmail ? [toEmail] : [];
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const cleaned = rawEmails.map((e) => typeof e === "string" ? e.trim().toLowerCase() : "").filter((e) => EMAIL_REGEX.test(e));
+    const uniqueEmails = [...new Set(cleaned)];
+    if (uniqueEmails.length === 0) {
+      return res.status(400).json({ error: "Veuillez renseigner au moins une adresse e-mail valide" });
     }
     const fallbackBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
-    const result = await emailService.sendInvitation({
-      toEmail,
-      senderName: senderName || "Un ami",
-      groupName,
-      inviteLink: inviteLink || fallbackBaseUrl
+    const baseLink = inviteLink || (groupId ? `${fallbackBaseUrl}/join/${groupId}` : fallbackBaseUrl);
+    const emailBatchPayload = [];
+    const createdInvitations = [];
+    for (const email of uniqueEmails) {
+      const invId = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const token = crypto.randomUUID();
+      try {
+        await query(
+          `INSERT INTO invitations (id, token, email, group_id, inviter_id, type, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW())`,
+          [invId, token, email, groupId || null, senderId, groupId ? "group" : "friend"]
+        );
+      } catch (dbErr) {
+        console.warn("Could not insert invitation in DB:", dbErr);
+      }
+      const separator = baseLink.includes("?") ? "&" : "?";
+      const personalLink = `${baseLink}${separator}token=${token}`;
+      emailBatchPayload.push({
+        toEmail: email,
+        senderName: senderName || "Un ami",
+        groupName,
+        inviteLink: personalLink,
+        token
+      });
+      createdInvitations.push({ id: invId, token, email, inviteLink: personalLink });
+    }
+    const sendResult = await emailService.sendBatchInvitations(emailBatchPayload);
+    res.json({
+      success: sendResult.success,
+      count: uniqueEmails.length,
+      results: sendResult.results,
+      invitations: createdInvitations
     });
-    res.json(result);
   } catch (err) {
-    console.error("Error sending invitation email:", err);
+    console.error("Error sending invitation emails:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/invitations/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const invRes = await query(
+      `SELECT i.id, i.token, i.email, i.group_id as "groupId", i.inviter_id as "inviterId",
+              i.type, i.status, i.created_at as "createdAt",
+              g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
+              u.first_name as "inviterFirstName", u.last_name as "inviterLastName", u.avatar as "inviterAvatar"
+       FROM invitations i
+       LEFT JOIN groups g ON i.group_id = g.id
+       LEFT JOIN users u ON i.inviter_id = u.id
+       WHERE i.token = $1`,
+      [token]
+    );
+    if (invRes.rows.length === 0) {
+      return res.status(404).json({ error: "Invitation introuvable ou expir\xE9e" });
+    }
+    res.json(invRes.rows[0]);
+  } catch (err) {
+    console.error("Error in GET /invitations/:token:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/invitations/:token/accept", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { userId = "user-me" } = req.body;
+    const invRes = await query(
+      `SELECT id, token, email, group_id as "groupId", inviter_id as "inviterId", type, status
+       FROM invitations
+       WHERE token = $1`,
+      [token]
+    );
+    if (invRes.rows.length === 0) {
+      return res.status(404).json({ error: "Invitation introuvable" });
+    }
+    const invitation = invRes.rows[0];
+    if (invitation.groupId) {
+      await query(
+        `INSERT INTO group_members (group_id, user_id, role, joined_at)
+         VALUES ($1, $2, 'member', NOW())
+         ON CONFLICT (group_id, user_id) DO NOTHING`,
+        [invitation.groupId, userId]
+      );
+    }
+    if (invitation.type === "friend" && invitation.inviterId && invitation.inviterId !== userId) {
+      await query(
+        `INSERT INTO friends (user_id, friend_id, status)
+         VALUES ($1, $2, 'accepted')
+         ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
+        [invitation.inviterId, userId]
+      );
+      await query(
+        `INSERT INTO friends (user_id, friend_id, status)
+         VALUES ($1, $2, 'accepted')
+         ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
+        [userId, invitation.inviterId]
+      );
+    }
+    await query(`UPDATE invitations SET status = 'accepted' WHERE token = $1`, [token]);
+    res.json({
+      success: true,
+      invitation,
+      userId
+    });
+  } catch (err) {
+    console.error("Error in POST /invitations/:token/accept:", err);
     res.status(500).json({ error: err.message });
   }
 });

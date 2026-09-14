@@ -1121,8 +1121,17 @@ export default function App() {
   };
 
   // Handlers: Friends
-  const handleSendFriendRequest = async (handleOrEmail: string) => {
+  const handleSendFriendRequest = async (handleOrEmail: string | string[]) => {
     try {
+      if (Array.isArray(handleOrEmail)) {
+        const batchResult = await api.sendBatchFriendRequests(handleOrEmail, currentUser?.id || 'user-me');
+        if (batchResult.results && batchResult.results.length > 0) {
+          const updatedFriends = await api.getFriends(currentUser?.id || 'user-me');
+          setFriends(updatedFriends);
+        }
+        return batchResult;
+      }
+
       const newFriend = await api.sendFriendRequest(handleOrEmail, currentUser?.id || 'user-me');
       setFriends((prev) => {
         const existing = prev.filter((f) => f.id !== newFriend.id);

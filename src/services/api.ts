@@ -114,6 +114,13 @@ export const api = {
     });
   },
 
+  async sendBatchFriendRequests(handlesOrEmails: string[], userId: string = 'user-me'): Promise<{ success: boolean; count: number; results: any[] }> {
+    return request<{ success: boolean; count: number; results: any[] }>('/friends/invite', {
+      method: 'POST',
+      body: JSON.stringify({ handlesOrEmails, userId }),
+    });
+  },
+
   async acceptFriendRequest(friendId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/friends/${friendId}`, {
       method: 'PUT',
@@ -404,15 +411,43 @@ export const api = {
     });
   },
 
+  async inviteGroupMembers(
+    groupId: string,
+    data: {
+      emails: string[];
+      senderName?: string;
+      senderId?: string;
+    }
+  ): Promise<{ success: boolean; count: number; results?: any[]; invitations?: any[] }> {
+    return request(`/groups/${groupId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   async sendInvitationEmail(data: {
-    toEmail: string;
-    senderName: string;
+    toEmail?: string;
+    emails?: string[];
+    senderName?: string;
     groupName?: string;
     inviteLink?: string;
-  }): Promise<any> {
+    groupId?: string;
+    senderId?: string;
+  }): Promise<{ success: boolean; count: number; results?: any[]; invitations?: any[] }> {
     return request('/invitations/send-email', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  async getInvitationByToken(token: string): Promise<any> {
+    return request(`/invitations/${encodeURIComponent(token)}`);
+  },
+
+  async acceptInvitationByToken(token: string, userId: string = 'user-me'): Promise<any> {
+    return request(`/invitations/${encodeURIComponent(token)}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
     });
   },
 

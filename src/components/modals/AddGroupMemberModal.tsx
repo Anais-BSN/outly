@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Group, Friend, UserProfile } from '../../types';
 import { api } from '../../services/api';
+import { MultiEmailInput } from '../ui/MultiEmailInput';
 
 interface AddGroupMemberModalProps {
   isOpen: boolean;
@@ -83,7 +84,8 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   const [activeTab, setActiveTab] = useState<'friends' | 'invite'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
-  const [emailInput, setEmailInput] = useState('');
+  const [emails, setEmails] = useState<string[]>([]);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -156,32 +158,46 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
 
   const handleSendEmailInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailInput.trim() || sendingEmail) return;
+    if (emails.length === 0 || sendingEmail) return;
 
     setSendingEmail(true);
     setFeedbackMsg(null);
+    setEmailError(null);
 
     try {
-      await api.sendInvitationEmail({
-        toEmail: emailInput.trim(),
+      const result = await api.inviteGroupMembers(group.id, {
+        emails,
         senderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
-        groupName: group.name,
-        inviteLink,
+        senderId: currentUser.id,
       });
 
+      const count = result.count || emails.length;
       setFeedbackMsg({
         type: 'success',
-        text: `Invitation envoyée avec succès à ${emailInput.trim()} via Resend ! ✉️`,
+        text: `${count} invitation${count > 1 ? 's ont été envoyées' : ' a été envoyée'} avec succès via Resend ! ✉️`,
       });
-      setEmailInput('');
+      setEmails([]);
     } catch (err: any) {
       setFeedbackMsg({
         type: 'error',
-        text: err.message || "Impossible d'envoyer l'e-mail d'invitation",
+        text: err.message || "Impossible d'envoyer les e-mails d'invitation",
       });
     } finally {
       setSendingEmail(false);
     }
+  };
+
+  const getInviteButtonText = () => {
+    if (sendingEmail) {
+      return `Envoi de ${emails.length} invitation${emails.length > 1 ? 's' : ''}...`;
+    }
+    if (emails.length === 0) {
+      return 'Envoyer les invitations';
+    }
+    if (emails.length === 1) {
+      return 'Envoyer 1 invitation';
+    }
+    return `Envoyer ${emails.length} invitations`;
   };
 
   return (
@@ -347,32 +363,42 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
               </div>
             </div>
 
-            {/* Resend Email Invitation Section */}
-            <form onSubmit={handleSendEmailInvite} className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-2.5">
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Inviter par e-mail (via Resend)
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="ami@exemple.com"
-                    required
-                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
-                  />
-                  <Mail className="w-3.5 h-3.5 text-[#6D2932] absolute left-2.5 top-2.5" />
-                </div>
-                <button
-                  type="submit"
-                  disabled={sendingEmail || !emailInput.trim()}
-                  className="px-4 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer active:scale-95"
-                >
-                  {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                  <span>Inviter</span>
-                </button>
+            {/* Resend Email Invitation Section Multi-Destinataires */}
+            <form onSubmit={handleSendEmailInvite} className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  Inviter par e-mail (via Resend)
+                </label>
+                {emails.length > 0 && (
+                  <span className="text-[11px] font-bold text-[#6D2932] dark:text-amber-300">
+                    {emails.length} destinataire{emails.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
+
+              <MultiEmailInput
+                id="group-invite-emails-input"
+                values={emails}
+                onChange={setEmails}
+                error={emailError}
+                onErrorChange={setEmailError}
+                disabled={sendingEmail}
+                placeholder="ami1@exemple.com, ami2@exemple.com..."
+              />
+
+              <button
+                type="submit"
+                id="send-group-invites-btn"
+                disabled={sendingEmail || emails.length === 0}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+              >
+                {sendingEmail ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Mail className="w-4 h-4" />
+                )}
+                <span>{getInviteButtonText()}</span>
+              </button>
             </form>
           </div>
         )}

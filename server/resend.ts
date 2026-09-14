@@ -13,6 +13,7 @@ export interface SendInviteEmailParams {
   senderName: string;
   groupName?: string;
   inviteLink?: string;
+  token?: string;
 }
 
 export interface SendReminderEmailParams {
@@ -25,15 +26,22 @@ export interface SendReminderEmailParams {
 
 export const emailService = {
   /**
-   * Envoi d'un e-mail d'invitation à un groupe ou en ami
+   * Envoi d'un e-mail d'invitation individuel à un groupe ou en ami
+   * Confidentialité : chaque e-mail est envoyé de façon indépendante avec un seul destinataire dans To:
    */
-  async sendInvitation({ toEmail, senderName, groupName, inviteLink }: SendInviteEmailParams) {
+  async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }: SendInviteEmailParams) {
     const subject = groupName
       ? `Invitation : Rejoignez le groupe "${groupName}" sur Outly`
       : `Demande d'ami de ${senderName} sur Outly`;
 
     const appBaseUrl = process.env.APP_URL || 'http://localhost:3000';
-    const finalInviteLink = inviteLink || appBaseUrl;
+    let finalInviteLink = inviteLink || appBaseUrl;
+
+    // Si un token d'invitation est fourni et pas encore présent dans le lien, on l'ajoute
+    if (token && !finalInviteLink.includes(`token=`)) {
+      const separator = finalInviteLink.includes('?') ? '&' : '?';
+      finalInviteLink = `${finalInviteLink}${separator}token=${encodeURIComponent(token)}`;
+    }
 
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
@@ -58,8 +66,8 @@ export const emailService = {
     `;
 
     if (!resend) {
-      console.log(`[Resend SIMULATION] Email d'invitation simulé envoyé à ${toEmail} pour "${groupName || 'Amis'}" de la part de ${senderName}`);
-      return { success: true, simulated: true, id: `sim-${Date.now()}` };
+      console.log(`[Resend SIMULATION] Email d'invitation simulé envoyé individuellement à ${toEmail} pour "${groupName || 'Amis'}" de la part de ${senderName} (Lien : ${finalInviteLink})`);
+      return { success: true, simulated: true, id: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, toEmail };
     }
 
     try {
@@ -69,11 +77,36 @@ export const emailService = {
         subject,
         html: htmlContent,
       });
-      return { success: true, data };
+      return { success: true, data, toEmail };
     } catch (error: any) {
-      console.error('Erreur lors de l\'envoi via Resend:', error);
-      return { success: false, error: error.message };
+      console.error(`Erreur lors de l'envoi via Resend à ${toEmail}:`, error);
+      return { success: false, error: error.message, toEmail };
     }
+  },
+
+  /**
+   * Envoi par lot d'invitations : chaque destinataire reçoit un e-mail individuel
+   * Garantit une stricte confidentialité (aucun autre destinataire dans l'en-tête To:)
+   */
+  async sendBatchInvitations(invites: SendInviteEmailParams[]) {
+    if (!invites || invites.length === 0) {
+      return { success: true, count: 0, total: 0, results: [] };
+    }
+
+    console.log(`[Resend Batch] Envoi individuel de ${invites.length} invitations...`);
+
+    const results = await Promise.all(
+      invites.map((invite) => this.sendInvitation(invite))
+    );
+
+    const successCount = results.filter((r) => r.success).length;
+
+    return {
+      success: successCount > 0 || invites.length === 0,
+      count: successCount,
+      total: invites.length,
+      results,
+    };
   },
 
   /**

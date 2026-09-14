@@ -14,7 +14,7 @@ const client = new Client({
 });
 
 const sql = `
--- Nettoyage des anciennes tables si existantes
+DROP TABLE IF EXISTS invitations CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS expenses CASCADE;
 DROP TABLE IF EXISTS logistics_tasks CASCADE;
@@ -177,6 +177,19 @@ CREATE TABLE notifications (
     read BOOLEAN DEFAULT FALSE,
     group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
     event_id VARCHAR(50) REFERENCES events(id) ON DELETE CASCADE
+);
+
+-- 13. Table Invitations (Support des tokens par destinataire et du mode Batch)
+CREATE TABLE invitations (
+    id VARCHAR(50) PRIMARY KEY,
+    token VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
+    inviter_id VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+    type VARCHAR(50) DEFAULT 'group',
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE
 );
 `;
 
