@@ -51,7 +51,7 @@ var emailService = {
    * Confidentialité : chaque e-mail est envoyé de façon indépendante avec un seul destinataire dans To:
    */
   async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
-    const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outly` : `Demande d'ami de ${senderName} sur Outly`;
+    const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
     const appBaseUrl = process.env.APP_URL || "http://localhost:3000";
     let finalInviteLink = inviteLink || appBaseUrl;
     if (token && !finalInviteLink.includes(`token=`)) {
@@ -61,12 +61,12 @@ var emailService = {
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outly</h1>
+          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
         <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
           <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">${senderName} vous invite !</h2>
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outly.`}
+            ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
             <a href="${finalInviteLink}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
@@ -75,7 +75,7 @@ var emailService = {
           </div>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outly.
+          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
         </p>
       </div>
     `;
@@ -85,7 +85,7 @@ var emailService = {
     }
     try {
       const data = await resend.emails.send({
-        from: "Outly <notifications@resend.dev>",
+        from: "Outlys <invitation@outlys.fr>",
         to: toEmail,
         subject,
         html: htmlContent
@@ -127,11 +127,11 @@ var emailService = {
       hour: "2-digit",
       minute: "2-digit"
     });
-    const subject = `Rappel Outly : "${eventTitle}" a lieu demain !`;
+    const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outly</h1>
+          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
           <p style="color: #6D2932; font-size: 14px; margin-top: 4px;">Rappel d'\xE9v\xE9nement</p>
         </div>
         <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
@@ -159,7 +159,7 @@ var emailService = {
     }
     try {
       const data = await resend.emails.send({
-        from: "Outly <notifications@resend.dev>",
+        from: "Outlys <invitation@outlys.fr>",
         to: toEmail,
         subject,
         html: htmlContent
@@ -589,7 +589,7 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
           type: "friend:requested",
           data: { senderId: userId, targetId: targetUser.id }
         });
-        if (targetUser.email && !targetUser.email.endsWith("@outly.app")) {
+        if (targetUser.email && !targetUser.email.endsWith("@outlys.fr") && !targetUser.email.endsWith("@outly.app")) {
           emailService.sendInvitation({
             toEmail: targetUser.email,
             senderName
@@ -1283,7 +1283,7 @@ apiRouter.get("/messages", async (req, res) => {
     let baseSql = `
       SELECT m.id, m.group_id as "groupId", m.sender_id as "senderId",
              CASE
-               WHEN m.is_system THEN 'Outly Bot'
+               WHEN m.is_system THEN 'Outlys Bot'
                ELSE COALESCE(concat(u.first_name, ' ', u.last_name), 'Membre')
              END as "senderName",
              COALESCE(u.avatar, '') as "senderAvatar",
@@ -1388,7 +1388,7 @@ apiRouter.post("/messages", async (req, res) => {
     }
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [senderId]);
     const user = userRes.rows[0];
-    const senderName = isSystem ? "Outly Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
+    const senderName = isSystem ? "Outlys Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
     const senderAvatar = isSystem ? "" : user?.avatar || "";
     const newMsg = {
       id,
@@ -1435,7 +1435,7 @@ apiRouter.put("/messages/:id", async (req, res) => {
     const msg = updatedRes.rows[0];
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [msg.senderId]);
     const user = userRes.rows[0];
-    const senderName = msg.isSystem ? "Outly Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
+    const senderName = msg.isSystem ? "Outlys Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
     const senderAvatar = msg.isSystem ? "" : user?.avatar || "";
     const fullMessage = {
       ...msg,

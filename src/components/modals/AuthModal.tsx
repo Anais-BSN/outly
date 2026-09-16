@@ -177,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h3 className="text-xl font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
-              Bienvenue sur Outly
+              Bienvenue sur Outlys
             </h3>
           </div>
           {canClose && (
@@ -243,7 +243,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={emailOrHandle}
                   onChange={(e) => setEmailOrHandle(e.target.value)}
-                  placeholder="thomas.dubois@outly.app ou @thomas"
+                  placeholder="thomas.dubois@outlys.fr ou @thomas"
                   required
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
                 />

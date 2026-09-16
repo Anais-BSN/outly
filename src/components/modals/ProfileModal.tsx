@@ -54,7 +54,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const [firstName, setFirstName] = useState(currentUser?.firstName || 'Thomas');
   const [lastName, setLastName] = useState(currentUser?.lastName || 'Dubois');
-  const [email, setEmail] = useState(currentUser?.email || 'thomas.dubois@outly.app');
+  const [email, setEmail] = useState(currentUser?.email || 'thomas.dubois@outlys.fr');
   const [avatar, setAvatar] = useState(
     currentUser?.avatar ||
       'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
@@ -72,7 +72,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     if (isOpen) {
       setFirstName(currentUser?.firstName || 'Thomas');
       setLastName(currentUser?.lastName || 'Dubois');
-      setEmail(currentUser?.email || 'thomas.dubois@outly.app');
+      setEmail(currentUser?.email || 'thomas.dubois@outlys.fr');
       setAvatar(
         currentUser?.avatar ||
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
@@ -639,7 +639,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             {showDeleteConfirm && (
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-red-300 dark:border-red-800 space-y-2.5 mt-2 animate-scale-in">
                 <p className="text-xs text-[#27272A] dark:text-zinc-200 font-medium">
-                  Êtes-vous sûr de vouloir supprimer définitivement votre compte Outly ? Cette action est irréversible.
+                  Êtes-vous sûr de vouloir supprimer définitivement votre compte Outlys ? Cette action est irréversible.
                 </p>
                 <div className="flex items-center justify-end gap-2">
                   <button

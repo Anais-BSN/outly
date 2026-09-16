@@ -1286,7 +1286,7 @@ export default function App() {
         </div>
         <div className="text-center">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Connexion à PostgreSQL Render</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Chargement en direct de vos données Outly...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Chargement en direct de vos données Outlys...</p>
         </div>
       </div>
     );
@@ -1361,7 +1361,7 @@ export default function App() {
               <Users className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-[#6D2932] dark:text-zinc-300">
-              Veuillez vous connecter pour accéder à votre espace Outly.
+              Veuillez vous connecter pour accéder à votre espace Outlys.
             </p>
           </div>
         ) : groups.length === 0 || !activeGroupId || !isUserInActiveGroup ? (
@@ -1371,7 +1371,7 @@ export default function App() {
             </div>
             <div>
               <h3 className="text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] mb-1.5">
-                Bienvenue sur Outly, {currentUser.firstName} !
+                Bienvenue sur Outlys, {currentUser.firstName} !
               </h3>
               <p className="text-xs sm:text-sm text-[#27272A]/80 dark:text-zinc-300 leading-relaxed">
                 Vous ne faites partie d'aucun groupe actif pour le moment. Créez un nouveau groupe pour organiser vos sorties entre amis ou demandez à vos proches de vous inviter !

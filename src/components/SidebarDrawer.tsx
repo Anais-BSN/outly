@@ -112,7 +112,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             <div className="w-full flex justify-center items-center">
               <img
                 src="/Logo_Outly.png"
-                alt="Outly"
+                alt="Logo Outlys"
                 className="h-10 sm:h-11 w-auto max-w-[170px] object-contain select-none"
               />
             </div>
@@ -301,7 +301,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           {/* Version */}
           <div className="mt-2.5 flex items-center justify-between px-1">
             <span className="text-[10px] text-[#27272A]/50 dark:text-zinc-500 font-medium">
-              Outly v1.0
+              Outlys v1.0
             </span>
           </div>
         </div>

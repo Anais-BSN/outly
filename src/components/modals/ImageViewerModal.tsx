@@ -93,7 +93,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
             <a
               href={item.imageUrl}
-              download={`outly-photo-${item.id}.jpg`}
+              download={`outlys-photo-${item.id}.jpg`}
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"

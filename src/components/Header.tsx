@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-center h-full cursor-pointer select-none">
           <img
             src="/Logo_Outly.png"
-            alt="Outly"
+            alt="Logo Outlys"
             className="h-[90%] max-h-full w-auto object-contain select-none transition-transform hover:scale-105"
           />
         </div>

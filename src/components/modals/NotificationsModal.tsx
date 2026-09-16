@@ -220,7 +220,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <BellRing className="w-5 h-5 text-amber-800 dark:text-amber-300 shrink-0 mt-0.5 animate-bounce" />
             <div className="text-xs text-amber-950 dark:text-amber-200">
               <strong className="font-bold block">Rappels d'événements à 24 h actifs</strong>
-              Outly vérifie automatiquement vos sorties et vous notifie la veille pour ne rien oublier.
+              Outlys vérifie automatiquement vos sorties et vous notifie la veille pour ne rien oublier.
             </div>
           </div>
         )}

@@ -477,7 +477,7 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
         });
 
         // Envoi d'email Resend si adresse réelle
-        if (targetUser.email && !targetUser.email.endsWith('@outly.app')) {
+        if (targetUser.email && !targetUser.email.endsWith('@outlys.fr') && !targetUser.email.endsWith('@outly.app')) {
           emailService.sendInvitation({
             toEmail: targetUser.email,
             senderName,
@@ -1325,7 +1325,7 @@ apiRouter.get('/messages', async (req: Request, res: Response) => {
     let baseSql = `
       SELECT m.id, m.group_id as "groupId", m.sender_id as "senderId",
              CASE
-               WHEN m.is_system THEN 'Outly Bot'
+               WHEN m.is_system THEN 'Outlys Bot'
                ELSE COALESCE(concat(u.first_name, ' ', u.last_name), 'Membre')
              END as "senderName",
              COALESCE(u.avatar, '') as "senderAvatar",
@@ -1440,7 +1440,7 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [senderId]);
     const user = userRes.rows[0];
     const senderName = isSystem
-      ? 'Outly Bot'
+      ? 'Outlys Bot'
       : user
       ? `${user.first_name} ${user.last_name}`.trim()
       : 'Membre';
@@ -1499,7 +1499,7 @@ apiRouter.put('/messages/:id', async (req: Request, res: Response) => {
     const msg = updatedRes.rows[0];
     const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [msg.senderId]);
     const user = userRes.rows[0];
-    const senderName = msg.isSystem ? 'Outly Bot' : user ? `${user.first_name} ${user.last_name}`.trim() : 'Membre';
+    const senderName = msg.isSystem ? 'Outlys Bot' : user ? `${user.first_name} ${user.last_name}`.trim() : 'Membre';
     const senderAvatar = msg.isSystem ? '' : user?.avatar || '';
 
     const fullMessage = {
