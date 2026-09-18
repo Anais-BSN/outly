@@ -13,7 +13,6 @@ import {
   Trash2
 } from 'lucide-react';
 import { Friend, UserProfile } from '../../types';
-import { MultiEmailInput } from '../ui/MultiEmailInput';
 
 interface AddFriendsModalProps {
   isOpen: boolean;
@@ -142,8 +141,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
 
   const safeFriends = friends || [];
   const [searchQuery, setSearchQuery] = useState('');
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [inputError, setInputError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -165,24 +163,19 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (recipients.length === 0 || isSending) return;
+    const cleanEmail = email.trim();
+    if (!cleanEmail || isSending) return;
 
     setFeedbackMsg(null);
     setErrorMsg(null);
-    setInputError(null);
     setIsSending(true);
 
     try {
-      const result = await onSendFriendRequest(recipients);
-      const count = result?.count || recipients.length;
-      setFeedbackMsg(
-        count === 1
-          ? `Invitation / Demande d'ami envoyée avec succès à ${recipients[0]}. 🎉`
-          : `${count} invitations / demandes d'ami envoyées avec succès ! 🎉`
-      );
-      setRecipients([]);
+      await onSendFriendRequest(cleanEmail);
+      setFeedbackMsg(`Invitation envoyée avec succès à ${cleanEmail} ! 🎉`);
+      setEmail('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Impossible d\'envoyer les invitations.');
+      setErrorMsg(err.message || 'Impossible d\'envoyer l\'invitation.');
     } finally {
       setIsSending(false);
       setTimeout(() => {
@@ -190,19 +183,6 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
         setErrorMsg(null);
       }, 5000);
     }
-  };
-
-  const getButtonText = () => {
-    if (isSending) {
-      return `Envoi de ${recipients.length} invitation${recipients.length > 1 ? 's' : ''}...`;
-    }
-    if (recipients.length === 0) {
-      return 'Envoyer les invitations';
-    }
-    if (recipients.length === 1) {
-      return 'Envoyer 1 invitation';
-    }
-    return `Envoyer ${recipients.length} invitations`;
   };
 
   return (
@@ -243,43 +223,47 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Form to invite via Handle or Email with MultiEmailInput */}
+        {/* Form to invite via Email (1 by 1) */}
         <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-              Ajouter des amis (par pseudo @ ou email)
-            </label>
-            {recipients.length > 0 && (
-              <span className="text-[11px] font-bold text-[#5D0D18] dark:text-amber-300">
-                {recipients.length} destinataire{recipients.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+          <label htmlFor="friend-email-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+            Ajouter un ami (par e-mail)
+          </label>
 
           <form onSubmit={handleSendInvite} className="space-y-2.5">
-            <MultiEmailInput
-              id="friends-recipients-input"
-              values={recipients}
-              onChange={setRecipients}
-              allowHandles={true}
-              error={inputError}
-              onErrorChange={setInputError}
-              disabled={isSending}
-              placeholder="@pseudo, ami@exemple.com..."
-            />
+            <div className="relative">
+              <input
+                id="friend-email-input"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMsg) setErrorMsg(null);
+                }}
+                placeholder="nom@exemple.com"
+                required
+                disabled={isSending}
+                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
+              />
+              <Mail className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            </div>
 
             <button
               type="submit"
               id="friends-send-invite-btn"
-              disabled={isSending || recipients.length === 0}
+              disabled={isSending || !email.trim()}
               className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
             >
               {isSending ? (
-                <UserPlus className="w-4 h-4 animate-spin" />
+                <>
+                  <UserPlus className="w-4 h-4 animate-spin" />
+                  <span>Envoi en cours...</span>
+                </>
               ) : (
-                <UserPlus className="w-4 h-4" />
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  <span>Envoyer l'invitation</span>
+                </>
               )}
-              <span>{getButtonText()}</span>
             </button>
           </form>
 

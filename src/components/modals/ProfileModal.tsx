@@ -18,7 +18,9 @@ import {
   Lock,
   UserPlus,
   ShieldCheck,
-  Trash2
+  Trash2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { CARTOON_AVATARS } from '../../constants/avatars';
@@ -89,6 +91,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
 
@@ -457,13 +462,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
                     Ancien mot de passe
                   </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3 pr-10 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                      title={showCurrentPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      aria-label={showCurrentPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -471,25 +487,47 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
                       Nouveau mot de passe
                     </label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3 pr-10 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                        title={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                        aria-label={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      >
+                        {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
                       Confirmer le mot de passe
                     </label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3 pr-10 py-2 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800 border border-[#C7B7A3]/50 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                        title={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                        aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

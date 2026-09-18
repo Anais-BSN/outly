@@ -52,12 +52,8 @@ var emailService = {
    */
   async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
-    const appBaseUrl = process.env.APP_URL || "http://localhost:3000";
-    let finalInviteLink = inviteLink || appBaseUrl;
-    if (token && !finalInviteLink.includes(`token=`)) {
-      const separator = finalInviteLink.includes("?") ? "&" : "?";
-      finalInviteLink = `${finalInviteLink}${separator}token=${encodeURIComponent(token)}`;
-    }
+    const baseUrl = process.env.APP_URL || "https://outlys.fr";
+    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, "")}/invite/${token}` : baseUrl.replace(/\/$/, ""));
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -69,9 +65,13 @@ var emailService = {
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${finalInviteLink}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
-              ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
+            <a href="${invitationUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif; text-align: center;">
+              Rejoindre sur Outlys
             </a>
+            <p style="margin-top: 20px; font-size: 13px; color: #6b7280; text-align: center;">
+              Si le bouton ne s'ouvre pas, copiez et collez ce lien dans votre navigateur :<br/>
+              <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
+            </p>
           </div>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
@@ -80,7 +80,7 @@ var emailService = {
       </div>
     `;
     if (!resend) {
-      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 individuellement \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName} (Lien : ${finalInviteLink})`);
+      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 individuellement \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName} (Lien : ${invitationUrl})`);
       return { success: true, simulated: true, id: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, toEmail };
     }
     try {

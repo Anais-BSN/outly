@@ -8,7 +8,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  */
 export async function sendGroupInviteEmail(to: string, groupName: string, inviterName: string) {
   try {
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.APP_URL || 'https://outlys.fr';
+    const invitationUrl = baseUrl.replace(/\/$/, '');
     const data = await resend.emails.send({
       from: 'Outlys <invitation@outlys.fr>', // En dev, utilise cette adresse par défaut
       to,
@@ -20,9 +21,13 @@ export async function sendGroupInviteEmail(to: string, groupName: string, invite
             <strong>${inviterName}</strong> t'a invité à rejoindre le groupe <strong>${groupName}</strong> pour organiser vos prochaines sorties ensemble.
           </p>
           <div style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="display: inline-block; background-color: #5D0D18; color: #FFF9EB; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
-              Rejoindre le groupe
+            <a href="${invitationUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif; text-align: center;">
+              Rejoindre sur Outlys
             </a>
+            <p style="margin-top: 20px; font-size: 13px; color: #6b7280; text-align: center;">
+              Si le bouton ne s'ouvre pas, copiez et collez ce lien dans votre navigateur :<br/>
+              <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
+            </p>
           </div>
           <p style="font-size: 12px; color: #666; text-align: center; margin-bottom: 0;">
             Planifie • Partage • Sors
