@@ -45,6 +45,26 @@ dotenv2.config();
 var apiKey = process.env.RESEND_API_KEY;
 var isConfigured = apiKey && apiKey.startsWith("re_") && !apiKey.includes("123456789") && !apiKey.includes("your_resend");
 var resend = isConfigured ? new Resend(apiKey) : null;
+function getCleanAppUrl() {
+  const rawUrl = (process.env.APP_URL || "https://outlys.fr").trim();
+  const withoutTrailingSlashes = rawUrl.replace(/\/+$/, "");
+  if (!withoutTrailingSlashes.startsWith("http://") && !withoutTrailingSlashes.startsWith("https://")) {
+    return `https://${withoutTrailingSlashes}`;
+  }
+  return withoutTrailingSlashes;
+}
+function buildAbsoluteEmailUrl(pathOrUrl) {
+  const baseUrl = getCleanAppUrl();
+  if (!pathOrUrl || pathOrUrl.trim() === "") {
+    return baseUrl;
+  }
+  const trimmed = pathOrUrl.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${baseUrl}${cleanPath}`;
+}
 var emailService = {
   /**
    * Envoi d'un e-mail d'invitation individuel à un groupe ou en ami
@@ -52,10 +72,9 @@ var emailService = {
    */
   async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
-    const baseUrl = process.env.APP_URL || "https://outlys.fr";
-    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, "")}/invite/${token}` : `${baseUrl.replace(/\/$/, "")}`);
+    const invitationUrl = inviteLink ? buildAbsoluteEmailUrl(inviteLink) : token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl();
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -65,22 +84,22 @@ var emailService = {
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
               <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
-                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
                     Rejoindre sur Outlys
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
               Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
+              <a href="${invitationUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${invitationUrl}</a>
             </p>
           </div>
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
         </p>
       </div>
@@ -134,11 +153,13 @@ var emailService = {
       minute: "2-digit"
     });
     const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
+    const appUrl = getCleanAppUrl();
+    const formattedGpsUrl = gpsUrl ? gpsUrl.startsWith("http://") || gpsUrl.startsWith("https://") ? gpsUrl : buildAbsoluteEmailUrl(gpsUrl) : void 0;
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-          <p style="color: #6D2932; font-size: 14px; margin-top: 4px;">Rappel d'\xE9v\xE9nement</p>
+          <p style="color: #6D2932; font-size: 14px; margin-top: 4px; margin-bottom: 0;">Rappel d'\xE9v\xE9nement</p>
         </div>
         <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
           <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">C'est demain !</h2>
@@ -146,16 +167,42 @@ var emailService = {
             Votre sortie <strong>"${eventTitle}"</strong> d\xE9bute le <strong>${formattedDate}</strong>.
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
-          ${gpsUrl ? `
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${gpsUrl}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 10px 20px; border-radius: 9999px; font-weight: bold; font-size: 13px;">
-                Voir l'itin\xE9raire GPS
-              </a>
+          ${formattedGpsUrl ? `
+            <div style="text-align: center; margin: 24px 0;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
+                <tr>
+                  <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                    <a href="${formattedGpsUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                      Voir l'itin\xE9raire GPS
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
+                Lien de l'itin\xE9raire :<br/>
+                <a href="${formattedGpsUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${formattedGpsUrl}</a>
+              </p>
             </div>
-          ` : ""}
+          ` : `
+            <div style="text-align: center; margin: 24px 0;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
+                <tr>
+                  <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                    <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                      Voir les d\xE9tails sur Outlys
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
+                Acc\xE9der \xE0 l'application :<br/>
+                <a href="${appUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${appUrl}</a>
+              </p>
+            </div>
+          `}
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          N'oubliez pas vos \xE9quipements et pr\xE9venez le groupe en cas d'impr\xE9vu.
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
+          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys. N'oubliez pas vos \xE9quipements et pr\xE9venez le groupe en cas d'impr\xE9vu.
         </p>
       </div>
     `;
@@ -180,11 +227,10 @@ var emailService = {
    * Envoi d'un e-mail de réinitialisation de mot de passe
    */
   async sendPasswordResetEmail({ toEmail, userName, resetLink, token }) {
-    const baseUrl = process.env.APP_URL || "https://outlys.fr";
-    const resetUrl = resetLink || (token ? `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}` : `${baseUrl.replace(/\/$/, "")}/reset-password`);
+    const resetUrl = resetLink ? buildAbsoluteEmailUrl(resetLink) : token ? buildAbsoluteEmailUrl(`/reset-password?token=${token}`) : buildAbsoluteEmailUrl("/reset-password");
     const subject = "R\xE9initialisation de votre mot de passe - Outlys";
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -197,25 +243,25 @@ var emailService = {
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable pendant 1 heure.
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
               <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
-                  <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                  <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
                     R\xE9initialiser mon mot de passe
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
               Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
+              <a href="${resetUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${resetUrl}</a>
             </p>
           </div>
-          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
+          <p style="font-size: 12px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
             Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9.
           </p>
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
         </p>
       </div>
@@ -480,8 +526,7 @@ apiRouter.post("/auth/forgot-password", async (req, res) => {
         `UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3`,
         [token, expires, user.id]
       );
-      const baseUrl = process.env.APP_URL || "https://outlys.fr";
-      const resetLink = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+      const resetLink = buildAbsoluteEmailUrl(`/reset-password?token=${token}`);
       emailService.sendPasswordResetEmail({
         toEmail: user.email,
         userName: user.firstName,
@@ -690,7 +735,7 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
     const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
     const sender = senderRes.rows[0] || { firstName: "Un ami", lastName: "", handle: "@ami" };
     const senderName = `${sender.firstName || "Un ami"} ${sender.lastName || ""}`.trim();
-    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
+    const appBaseUrl = getCleanAppUrl();
     const results = [];
     const isSingleLegacyMode = !Array.isArray(handlesOrEmails) && !Array.isArray(emails) && cleanedList.length === 1;
     for (const item of cleanedList) {
@@ -767,7 +812,7 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
            VALUES ($1, $2, $3, $4, 'friend', 'pending', NOW())`,
           [invId, token, item.toLowerCase(), userId]
         );
-        const personalInviteLink = `${appBaseUrl}/join?token=${token}&type=friend`;
+        const personalInviteLink = buildAbsoluteEmailUrl(`/join?token=${token}&type=friend`);
         emailService.sendInvitation({
           toEmail: item.toLowerCase(),
           senderName,
@@ -1036,7 +1081,7 @@ apiRouter.post("/groups/:id/invite", async (req, res) => {
     const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`, [senderId]);
     const sender = senderRes.rows[0];
     const resolvedSenderName = senderName || (sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Un ami");
-    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
+    const appBaseUrl = getCleanAppUrl();
     const emailBatchPayload = [];
     const generatedInvitations = [];
     for (const targetEmail of uniqueEmails) {
@@ -1047,7 +1092,7 @@ apiRouter.post("/groups/:id/invite", async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, 'group', 'pending', NOW())`,
         [invId, token, targetEmail, groupId, senderId]
       );
-      const inviteLink = `${appBaseUrl}/join/${groupId}?token=${token}`;
+      const inviteLink = buildAbsoluteEmailUrl(`/join/${groupId}?token=${token}`);
       emailBatchPayload.push({
         toEmail: targetEmail,
         senderName: resolvedSenderName,
@@ -2309,7 +2354,7 @@ apiRouter.post("/invitations/send-email", async (req, res) => {
     if (uniqueEmails.length === 0) {
       return res.status(400).json({ error: "Veuillez renseigner au moins une adresse e-mail valide" });
     }
-    const fallbackBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}` || "http://localhost:3000";
+    const fallbackBaseUrl = getCleanAppUrl();
     const baseLink = inviteLink || (groupId ? `${fallbackBaseUrl}/join/${groupId}` : fallbackBaseUrl);
     const emailBatchPayload = [];
     const createdInvitations = [];

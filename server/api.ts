@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { query } from './db';
-import { emailService } from './resend';
+import { emailService, getCleanAppUrl, buildAbsoluteEmailUrl } from './resend';
 import { realtimeBroadcaster } from './events';
 
 export const apiRouter = Router();
@@ -252,8 +252,7 @@ apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
         [token, expires, user.id]
       );
 
-      const baseUrl = process.env.APP_URL || 'https://outlys.fr';
-      const resetLink = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+      const resetLink = buildAbsoluteEmailUrl(`/reset-password?token=${token}`);
 
       emailService.sendPasswordResetEmail({
         toEmail: user.email,
@@ -517,7 +516,7 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
     const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
     const sender = senderRes.rows[0] || { firstName: 'Un ami', lastName: '', handle: '@ami' };
     const senderName = `${sender.firstName || 'Un ami'} ${sender.lastName || ''}`.trim();
-    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}` || 'http://localhost:3000';
+    const appBaseUrl = getCleanAppUrl();
 
     const results = [];
     const isSingleLegacyMode = !Array.isArray(handlesOrEmails) && !Array.isArray(emails) && cleanedList.length === 1;
@@ -614,7 +613,7 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
           [invId, token, item.toLowerCase(), userId]
         );
 
-        const personalInviteLink = `${appBaseUrl}/join?token=${token}&type=friend`;
+        const personalInviteLink = buildAbsoluteEmailUrl(`/join?token=${token}&type=friend`);
 
         // Envoi Resend individuel
         emailService.sendInvitation({
@@ -944,7 +943,7 @@ apiRouter.post('/groups/:id/invite', async (req: Request, res: Response) => {
     const sender = senderRes.rows[0];
     const resolvedSenderName = senderName || (sender ? `${sender.firstName} ${sender.lastName || ''}`.trim() : 'Un ami');
 
-    const appBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}` || 'http://localhost:3000';
+    const appBaseUrl = getCleanAppUrl();
     const emailBatchPayload = [];
     const generatedInvitations = [];
 
@@ -958,7 +957,7 @@ apiRouter.post('/groups/:id/invite', async (req: Request, res: Response) => {
         [invId, token, targetEmail, groupId, senderId]
       );
 
-      const inviteLink = `${appBaseUrl}/join/${groupId}?token=${token}`;
+      const inviteLink = buildAbsoluteEmailUrl(`/join/${groupId}?token=${token}`);
 
       emailBatchPayload.push({
         toEmail: targetEmail,
@@ -2474,7 +2473,7 @@ apiRouter.post('/invitations/send-email', async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Veuillez renseigner au moins une adresse e-mail valide' });
     }
 
-    const fallbackBaseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}` || 'http://localhost:3000';
+    const fallbackBaseUrl = getCleanAppUrl();
     const baseLink = inviteLink || (groupId ? `${fallbackBaseUrl}/join/${groupId}` : fallbackBaseUrl);
 
     const emailBatchPayload = [];

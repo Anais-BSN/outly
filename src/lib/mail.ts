@@ -4,33 +4,66 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
+ * Construit une adresse de base propre et sécurisée (HTTPS par défaut avec repli https://outlys.fr)
+ */
+function getCleanAppUrl(): string {
+  const rawUrl = (process.env.APP_URL || 'https://outlys.fr').trim();
+  const withoutTrailingSlashes = rawUrl.replace(/\/+$/, '');
+  if (!withoutTrailingSlashes.startsWith('http://') && !withoutTrailingSlashes.startsWith('https://')) {
+    return `https://${withoutTrailingSlashes}`;
+  }
+  return withoutTrailingSlashes;
+}
+
+/**
+ * Construit une URL absolue propre évitant tout double slash.
+ */
+function buildAbsoluteUrl(pathOrUrl?: string): string {
+  const baseUrl = getCleanAppUrl();
+  if (!pathOrUrl || pathOrUrl.trim() === '') {
+    return baseUrl;
+  }
+  const trimmed = pathOrUrl.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${baseUrl}${cleanPath}`;
+}
+
+/**
  * Envoie une invitation par e-mail pour rejoindre un groupe
  */
-export async function sendGroupInviteEmail(to: string, groupName: string, inviterName: string) {
+export async function sendGroupInviteEmail(to: string, groupName: string, inviterName: string, token?: string) {
   try {
-    const baseUrl = process.env.APP_URL || 'https://outlys.fr';
-    const invitationUrl = baseUrl.replace(/\/$/, '');
+    const invitationUrl = token ? buildAbsoluteUrl(`/invite/${token}`) : getCleanAppUrl();
     const data = await resend.emails.send({
-      from: 'Outlys <invitation@outlys.fr>', // En dev, utilise cette adresse par défaut
+      from: 'Outlys <invitation@outlys.fr>',
       to,
       subject: `${inviterName} t'invite à rejoindre "${groupName}" sur Outlys`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FFF9EB; padding: 32px; color: #18181B; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #E8D8C4;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; padding: 32px; color: #18181B; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #E8D8C4;">
           <h2 style="color: #5D0D18; margin-top: 0;">Rejoins l'aventure sur Outlys !</h2>
-          <p style="font-size: 15px; line-height: 1.5;">
+          <p style="font-size: 15px; line-height: 1.5; color: #18181B;">
             <strong>${inviterName}</strong> t'a invité à rejoindre le groupe <strong>${groupName}</strong> pour organiser vos prochaines sorties ensemble.
           </p>
           <div style="text-align: center; margin: 28px 0;">
-            <a href="${invitationUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif; text-align: center;">
-              Rejoindre sur Outlys
-            </a>
-            <p style="margin-top: 20px; font-size: 13px; color: #6b7280; text-align: center;">
-              Si le bouton ne s'ouvre pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                    Rejoindre sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin-top: 15px; font-size: 13px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
+              Si le bouton ci-dessus ne réagit pas, copiez et collez ce lien dans votre navigateur :<br/>
+              <a href="${invitationUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${invitationUrl}</a>
             </p>
           </div>
-          <p style="font-size: 12px; color: #666; text-align: center; margin-bottom: 0;">
-            Planifie • Partage • Sors
+          <p style="font-size: 12px; color: #71717A; text-align: center; margin-bottom: 0; margin-top: 24px;">
+            Cet e-mail a été envoyé automatiquement par Outlys.
           </p>
         </div>
       `,
@@ -47,26 +80,39 @@ export async function sendGroupInviteEmail(to: string, groupName: string, invite
  */
 export async function sendEventReminderEmail(to: string, eventTitle: string, eventDate: string, location: string) {
   try {
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const appUrl = getCleanAppUrl();
     const data = await resend.emails.send({
       from: 'Outlys <invitation@outlys.fr>',
       to,
       subject: `Rappel : ${eventTitle} a lieu demain !`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FFF9EB; padding: 32px; color: #18181B; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #E8D8C4;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; padding: 32px; color: #18181B; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #E8D8C4;">
           <h2 style="color: #5D0D18; margin-top: 0;">Rappel de ta sortie</h2>
-          <p style="font-size: 15px; line-height: 1.5;">
+          <p style="font-size: 15px; line-height: 1.5; color: #18181B;">
             L'événement <strong>${eventTitle}</strong> commence demain.
           </p>
-          <ul style="font-size: 14px; line-height: 1.6; color: #333;">
+          <ul style="font-size: 14px; line-height: 1.6; color: #333333;">
             <li><strong>Horaire :</strong> ${eventDate}</li>
             <li><strong>Lieu :</strong> ${location}</li>
           </ul>
           <div style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="display: inline-block; background-color: #5D0D18; color: #FFF9EB; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
-              Voir les détails sur Outlys
-            </a>
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
+                  <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                    Voir les détails sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
+              Accéder à l'application :<br/>
+              <a href="${appUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${appUrl}</a>
+            </p>
           </div>
+          <p style="font-size: 12px; color: #71717A; text-align: center; margin-bottom: 0; margin-top: 24px;">
+            Cet e-mail a été envoyé automatiquement par Outlys.
+          </p>
         </div>
       `,
     });
