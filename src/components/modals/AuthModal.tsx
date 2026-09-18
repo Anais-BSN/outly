@@ -31,10 +31,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
   const [emailOrHandle, setEmailOrHandle] = useState('');
   const [password, setPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // Forgot password fields
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
 
   // Register fields
   const [firstName, setFirstName] = useState('');
@@ -50,6 +54,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotEmail.trim()) {
+      setErrorMsg('Veuillez saisir votre adresse e-mail');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    setForgotSuccess(null);
+
+    try {
+      const res = await api.forgotPassword(forgotEmail.trim());
+      setForgotSuccess(res.message || 'Si un compte est associé à cette adresse, un e-mail a été envoyé.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Debounced check for handle availability
   useEffect(() => {
@@ -280,6 +305,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('forgot-password');
+                  setErrorMsg(null);
+                  setForgotSuccess(null);
+                  setForgotEmail(emailOrHandle.includes('@') ? emailOrHandle : '');
+                }}
+                className="text-[11px] text-[#5D0D18] dark:text-amber-300 hover:underline font-semibold cursor-pointer"
+              >
+                Mot de passe oublié ?
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading || !emailOrHandle.trim()}
@@ -289,6 +329,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+        )}
+
+        {/* FORM 3: FORGOT PASSWORD */}
+        {authMode === 'forgot-password' && (
+          <div className="space-y-3.5">
+            <div className="text-center space-y-1">
+              <h4 className="text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                Mot de passe oublié
+              </h4>
+              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
+                Saisissez votre e-mail pour recevoir un lien sécurisé de réinitialisation.
+              </p>
+            </div>
+
+            {forgotSuccess ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{forgotSuccess}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setForgotSuccess(null);
+                  }}
+                  className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Retour à la connexion
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                    Adresse e-mail
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="thomas@exemple.com"
+                      required
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                    />
+                    <Mail className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !forgotEmail.trim()}
+                  className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {loading ? 'Envoi en cours...' : 'Envoyer le lien'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setErrorMsg(null);
+                    }}
+                    className="text-xs text-[#27272A]/70 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] font-medium transition-colors cursor-pointer"
+                  >
+                    ← Retour à la connexion
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* FORM 2: REGISTER */}

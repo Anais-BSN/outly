@@ -53,7 +53,7 @@ var emailService = {
   async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
     const baseUrl = process.env.APP_URL || "https://outlys.fr";
-    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, "")}/invite/${token}` : baseUrl.replace(/\/$/, ""));
+    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, "")}/invite/${token}` : `${baseUrl.replace(/\/$/, "")}`);
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -65,11 +65,17 @@ var emailService = {
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${invitationUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif; text-align: center;">
-              Rejoindre sur Outlys
-            </a>
-            <p style="margin-top: 20px; font-size: 13px; color: #6b7280; text-align: center;">
-              Si le bouton ne s'ouvre pas, copiez et collez ce lien dans votre navigateur :<br/>
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
+                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                    Rejoindre sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+              Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
               <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
             </p>
           </div>
@@ -169,6 +175,67 @@ var emailService = {
       console.error("Erreur lors de l'envoi du rappel Resend:", error);
       return { success: false, error: error.message };
     }
+  },
+  /**
+   * Envoi d'un e-mail de réinitialisation de mot de passe
+   */
+  async sendPasswordResetEmail({ toEmail, userName, resetLink, token }) {
+    const baseUrl = process.env.APP_URL || "https://outlys.fr";
+    const resetUrl = resetLink || (token ? `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}` : `${baseUrl.replace(/\/$/, "")}/reset-password`);
+    const subject = "R\xE9initialisation de votre mot de passe - Outlys";
+    const htmlContent = `
+      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
+        </div>
+        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
+          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">R\xE9initialisation de votre mot de passe</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
+            Bonjour${userName ? ` <strong>${userName}</strong>` : ""}, vous avez demand\xE9 la r\xE9initialisation de votre mot de passe sur Outlys.
+          </p>
+          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
+            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable pendant 1 heure.
+          </p>
+          <div style="text-align: center; margin: 24px 0;">
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
+                  <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                    R\xE9initialiser mon mot de passe
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+              Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
+              <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
+            </p>
+          </div>
+          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
+            Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9.
+          </p>
+        </div>
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
+          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
+        </p>
+      </div>
+    `;
+    if (!resend) {
+      console.log(`[Resend SIMULATION] Email de r\xE9initialisation de mot de passe envoy\xE9 \xE0 ${toEmail} (Lien : ${resetUrl})`);
+      return { success: true, simulated: true, id: `sim-${Date.now()}` };
+    }
+    try {
+      const data = await resend.emails.send({
+        from: "Outlys <invitation@outlys.fr>",
+        to: toEmail,
+        subject,
+        html: htmlContent
+      });
+      return { success: true, data };
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de la r\xE9initialisation de mot de passe:", error);
+      return { success: false, error: error.message };
+    }
   }
 };
 
@@ -248,6 +315,8 @@ apiRouter.get("/sse", handleSseConnection);
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
     await query(`
       CREATE TABLE IF NOT EXISTS invitations (
@@ -389,6 +458,96 @@ apiRouter.post("/auth/google", async (req, res) => {
     res.json(insertRes.rows[0]);
   } catch (err) {
     console.error("Error in POST /auth/google:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Veuillez saisir votre adresse e-mail" });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const userRes = await query(
+      `SELECT id, first_name as "firstName", last_name as "lastName", email FROM users WHERE email ILIKE $1 LIMIT 1`,
+      [cleanEmail]
+    );
+    if (userRes.rows.length > 0) {
+      const user = userRes.rows[0];
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 36e5);
+      await query(
+        `UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3`,
+        [token, expires, user.id]
+      );
+      const baseUrl = process.env.APP_URL || "https://outlys.fr";
+      const resetLink = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+      emailService.sendPasswordResetEmail({
+        toEmail: user.email,
+        userName: user.firstName,
+        resetLink,
+        token
+      }).catch((e) => console.error("Background password reset email failed:", e));
+    }
+    res.json({
+      success: true,
+      message: "Si un compte est associ\xE9 \xE0 cette adresse, un e-mail avec les instructions de r\xE9initialisation a \xE9t\xE9 envoy\xE9."
+    });
+  } catch (err) {
+    console.error("Error in POST /auth/forgot-password:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/auth/verify-reset-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const userRes = await query(
+      `SELECT id, email, first_name as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
+      [token]
+    );
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({ valid: false, error: "Ce lien de r\xE9initialisation est invalide ou a expir\xE9." });
+    }
+    res.json({ valid: true, email: userRes.rows[0].email, firstName: userRes.rows[0].firstName });
+  } catch (err) {
+    console.error("Error in GET /auth/verify-reset-token:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !token.trim()) {
+      return res.status(400).json({ error: "Jeton de r\xE9initialisation manquant" });
+    }
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: "Le nouveau mot de passe doit comporter au moins 4 caract\xE8res" });
+    }
+    const userRes = await query(
+      `SELECT id, first_name as "firstName", last_name as "lastName", email
+       FROM users
+       WHERE reset_password_token = $1 AND reset_password_expires > NOW()
+       LIMIT 1`,
+      [token.trim()]
+    );
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({
+        error: "Ce lien de r\xE9initialisation est invalide ou a expir\xE9. Veuillez renouveler votre demande."
+      });
+    }
+    const user = userRes.rows[0];
+    await query(
+      `UPDATE users
+       SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL
+       WHERE id = $2`,
+      [password.trim(), user.id]
+    );
+    res.json({
+      success: true,
+      message: "Votre mot de passe a \xE9t\xE9 r\xE9initialis\xE9 avec succ\xE8s ! Vous pouvez maintenant vous connecter."
+    });
+  } catch (err) {
+    console.error("Error in POST /auth/reset-password:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2293,13 +2452,22 @@ app.use((req, _res, next) => {
 app.use("/api", apiRouter);
 
 // server/index.ts
+import fs from "fs";
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
 var PORT = process.env.PORT || 3e3;
-var distPath = path.resolve(process.cwd(), "dist");
+var distPath = fs.existsSync(path.resolve(process.cwd(), "dist")) ? path.resolve(process.cwd(), "dist") : path.resolve(__dirname, "../dist");
 app.use(express2.static(distPath));
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return next();
+  }
+  const indexPath = path.join(distPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.sendFile(path.resolve(process.cwd(), "index.html"));
+  }
 });
 if (process.env.NODE_ENV !== "test") {
   app.listen(Number(PORT), "0.0.0.0", () => {

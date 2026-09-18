@@ -89,6 +89,24 @@ export const api = {
     });
   },
 
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async verifyResetToken(token: string): Promise<{ valid: boolean; email?: string; firstName?: string; error?: string }> {
+    return request<{ valid: boolean; email?: string; firstName?: string; error?: string }>(`/auth/verify-reset-token/${encodeURIComponent(token)}`);
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
+
   async updateUser(id: string, data: Partial<UserProfile>): Promise<UserProfile> {
     return request<UserProfile>(`/users/${id}`, {
       method: 'PUT',

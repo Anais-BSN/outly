@@ -38,6 +38,8 @@ apiRouter.get('/sse', handleSseConnection);
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
     await query(`
       CREATE TABLE IF NOT EXISTS invitations (
@@ -222,6 +224,118 @@ apiRouter.post('/auth/google', async (req: Request, res: Response) => {
     res.json(insertRes.rows[0]);
   } catch (err: any) {
     console.error('Error in POST /auth/google:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Demande de réinitialisation de mot de passe oublié
+apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'Veuillez saisir votre adresse e-mail' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const userRes = await query(
+      `SELECT id, first_name as "firstName", last_name as "lastName", email FROM users WHERE email ILIKE $1 LIMIT 1`,
+      [cleanEmail]
+    );
+
+    if (userRes.rows.length > 0) {
+      const user = userRes.rows[0];
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 3600000); // 1 heure
+
+      await query(
+        `UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3`,
+        [token, expires, user.id]
+      );
+
+      const baseUrl = process.env.APP_URL || 'https://outlys.fr';
+      const resetLink = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+
+      emailService.sendPasswordResetEmail({
+        toEmail: user.email,
+        userName: user.firstName,
+        resetLink,
+        token,
+      }).catch((e) => console.error('Background password reset email failed:', e));
+    }
+
+    // Toujours renvoyer success: true pour des raisons de sécurité
+    res.json({
+      success: true,
+      message: 'Si un compte est associé à cette adresse, un e-mail avec les instructions de réinitialisation a été envoyé.'
+    });
+  } catch (err: any) {
+    console.error('Error in POST /auth/forgot-password:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Vérification de la validité d'un token de réinitialisation
+apiRouter.get('/auth/verify-reset-token/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const userRes = await query(
+      `SELECT id, email, first_name as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
+      [token]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({ valid: false, error: 'Ce lien de réinitialisation est invalide ou a expiré.' });
+    }
+
+    res.json({ valid: true, email: userRes.rows[0].email, firstName: userRes.rows[0].firstName });
+  } catch (err: any) {
+    console.error('Error in GET /auth/verify-reset-token:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Application du nouveau mot de passe
+apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !token.trim()) {
+      return res.status(400).json({ error: 'Jeton de réinitialisation manquant' });
+    }
+
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe doit comporter au moins 4 caractères' });
+    }
+
+    const userRes = await query(
+      `SELECT id, first_name as "firstName", last_name as "lastName", email
+       FROM users
+       WHERE reset_password_token = $1 AND reset_password_expires > NOW()
+       LIMIT 1`,
+      [token.trim()]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({
+        error: 'Ce lien de réinitialisation est invalide ou a expiré. Veuillez renouveler votre demande.'
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    await query(
+      `UPDATE users
+       SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL
+       WHERE id = $2`,
+      [password.trim(), user.id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.'
+    });
+  } catch (err: any) {
+    console.error('Error in POST /auth/reset-password:', err);
     res.status(500).json({ error: err.message });
   }
 });

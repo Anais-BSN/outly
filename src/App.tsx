@@ -27,6 +27,7 @@ import { AddTaskModal } from './components/modals/AddTaskModal';
 import { ImageViewerModal } from './components/modals/ImageViewerModal';
 import { AddGroupMemberModal } from './components/modals/AddGroupMemberModal';
 import { ConvertChoicePollModal } from './components/modals/ConvertChoicePollModal';
+import { ResetPasswordModal } from './components/modals/ResetPasswordModal';
 import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
@@ -136,6 +137,12 @@ export default function App() {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [viewingImage, setViewingImage] = useState<GalleryItem | null>(null);
   const [initialEventDate, setInitialEventDate] = useState<string | undefined>(undefined);
+
+  // Deep-link & Reset Password states
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetPasswordToken, setResetPasswordToken] = useState('');
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [inviteToast, setInviteToast] = useState<{ text: string; success: boolean } | null>(null);
 
   // Dark Mode (strict toggle via profile button, decoupled from prefers-color-scheme)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -435,6 +442,87 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Handle URL deep-links & SPA routes (/reset-password, /invite/:token, /join/:token)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const pathname = window.location.pathname;
+      const tokenParam = url.searchParams.get('token');
+
+      // 1. Password reset route
+      if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) {
+        const token = tokenParam || pathname.replace('/reset-password', '').replace(/^\//, '');
+        if (token) {
+          setResetPasswordToken(token);
+          setIsResetPasswordOpen(true);
+        }
+        return;
+      }
+
+      // 2. Invitation route (/invite/:token, /join/:token, /invite?token=..., /join?token=...)
+      let inviteToken: string | null = null;
+      if (pathname.startsWith('/invite/')) {
+        inviteToken = pathname.replace('/invite/', '').split('/')[0];
+      } else if (pathname.startsWith('/join/')) {
+        const segments = pathname.replace('/join/', '').split('/');
+        if (tokenParam) {
+          inviteToken = tokenParam;
+        } else if (segments[0] && segments[0].length > 10) {
+          inviteToken = segments[0];
+        }
+      } else if (tokenParam && (pathname === '/invite' || pathname === '/join' || pathname === '/')) {
+        inviteToken = tokenParam;
+      }
+
+      if (inviteToken) {
+        setPendingInviteToken(inviteToken);
+      }
+    } catch (err) {
+      console.error('Error parsing deep-link route:', err);
+    }
+  }, []);
+
+  // Process pending invitation once user is authenticated
+  useEffect(() => {
+    if (!currentUser || !pendingInviteToken) return;
+
+    const processInvite = async () => {
+      try {
+        const inv = await api.getInvitationByToken(pendingInviteToken);
+        if (inv) {
+          await api.acceptInvitationByToken(pendingInviteToken, currentUser.id);
+          setPendingInviteToken(null);
+          window.history.replaceState({}, '', '/');
+
+          await loadData(currentUser.id);
+          if (inv.groupId) {
+            setActiveGroupId(inv.groupId);
+            setInviteToast({
+              text: `Vous avez rejoint le groupe "${inv.groupName || 'd\'escapade'}" ! 🎉`,
+              success: true,
+            });
+          } else {
+            setInviteToast({
+              text: `Vous êtes maintenant connecté avec ${inv.inviterFirstName || 'votre ami'} ! 🎉`,
+              success: true,
+            });
+          }
+          setTimeout(() => setInviteToast(null), 6000);
+        }
+      } catch (err: any) {
+        console.error('Error processing invitation:', err);
+        setInviteToast({
+          text: err.message || 'Invitation introuvable ou expirée',
+          success: false,
+        });
+        setPendingInviteToken(null);
+        setTimeout(() => setInviteToast(null), 6000);
+      }
+    };
+
+    processInvite();
+  }, [currentUser, pendingInviteToken, loadData]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -1507,7 +1595,32 @@ export default function App() {
       </main>
 
       {/* 6. All Interactive Application Modals */}
-      {/* Auth Modal (Inscription & Connexion & Google OAuth) */}
+      {/* Floating Invite / Action Toast */}
+      {inviteToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 animate-bounce-in max-w-md px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border backdrop-blur-md bg-[#FFF9EB] dark:bg-zinc-900 border-[#C7B7A3] dark:border-zinc-700 text-[#27272A] dark:text-[#FFF9EB]">
+          <span className="text-base">{inviteToast.success ? '🎉' : '⚠️'}</span>
+          <span>{inviteToast.text}</span>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal
+        isOpen={isResetPasswordOpen}
+        token={resetPasswordToken}
+        onClose={() => {
+          setIsResetPasswordOpen(false);
+          setResetPasswordToken('');
+          window.history.replaceState({}, '', '/');
+        }}
+        onSuccess={() => {
+          setIsResetPasswordOpen(false);
+          setResetPasswordToken('');
+          window.history.replaceState({}, '', '/');
+          setIsAuthOpen(true);
+        }}
+      />
+
+      {/* Auth Modal (Inscription & Connexion & Google OAuth & Mot de passe oublié) */}
       <AuthModal
         isOpen={isAuthOpen || !currentUser}
         onClose={() => setIsAuthOpen(false)}

@@ -16,6 +16,13 @@ export interface SendInviteEmailParams {
   token?: string;
 }
 
+export interface SendResetPasswordParams {
+  toEmail: string;
+  userName?: string;
+  resetLink?: string;
+  token?: string;
+}
+
 export interface SendReminderEmailParams {
   toEmail: string;
   eventTitle: string;
@@ -35,7 +42,7 @@ export const emailService = {
       : `Demande d'ami de ${senderName} sur Outlys`;
 
     const baseUrl = process.env.APP_URL || 'https://outlys.fr';
-    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, '')}/invite/${token}` : baseUrl.replace(/\/$/, ''));
+    const invitationUrl = inviteLink || (token ? `${baseUrl.replace(/\/$/, '')}/invite/${token}` : `${baseUrl.replace(/\/$/, '')}`);
 
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
@@ -48,11 +55,17 @@ export const emailService = {
             ${groupName ? `Vous avez été invité(e) à rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${invitationUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif; text-align: center;">
-              Rejoindre sur Outlys
-            </a>
-            <p style="margin-top: 20px; font-size: 13px; color: #6b7280; text-align: center;">
-              Si le bouton ne s'ouvre pas, copiez et collez ce lien dans votre navigateur :<br/>
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
+                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                    Rejoindre sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+              Si le bouton ci-dessus ne réagit pas, copiez et collez ce lien dans votre navigateur :<br/>
               <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
             </p>
           </div>
@@ -162,6 +175,71 @@ export const emailService = {
       return { success: true, data };
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi du rappel Resend:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Envoi d'un e-mail de réinitialisation de mot de passe
+   */
+  async sendPasswordResetEmail({ toEmail, userName, resetLink, token }: SendResetPasswordParams) {
+    const baseUrl = process.env.APP_URL || 'https://outlys.fr';
+    const resetUrl = resetLink || (token ? `${baseUrl.replace(/\/$/, '')}/reset-password?token=${token}` : `${baseUrl.replace(/\/$/, '')}/reset-password`);
+    const subject = 'Réinitialisation de votre mot de passe - Outlys';
+
+    const htmlContent = `
+      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
+        </div>
+        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
+          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">Réinitialisation de votre mot de passe</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
+            Bonjour${userName ? ` <strong>${userName}</strong>` : ''}, vous avez demandé la réinitialisation de votre mot de passe sur Outlys.
+          </p>
+          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
+            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable pendant 1 heure.
+          </p>
+          <div style="text-align: center; margin: 24px 0;">
+            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius: 8px;">
+                  <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px;">
+                    Réinitialiser mon mot de passe
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center;">
+              Si le bouton ci-dessus ne réagit pas, copiez et collez ce lien dans votre navigateur :<br/>
+              <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
+            </p>
+          </div>
+          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
+            Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
+          </p>
+        </div>
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
+          Cet e-mail a été envoyé automatiquement par Outlys.
+        </p>
+      </div>
+    `;
+
+    if (!resend) {
+      console.log(`[Resend SIMULATION] Email de réinitialisation de mot de passe envoyé à ${toEmail} (Lien : ${resetUrl})`);
+      return { success: true, simulated: true, id: `sim-${Date.now()}` };
+    }
+
+    try {
+      const data = await resend.emails.send({
+        from: 'Outlys <invitation@outlys.fr>',
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi de la réinitialisation de mot de passe:', error);
       return { success: false, error: error.message };
     }
   },
