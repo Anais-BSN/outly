@@ -45,8 +45,12 @@ dotenv2.config();
 var apiKey = process.env.RESEND_API_KEY;
 var isConfigured = apiKey && apiKey.startsWith("re_") && !apiKey.includes("123456789") && !apiKey.includes("your_resend");
 var resend = isConfigured ? new Resend(apiKey) : null;
+function sanitizeUrl(rawUrl) {
+  if (!rawUrl) return "";
+  return rawUrl.replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/[\x00-\x1F\x7F]/g, "").trim();
+}
 function getCleanAppUrl() {
-  const rawUrl = (process.env.APP_URL || "https://outlys.fr").trim();
+  const rawUrl = sanitizeUrl(process.env.APP_URL || "https://outlys.fr");
   const withoutTrailingSlashes = rawUrl.replace(/\/+$/, "");
   if (!withoutTrailingSlashes.startsWith("http://") && !withoutTrailingSlashes.startsWith("https://")) {
     return `https://${withoutTrailingSlashes}`;
@@ -58,11 +62,11 @@ function buildAbsoluteEmailUrl(pathOrUrl) {
   if (!pathOrUrl || pathOrUrl.trim() === "") {
     return baseUrl;
   }
-  const trimmed = pathOrUrl.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
+  const clean = sanitizeUrl(pathOrUrl);
+  if (clean.startsWith("http://") || clean.startsWith("https://")) {
+    return clean;
   }
-  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  const cleanPath = clean.startsWith("/") ? clean : `/${clean}`;
   return `${baseUrl}${cleanPath}`;
 }
 var emailService = {
@@ -83,10 +87,10 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
             <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
-                <a href="${invitationUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+              <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
+                <a href="${invitationUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
                   ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
                 </a>
               </td>
@@ -148,7 +152,7 @@ var emailService = {
     });
     const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
     const appUrl = getCleanAppUrl();
-    const formattedGpsUrl = gpsUrl ? gpsUrl.startsWith("http://") || gpsUrl.startsWith("https://") ? gpsUrl : buildAbsoluteEmailUrl(gpsUrl) : void 0;
+    const formattedGpsUrl = gpsUrl ? gpsUrl.startsWith("http://") || gpsUrl.startsWith("https://") ? sanitizeUrl(gpsUrl) : buildAbsoluteEmailUrl(gpsUrl) : void 0;
     const htmlContent = `
       <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -162,20 +166,20 @@ var emailService = {
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
           ${formattedGpsUrl ? `
-            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
               <tr>
-                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
-                  <a href="${formattedGpsUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
+                  <a href="${formattedGpsUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
                     Voir l'itin\xE9raire GPS
                   </a>
                 </td>
               </tr>
             </table>
           ` : `
-            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
               <tr>
-                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
-                  <a href="${appUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
+                  <a href="${appUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
                     Voir les d\xE9tails sur Outlys
                   </a>
                 </td>
@@ -224,10 +228,10 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
             <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
-                <a href="${resetUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+              <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
+                <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
                   R\xE9initialiser mon mot de passe
                 </a>
               </td>

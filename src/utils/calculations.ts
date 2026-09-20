@@ -15,7 +15,8 @@ export interface DebtBalance {
 export function calculateExpensesAndDebts(
   expenses: Expense[] = [],
   members: GroupMember[] = [],
-  settlementsOverride: DebtSettlement[] = []
+  settlementsOverride: DebtSettlement[] = [],
+  groupId?: string
 ): {
   totalSpent: number;
   userBalances: Record<string, DebtBalance>;
@@ -130,7 +131,7 @@ export function calculateExpensesAndDebts(
 
       calculatedSettlements.push({
         id: settlementId,
-        groupId: members[0]?.id ? 'group-current' : '',
+        groupId: groupId || safeExpenses[0]?.groupId || '',
         fromUserId: debtor.id,
         fromUserName: debtor.name,
         fromUserAvatar: debtor.avatar,

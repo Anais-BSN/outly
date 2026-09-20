@@ -1206,32 +1206,49 @@ export default function App() {
   const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
     const isNowSettled = settlement.status !== 'settled';
     const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
+    const targetGroupId = (settlement.groupId && settlement.groupId !== 'group-current') ? settlement.groupId : activeGroupId;
+
+    const optimisticSettlement: DebtSettlement = {
+      ...settlement,
+      groupId: targetGroupId,
+      status: newStatus,
+      settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
+    };
 
     // Optimistic state update
     setSettlements((prev) => {
       const existing = prev.find(
         (s) =>
           s.id === settlement.id ||
-          (s.groupId === settlement.groupId &&
+          ((!s.groupId || s.groupId === targetGroupId) &&
             s.fromUserId === settlement.fromUserId &&
             s.toUserId === settlement.toUserId)
       );
       if (existing) {
         return prev.map((s) =>
-          s.id === existing.id ? { ...s, status: newStatus } : s
+          s.id === existing.id ? { ...s, ...optimisticSettlement } : s
         );
       }
-      return [{ ...settlement, status: newStatus }, ...prev];
+      return [optimisticSettlement, ...prev];
     });
 
     try {
-      await api.toggleSettlement({
-        groupId: settlement.groupId || activeGroupId,
+      const saved = await api.toggleSettlement({
+        groupId: targetGroupId,
         fromUserId: settlement.fromUserId,
         toUserId: settlement.toUserId,
         amount: settlement.amount,
         status: newStatus,
       });
+      if (saved) {
+        setSettlements((prev) => {
+          const exists = prev.some((s) => s.id === saved.id);
+          if (exists) {
+            return prev.map((s) => (s.id === saved.id ? saved : s));
+          }
+          return [saved, ...prev];
+        });
+      }
     } catch (err) {
       console.error('Error toggling settlement in PostgreSQL:', err);
     }
@@ -1781,7 +1798,8 @@ export default function App() {
                   expenses={groupExpenses}
                   currentUser={currentUser}
                   members={activeGroup.members}
-                  settlements={settlements}
+                  settlements={settlements.filter((s) => !s.groupId || s.groupId === activeGroupId)}
+                  groupId={activeGroupId}
                   onOpenAddExpense={() => setIsAddExpenseOpen(true)}
                   onToggleSettlementStatus={handleToggleSettlementStatus}
                   onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}

@@ -4,7 +4,7 @@ export const CARTOON_AVATARS = [
   { id: 'cat', name: 'Chat Malin', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&auto=format&fit=crop&q=80' },
   { id: 'panda', name: 'Panda Zen', url: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=150&auto=format&fit=crop&q=80' },
   { id: 'bear', name: 'Ours Douillet', url: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?w=150&auto=format&fit=crop&q=80' },
-  { id: 'owl', name: 'Chouette Sage', url: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=150&auto=format&fit=crop&q=80' },
-  { id: 'koala', name: 'Koala Cool', url: 'https://images.unsplash.com/photo-1526970371649-4e603f905c10?w=150&auto=format&fit=crop&q=80' },
+  { id: 'owl', name: 'Chouette Sage', url: 'https://images.unsplash.com/photo-1574063413132-355dbfd83e25?w=150&auto=format&fit=crop&q=80' },
+  { id: 'koala', name: 'Koala Cool', url: 'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=150&auto=format&fit=crop&q=80' },
   { id: 'deer', name: 'Cerf Majestueux', url: 'https://images.unsplash.com/photo-1484406566174-9da000fda645?w=150&auto=format&fit=crop&q=80' },
 ];

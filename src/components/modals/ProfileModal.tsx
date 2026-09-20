@@ -292,8 +292,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+            <User className="w-5 h-5 text-[#5D0D18] dark:text-white" />
+            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-white font-serif">
               Mon profil
             </h3>
           </div>
@@ -393,6 +393,188 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Informations Personnelles & Coordonnées (Affichage par défaut en lecture seule et édition unitaire) */}
+          <div className="p-4 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+            <div className="flex items-center gap-2 pb-1 border-b border-[#C7B7A3]/30 dark:border-zinc-700/50">
+              <User className="w-4 h-4 text-[#5D0D18] dark:text-white" />
+              <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] uppercase tracking-wider">
+                Mes coordonnées
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Prénom */}
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  Prénom
+                </label>
+                {isEditingFirstName ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      id="profile-input-firstname"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveFirstName();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingFirstName(false);
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                    />
+                    <button
+                      type="button"
+                      id="profile-save-firstname-btn"
+                      onClick={handleSaveFirstName}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                      {firstName || currentUser.firstName || 'Non renseigné'}
+                    </span>
+                    <button
+                      type="button"
+                      id="profile-edit-firstname-btn"
+                      onClick={() => setIsEditingFirstName(true)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Modifier</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Nom */}
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  Nom
+                </label>
+                {isEditingLastName ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      id="profile-input-lastname"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveLastName();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingLastName(false);
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                    />
+                    <button
+                      type="button"
+                      id="profile-save-lastname-btn"
+                      onClick={handleSaveLastName}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                      {lastName || currentUser.lastName || 'Non renseigné'}
+                    </span>
+                    <button
+                      type="button"
+                      id="profile-edit-lastname-btn"
+                      onClick={() => setIsEditingLastName(true)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Modifier</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* E-mail & Pseudo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* E-mail */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  <Mail className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
+                  <span>Adresse e-mail</span>
+                </div>
+                {isEditingEmail ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="email"
+                      id="profile-input-email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveEmail();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingEmail(false);
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                    />
+                    <button
+                      type="button"
+                      id="profile-save-email-btn"
+                      onClick={handleSaveEmail}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                      {email || currentUser.email}
+                    </span>
+                    <button
+                      type="button"
+                      id="profile-edit-email-btn"
+                      onClick={() => setIsEditingEmail(true)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Modifier</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Pseudo (@handle) */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  <AtSign className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
+                  <span>Pseudo Outlys</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/50 dark:bg-zinc-900/40 border border-[#C7B7A3]/30 dark:border-zinc-700/40">
+                  <span className="text-xs font-bold text-[#5D0D18] dark:text-white truncate">
+                    {currentUser.handle || (currentUser.email ? `@${currentUser.email.split('@')[0]}` : '@utilisateur')}
+                  </span>
+                  <span className="text-[10px] text-[#27272A]/50 dark:text-zinc-400 font-medium">
+                    Lecture seule
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Shares Adjustment (Ajustement des parts de 1 à 20 via des boutons + et -) */}

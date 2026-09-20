@@ -59,6 +59,8 @@ const MessageItem = React.memo<MessageItemProps>(({
   const [isEditing, setIsEditing] = useState(false);
   const [editingText, setEditingText] = useState(message.text || '');
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const isMe = message.senderId === currentUser.id;
 
@@ -76,24 +78,54 @@ const MessageItem = React.memo<MessageItemProps>(({
   const isReadByEveryone =
     otherGroupMembers.length > 0 && readOtherMembers.length >= otherGroupMembers.length;
 
-  const handleTouchStart = () => {
+  // Détection appui long sur smartphone (~500ms) avec maintien stable du menu
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       setIsMenuOpen(true);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate(35);
+          navigator.vibrate(40);
         } catch (_) {}
       }
-    }, 450);
+    }, 480);
   };
 
-  const handleTouchEndOrMove = () => {
-    if (longPressTimerRef.current) {
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current || !longPressTimerRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
   };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPos.current = null;
+  };
+
+  // Fermeture automatique au clic / tap en dehors de la barre d'action
+  useEffect(() => {
+    if (!isMenuOpen && !isPickerOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+        setIsPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, [isMenuOpen, isPickerOpen]);
 
   const handleSaveEdit = () => {
     if (editingText.trim() && onEditMessage) {
@@ -179,12 +211,12 @@ const MessageItem = React.memo<MessageItemProps>(({
         </div>
       )}
 
-      {/* Conteneur principal de la bulle avec barre d'action contextuelle */}
+      {/* Conteneur principal de la bulle (w-fit pour épouser strictement le texte du message) */}
       <div
-        className="relative max-w-[85%] sm:max-w-md"
+        className="relative w-fit max-w-[85%] sm:max-w-md"
         onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEndOrMove}
-        onTouchMove={handleTouchEndOrMove}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onContextMenu={(e) => {
           e.preventDefault();
           setIsMenuOpen((prev) => !prev);
@@ -192,6 +224,7 @@ const MessageItem = React.memo<MessageItemProps>(({
       >
         {/* Barre d'action contextuelle */}
         <div
+          ref={menuRef}
           className={`absolute -top-3.5 ${
             isMe ? 'right-2' : 'left-2'
           } z-20 flex items-center gap-0.5 px-1.5 py-1 bg-[#FFF9EB] dark:bg-zinc-900 rounded-full border border-[#C7B7A3] dark:border-zinc-700 shadow-md ${
@@ -365,7 +398,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             )
           )}
 
-          {/* Badges de réactions */}
+          {/* Badges de réactions avec fort contraste */}
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2 pt-1 border-t border-black/10 dark:border-white/10">
               {message.reactions.map((r, i) => {
@@ -376,34 +409,38 @@ const MessageItem = React.memo<MessageItemProps>(({
                     type="button"
                     onClick={() => onAddReaction(message.id, r.emoji)}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer ${
-                      hasReacted
-                        ? 'bg-amber-400/30 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500/50 font-bold'
-                        : 'bg-black/5 dark:bg-white/10 text-current hover:bg-black/10'
+                      isMe
+                        ? hasReacted
+                          ? 'bg-[#FFF9EB] text-[#5D0D18] ring-1 ring-amber-400 font-extrabold shadow-xs'
+                          : 'bg-black/30 text-[#FFF9EB] hover:bg-black/45 border border-white/20 font-semibold'
+                        : hasReacted
+                        ? 'bg-[#5D0D18] text-[#FFF9EB] dark:bg-amber-400 dark:text-zinc-950 font-bold shadow-xs'
+                        : 'bg-[#FFF9EB] text-[#27272A] dark:bg-zinc-800 dark:text-zinc-200 hover:bg-[#E8D8C4] border border-[#C7B7A3]/60 dark:border-zinc-700 font-semibold'
                     }`}
                   >
                     <span>{r.emoji}</span>
-                    <span className="text-[10px]">{r.users.length}</span>
+                    <span className="text-[11px] font-extrabold tracking-tight">{r.users.length}</span>
                   </button>
                 );
               })}
             </div>
           )}
         </div>
-
-        {/* Accusé de lecture intelligent : uniquement sous les messages envoyés si des tiers l'ont vu */}
-        {isMe && readOtherMembers.length > 0 && (
-          <div className="flex items-center justify-end gap-1 mt-0.5 px-1 text-[9px] text-[#27272A]/60 dark:text-zinc-400 font-medium">
-            <CheckCheck className="w-3 h-3 text-[#9FB2AC]" />
-            <span>
-              {isReadByEveryone
-                ? 'Vu par tout le monde'
-                : `Vu par ${readOtherMembers
-                    .map((m) => m.firstName || m.name.split(' ')[0] || 'Un membre')
-                    .join(', ')}`}
-            </span>
-          </div>
-        )}
       </div>
+
+      {/* Accusé de lecture positionné SOUS la bulle de message (sans étirer la bulle) */}
+      {isMe && readOtherMembers.length > 0 && (
+        <div className="flex items-center justify-end gap-1 mt-1 px-1 text-[9.5px] text-[#27272A]/60 dark:text-zinc-400 font-medium select-none max-w-[85%] sm:max-w-md">
+          <CheckCheck className="w-3 h-3 text-[#9FB2AC] shrink-0" />
+          <span className="truncate">
+            {isReadByEveryone
+              ? 'Vu par tout le monde'
+              : `Vu par ${readOtherMembers
+                  .map((m) => m.firstName || m.name?.split(' ')[0] || 'Un membre')
+                  .join(', ')}`}
+          </span>
+        </div>
+      )}
     </div>
   );
 });

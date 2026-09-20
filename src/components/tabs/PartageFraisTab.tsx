@@ -23,6 +23,7 @@ interface PartageFraisTabProps {
   currentUser: UserProfile;
   members?: GroupMember[];
   settlements?: DebtSettlement[];
+  groupId?: string;
   onOpenAddExpense: () => void;
   onToggleSettlementStatus: (settlement: DebtSettlement) => void;
   onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
@@ -33,6 +34,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   currentUser,
   members = [],
   settlements = [],
+  groupId,
   onOpenAddExpense,
   onToggleSettlementStatus,
   onViewAvatar,
@@ -45,7 +47,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const { totalSpent, userBalances, calculatedSettlements } = calculateExpensesAndDebts(
     safeExpenses,
     safeMembers,
-    safeSettlements
+    safeSettlements,
+    groupId
   );
 
   const myBalance = userBalances[currentUser.id]?.net || 0;
