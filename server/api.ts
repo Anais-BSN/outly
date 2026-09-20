@@ -2472,15 +2472,15 @@ apiRouter.get('/settlements', async (req: Request, res: Response) => {
     const groupId = req.query.groupId as string | undefined;
     let sql = `
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
-             s.amount::float as amount, s.status, s.settled_at as "settledAt",
+             s.amount::float as amount, status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
-             COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
-             COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
-             COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+             COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+             COALESCE(u1.last_name, '') as "fromUserLastName",
+             COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
              COALESCE(u1.avatar, '') as "fromUserAvatar",
-             COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
-             COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
-             COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+             COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+             COALESCE(u2.last_name, '') as "toUserLastName",
+             COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
              COALESCE(u2.avatar, '') as "toUserAvatar"
       FROM debt_settlements s
       LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -2534,13 +2534,13 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
-              COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
-              COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, '') as "fromUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
-              COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
-              COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, '') as "toUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
