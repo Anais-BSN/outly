@@ -261,8 +261,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleClose = () => {
     onSaveProfile({
       ...currentUser,
       firstName: firstName.trim() || currentUser.firstName || 'Prénom',
@@ -275,12 +274,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onClose();
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
         id="profile-modal-backdrop"
-        onClick={onClose}
+        onClick={handleClose}
         className="fixed inset-0 bg-black/50 backdrop-blur-xs animate-fade-in"
       />
 
@@ -299,7 +303,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
           <button
             id="profile-modal-close-btn"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -563,14 +567,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   <AtSign className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
-                  <span>Pseudo Outlys</span>
+                  <span>Pseudo</span>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/50 dark:bg-zinc-900/40 border border-[#C7B7A3]/30 dark:border-zinc-700/40">
                   <span className="text-xs font-bold text-[#5D0D18] dark:text-white truncate">
                     {currentUser.handle || (currentUser.email ? `@${currentUser.email.split('@')[0]}` : '@utilisateur')}
-                  </span>
-                  <span className="text-[10px] text-[#27272A]/50 dark:text-zinc-400 font-medium">
-                    Lecture seule
                   </span>
                 </div>
               </div>
@@ -582,7 +583,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  Parts de frais pour la répartition (1 à 20)
+                  Nombre de part
                 </label>
                 <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
                   Ex: 1 part = solo, 2 parts = couple, etc.
@@ -851,20 +852,37 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               })}
             </div>
 
-            {/* Bouton pour connecter un autre compte (exige obligatoirement mot de passe) */}
-            {onOpenAddAccount && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenAddAccount();
-                }}
-                className="w-full py-2 rounded-xl border border-dashed border-[#5D0D18]/40 dark:border-amber-300/40 text-[#5D0D18] dark:text-amber-300 text-xs font-bold hover:bg-[#5D0D18]/5 dark:hover:bg-zinc-700/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Se connecter à un autre compte</span>
-              </button>
-            )}
+            {/* Actions : Connexion à un autre compte et Déconnexion */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              {onOpenAddAccount && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose();
+                    onOpenAddAccount();
+                  }}
+                  className="flex-1 py-2 rounded-xl border border-dashed border-[#5D0D18]/40 dark:border-amber-300/40 text-[#5D0D18] dark:text-amber-300 text-xs font-bold hover:bg-[#5D0D18]/5 dark:hover:bg-zinc-700/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Se connecter à un autre compte</span>
+                </button>
+              )}
+
+              {onLogout && (
+                <button
+                  type="button"
+                  id="profile-logout-btn"
+                  onClick={() => {
+                    onLogout();
+                    handleClose();
+                  }}
+                  className="py-2 px-3 rounded-xl bg-zinc-200 dark:bg-zinc-700 text-[#27272A] dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Se déconnecter</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Zone de Danger : Suppression de Compte */}
@@ -925,44 +943,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Save Action & Logout */}
-          <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-between gap-2">
-            {onLogout ? (
-              <button
-                type="button"
-                id="profile-logout-btn"
-                onClick={() => {
-                  onLogout();
-                  onClose();
-                }}
-                className="px-3.5 py-2.5 rounded-full text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-zinc-300 flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Se déconnecter</span>
-              </button>
-            ) : (
-              <div />
-            )}
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-full text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3] cursor-pointer"
-              >
-                Annuler
-              </button>
-
-              <button
-                type="submit"
-                id="profile-save-submit-btn"
-                className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                Enregistrer mon profil
-              </button>
-            </div>
           </div>
         </form>
       </div>

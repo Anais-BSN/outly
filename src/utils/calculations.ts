@@ -139,7 +139,7 @@ export function calculateExpensesAndDebts(
         toUserName: creditor.name,
         toUserAvatar: creditor.avatar,
         amount: Math.round(settleAmount * 100) / 100,
-        status: existing ? existing.status : 'pending',
+        status: 'pending',
       });
     }
 

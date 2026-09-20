@@ -162,93 +162,81 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </button>
         </div>
 
-        {calculatedSettlements.length === 0 ? (
-          <div className="p-4 text-center bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-800 text-xs font-semibold text-[#27272A]/80 dark:text-zinc-300">
-            Tous les comptes sont parfaits ! Aucune dette en suspens.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {calculatedSettlements.map((settle) => {
-              const isSettled = settle.status === 'settled';
+        {(() => {
+          const activeSettlements = calculatedSettlements.filter((s) => s.status !== 'settled');
+          if (activeSettlements.length === 0) {
+            return (
+              <div className="p-4 text-center bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-800 text-xs font-semibold text-[#27272A]/80 dark:text-zinc-300">
+                Tous les comptes sont parfaits ! Aucune dette en suspens.
+              </div>
+            );
+          }
 
-              return (
-                <div
-                  key={settle.id}
-                  id={`debt-settlement-${settle.id}`}
-                  className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    isSettled
-                      ? 'bg-[#9FB2AC]/20 dark:bg-zinc-800/40 border-[#9FB2AC]/50 opacity-90'
-                      : 'bg-[#FFF9EB] dark:bg-[#18181B] border-[#C7B7A3]/60 dark:border-zinc-800'
-                  }`}
-                >
-                  {/* From -> To statement */}
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <img
-                      src={settle.fromUserAvatar}
-                      alt={settle.fromUserName}
-                      title={`${settle.fromUserName} (cliquer pour agrandir)`}
-                      onClick={() => {
-                        if (onViewAvatar && settle.fromUserAvatar) {
-                          onViewAvatar(settle.fromUserAvatar, settle.fromUserName);
-                        }
-                      }}
-                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
+          return (
+            <div className="space-y-2">
+              {activeSettlements.map((settle) => {
+                return (
+                  <div
+                    key={settle.id}
+                    id={`debt-settlement-${settle.id}`}
+                    className="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFF9EB] dark:bg-[#18181B] border-[#C7B7A3]/60 dark:border-zinc-800 shadow-xs"
+                  >
+                    {/* From -> To statement */}
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <img
+                        src={settle.fromUserAvatar}
+                        alt={settle.fromUserName}
+                        title={`${settle.fromUserName} (cliquer pour agrandir)`}
+                        onClick={() => {
+                          if (onViewAvatar && settle.fromUserAvatar) {
+                            onViewAvatar(settle.fromUserAvatar, settle.fromUserName);
+                          }
+                        }}
+                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
+                        referrerPolicy="no-referrer"
+                      />
 
-                    <div className="min-w-0 text-xs sm:text-sm">
-                      <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                        {settle.fromUserId === currentUser.id ? 'Tu dois' : `${settle.fromUserName} doit`}
-                      </span>{' '}
-                      <strong className="text-[#5D0D18] dark:text-amber-300 font-extrabold text-sm sm:text-base">
-                        {formatCurrency(settle.amount)}
-                      </strong>{' '}
-                      <span className="text-[#27272A] dark:text-[#FFF9EB]">
-                        à {settle.toUserId === currentUser.id ? 'toi' : settle.toUserName}
-                      </span>
+                      <div className="min-w-0 text-xs sm:text-sm">
+                        <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                          {settle.fromUserId === currentUser.id ? 'Tu dois' : `${settle.fromUserName} doit`}
+                        </span>{' '}
+                        <strong className="text-[#5D0D18] dark:text-amber-300 font-extrabold text-sm sm:text-base">
+                          {formatCurrency(settle.amount)}
+                        </strong>{' '}
+                        <span className="text-[#27272A] dark:text-[#FFF9EB]">
+                          à {settle.toUserId === currentUser.id ? 'toi' : settle.toUserName}
+                        </span>
+                      </div>
+
+                      <img
+                        src={settle.toUserAvatar}
+                        alt={settle.toUserName}
+                        title={`${settle.toUserName} (cliquer pour agrandir)`}
+                        onClick={() => {
+                          if (onViewAvatar && settle.toUserAvatar) {
+                            onViewAvatar(settle.toUserAvatar, settle.toUserName);
+                          }
+                        }}
+                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
+                        referrerPolicy="no-referrer"
+                      />
                     </div>
 
-                    <img
-                      src={settle.toUserAvatar}
-                      alt={settle.toUserName}
-                      title={`${settle.toUserName} (cliquer pour agrandir)`}
-                      onClick={() => {
-                        if (onViewAvatar && settle.toUserAvatar) {
-                          onViewAvatar(settle.toUserAvatar, settle.toUserName);
-                        }
-                      }}
-                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
+                    {/* Status Toggle Button */}
+                    <button
+                      id={`toggle-settle-btn-${settle.id}`}
+                      onClick={() => onToggleSettlementStatus(settle)}
+                      className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3] active:scale-95"
+                    >
+                      <Clock className="w-4 h-4" />
+                      <span>Marquer comme soldé</span>
+                    </button>
                   </div>
-
-                  {/* Status Toggle Button */}
-                  <button
-                    id={`toggle-settle-btn-${settle.id}`}
-                    onClick={() => onToggleSettlementStatus(settle)}
-                    className={`flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer ${
-                      isSettled
-                        ? 'bg-[#9FB2AC] text-[#18181B] ring-1 ring-[#9FB2AC]'
-                        : 'bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3]'
-                    }`}
-                  >
-                    {isSettled ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                        <span>Réglé</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-4 h-4" />
-                        <span>Marquer comme soldé</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Expenses History List */}

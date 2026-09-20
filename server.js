@@ -45,12 +45,8 @@ dotenv2.config();
 var apiKey = process.env.RESEND_API_KEY;
 var isConfigured = apiKey && apiKey.startsWith("re_") && !apiKey.includes("123456789") && !apiKey.includes("your_resend");
 var resend = isConfigured ? new Resend(apiKey) : null;
-function sanitizeUrl(rawUrl) {
-  if (!rawUrl) return "";
-  return rawUrl.replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/[\x00-\x1F\x7F]/g, "").trim();
-}
 function getCleanAppUrl() {
-  const rawUrl = sanitizeUrl(process.env.APP_URL || "https://outlys.fr");
+  const rawUrl = (process.env.APP_URL || "https://outlys.fr").trim();
   const withoutTrailingSlashes = rawUrl.replace(/\/+$/, "");
   if (!withoutTrailingSlashes.startsWith("http://") && !withoutTrailingSlashes.startsWith("https://")) {
     return `https://${withoutTrailingSlashes}`;
@@ -62,11 +58,11 @@ function buildAbsoluteEmailUrl(pathOrUrl) {
   if (!pathOrUrl || pathOrUrl.trim() === "") {
     return baseUrl;
   }
-  const clean = sanitizeUrl(pathOrUrl);
-  if (clean.startsWith("http://") || clean.startsWith("https://")) {
-    return clean;
+  const trimmed = pathOrUrl.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
   }
-  const cleanPath = clean.startsWith("/") ? clean : `/${clean}`;
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${baseUrl}${cleanPath}`;
 }
 var emailService = {
@@ -76,9 +72,9 @@ var emailService = {
    */
   async sendInvitation({ toEmail, senderName, groupName, inviteLink, token }) {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
-    const invitationUrl = inviteLink ? buildAbsoluteEmailUrl(inviteLink) : token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl();
+    const finalInviteLink = inviteLink ? buildAbsoluteEmailUrl(inviteLink) : token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl();
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -87,23 +83,19 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
-            <tr>
-              <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
-                <a href="${invitationUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
-                  ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
-                </a>
-              </td>
-            </tr>
-          </table>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${finalInviteLink}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
+              ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
+            </a>
+          </div>
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
         </p>
       </div>
     `;
     if (!resend) {
-      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 individuellement \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName} (Lien : ${invitationUrl})`);
+      console.log(`[Resend SIMULATION] Email d'invitation simul\xE9 envoy\xE9 individuellement \xE0 ${toEmail} pour "${groupName || "Amis"}" de la part de ${senderName} (Lien : ${finalInviteLink})`);
       return { success: true, simulated: true, id: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, toEmail };
     }
     try {
@@ -151,13 +143,11 @@ var emailService = {
       minute: "2-digit"
     });
     const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
-    const appUrl = getCleanAppUrl();
-    const formattedGpsUrl = gpsUrl ? gpsUrl.startsWith("http://") || gpsUrl.startsWith("https://") ? sanitizeUrl(gpsUrl) : buildAbsoluteEmailUrl(gpsUrl) : void 0;
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-          <p style="color: #6D2932; font-size: 14px; margin-top: 4px; margin-bottom: 0;">Rappel d'\xE9v\xE9nement</p>
+          <p style="color: #6D2932; font-size: 14px; margin-top: 4px;">Rappel d'\xE9v\xE9nement</p>
         </div>
         <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
           <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">C'est demain !</h2>
@@ -165,29 +155,15 @@ var emailService = {
             Votre sortie <strong>"${eventTitle}"</strong> d\xE9bute le <strong>${formattedDate}</strong>.
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
-          ${formattedGpsUrl ? `
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
-              <tr>
-                <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
-                  <a href="${formattedGpsUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
-                    Voir l'itin\xE9raire GPS
-                  </a>
-                </td>
-              </tr>
-            </table>
-          ` : `
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
-              <tr>
-                <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
-                  <a href="${appUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
-                    Voir les d\xE9tails sur Outlys
-                  </a>
-                </td>
-              </tr>
-            </table>
-          `}
+          ${gpsUrl ? `
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="${gpsUrl}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 10px 20px; border-radius: 9999px; font-weight: bold; font-size: 13px;">
+                Voir l'itin\xE9raire GPS
+              </a>
+            </div>
+          ` : ""}
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys. N'oubliez pas vos \xE9quipements et pr\xE9venez le groupe en cas d'impr\xE9vu.
         </p>
       </div>
@@ -216,7 +192,7 @@ var emailService = {
     const resetUrl = resetLink ? buildAbsoluteEmailUrl(resetLink) : token ? buildAbsoluteEmailUrl(`/reset-password?token=${token}`) : buildAbsoluteEmailUrl("/reset-password");
     const subject = "R\xE9initialisation de votre mot de passe - Outlys";
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -228,20 +204,16 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate; border-spacing: 0;">
-            <tr>
-              <td align="center" valign="middle" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; text-align: center;">
-                <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #6D2932; color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block; padding: 14px 32px; border-radius: 9999px; line-height: 100%; border: 1px solid #6D2932;">
-                  R\xE9initialiser mon mot de passe
-                </a>
-              </td>
-            </tr>
-          </table>
-          <p style="font-size: 12px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
+              R\xE9initialiser mon mot de passe
+            </a>
+          </div>
+          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
             Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9. Ce lien est valable pendant 1 heure.
           </p>
         </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
+        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
         </p>
       </div>

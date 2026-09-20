@@ -78,10 +78,16 @@ const MessageItem = React.memo<MessageItemProps>(({
   const isReadByEveryone =
     otherGroupMembers.length > 0 && readOtherMembers.length >= otherGroupMembers.length;
 
-  // Détection appui long sur smartphone (~500ms) avec maintien stable du menu
+  // Détection appui long sur smartphone avec maintien permanent de la barre (>2s ou relâchement)
+  const isTouchingRef = useRef(false);
+  const touchStartTimeRef = useRef(0);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchStartTimeRef.current = Date.now();
+    isTouchingRef.current = true;
+
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       setIsMenuOpen(true);
@@ -90,7 +96,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           navigator.vibrate(40);
         } catch (_) {}
       }
-    }, 480);
+    }, 450);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -98,7 +104,7 @@ const MessageItem = React.memo<MessageItemProps>(({
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - touchStartPos.current.x);
     const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-    if (dx > 10 || dy > 10) {
+    if (dx > 12 || dy > 12) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
@@ -109,10 +115,29 @@ const MessageItem = React.memo<MessageItemProps>(({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    // Si l'utilisateur a maintenu son appui plus de 450ms (même 2s ou plus), le menu reste ouvert
+    const elapsed = Date.now() - touchStartTimeRef.current;
+    if (elapsed >= 450) {
+      setIsMenuOpen(true);
+    }
     touchStartPos.current = null;
+    isTouchingRef.current = false;
   };
 
-  // Fermeture automatique au clic / tap en dehors de la barre d'action
+  const handleTouchCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    const elapsed = Date.now() - touchStartTimeRef.current;
+    if (elapsed >= 450) {
+      setIsMenuOpen(true);
+    }
+    touchStartPos.current = null;
+    isTouchingRef.current = false;
+  };
+
+  // Fermeture au clic / tap strictement en dehors de la barre d'action
   useEffect(() => {
     if (!isMenuOpen && !isPickerOpen) return;
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
@@ -121,8 +146,13 @@ const MessageItem = React.memo<MessageItemProps>(({
         setIsPickerOpen(false);
       }
     };
-    document.addEventListener('pointerdown', handleOutsideClick);
+    // Écouter pointerdown pour fermer au clic en dehors
+    const timer = setTimeout(() => {
+      document.addEventListener('pointerdown', handleOutsideClick);
+    }, 50);
+
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('pointerdown', handleOutsideClick);
     };
   }, [isMenuOpen, isPickerOpen]);
@@ -213,10 +243,11 @@ const MessageItem = React.memo<MessageItemProps>(({
 
       {/* Conteneur principal de la bulle (w-fit pour épouser strictement le texte du message) */}
       <div
-        className="relative w-fit max-w-[85%] sm:max-w-md"
+        className="relative w-fit max-w-[85%] sm:max-w-md select-none touch-manipulation"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onContextMenu={(e) => {
           e.preventDefault();
           setIsMenuOpen((prev) => !prev);
@@ -398,7 +429,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             )
           )}
 
-          {/* Badges de réactions avec fort contraste */}
+          {/* Badges de réactions avec fort contraste et bordeaux sombre en mode sombre */}
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2 pt-1 border-t border-black/10 dark:border-white/10">
               {message.reactions.map((r, i) => {
@@ -411,10 +442,10 @@ const MessageItem = React.memo<MessageItemProps>(({
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer ${
                       isMe
                         ? hasReacted
-                          ? 'bg-[#FFF9EB] text-[#5D0D18] ring-1 ring-amber-400 font-extrabold shadow-xs'
-                          : 'bg-black/30 text-[#FFF9EB] hover:bg-black/45 border border-white/20 font-semibold'
+                          ? 'bg-[#FFF9EB] text-[#5D0D18] dark:bg-[#450912] dark:text-[#FFF9EB] dark:border dark:border-[#5D0D18] dark:ring-1 dark:ring-[#5D0D18] font-bold shadow-xs'
+                          : 'bg-[#450912]/30 text-[#FFF9EB] hover:bg-[#450912]/50 dark:bg-[#35070E] dark:text-[#FFF9EB] border border-white/20 dark:border-[#5D0D18]/60 font-semibold'
                         : hasReacted
-                        ? 'bg-[#5D0D18] text-[#FFF9EB] dark:bg-amber-400 dark:text-zinc-950 font-bold shadow-xs'
+                        ? 'bg-[#5D0D18] text-[#FFF9EB] dark:bg-[#450912] dark:text-[#FFF9EB] dark:border dark:border-[#5D0D18] font-bold shadow-xs'
                         : 'bg-[#FFF9EB] text-[#27272A] dark:bg-zinc-800 dark:text-zinc-200 hover:bg-[#E8D8C4] border border-[#C7B7A3]/60 dark:border-zinc-700 font-semibold'
                     }`}
                   >
