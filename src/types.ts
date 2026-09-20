@@ -165,11 +165,18 @@ export interface DebtSettlement {
   fromUserId: string;
   fromUserName: string;
   fromUserAvatar: string;
+  fromUserFirstName?: string;
+  fromUserLastName?: string;
   toUserId: string;
   toUserName: string;
   toUserAvatar: string;
+  toUserFirstName?: string;
+  toUserLastName?: string;
   amount: number;
   status: 'pending' | 'settled';
+  settledAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type NotificationType = 'reminder' | 'invite' | 'chat' | 'expense' | 'poll' | 'task' | 'rsvp';

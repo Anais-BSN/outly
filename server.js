@@ -83,11 +83,15 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${invitationUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
-              ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                <a href="${invitationUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                  ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
           Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
@@ -158,17 +162,25 @@ var emailService = {
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
           ${formattedGpsUrl ? `
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${formattedGpsUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
-                Voir l'itin\xE9raire GPS
-              </a>
-            </div>
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+              <tr>
+                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                  <a href="${formattedGpsUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                    Voir l'itin\xE9raire GPS
+                  </a>
+                </td>
+              </tr>
+            </table>
           ` : `
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${appUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
-                Voir les d\xE9tails sur Outlys
-              </a>
-            </div>
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+              <tr>
+                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                  <a href="${appUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                    Voir les d\xE9tails sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
           `}
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
@@ -212,11 +224,15 @@ var emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
-              R\xE9initialiser mon mot de passe
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                <a href="${resetUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                  R\xE9initialiser mon mot de passe
+                </a>
+              </td>
+            </tr>
+          </table>
           <p style="font-size: 12px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
             Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9. Ce lien est valable pendant 1 heure.
           </p>
@@ -1692,6 +1708,34 @@ apiRouter.post("/messages/:id/react", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+apiRouter.post("/groups/:groupId/messages/read", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId = "user-me" } = req.body;
+    if (!groupId || !userId) {
+      return res.status(400).json({ error: "groupId and userId are required" });
+    }
+    await query(
+      `UPDATE chat_messages
+       SET read_by = CASE
+         WHEN read_by IS NULL OR jsonb_typeof(read_by) != 'array' THEN jsonb_build_array($1::text)
+         WHEN NOT (read_by ? $1) THEN read_by || jsonb_build_array($1::text)
+         ELSE read_by
+       END
+       WHERE group_id = $2 AND (read_by IS NULL OR NOT (read_by ? $1))`,
+      [userId, groupId]
+    );
+    realtimeBroadcaster.broadcast({
+      type: "message:read",
+      groupId,
+      data: { groupId, userId }
+    });
+    res.json({ success: true, groupId, userId });
+  } catch (err) {
+    console.error("Error in POST /groups/:groupId/messages/read:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 apiRouter.get("/polls", async (req, res) => {
   try {
     const groupId = req.query.groupId;
@@ -2291,17 +2335,27 @@ apiRouter.get("/settlements", async (req, res) => {
   try {
     const groupId = req.query.groupId;
     let sql = `
-      SELECT id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
-             amount::float as amount, status, settled_at as "settledAt",
-             created_at as "createdAt", updated_at as "updatedAt"
-      FROM debt_settlements
+      SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+             s.amount::float as amount, s.status, s.settled_at as "settledAt",
+             s.created_at as "createdAt", s.updated_at as "updatedAt",
+             COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
+             COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
+             COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+             COALESCE(u1.avatar, '') as "fromUserAvatar",
+             COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
+             COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
+             COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+             COALESCE(u2.avatar, '') as "toUserAvatar"
+      FROM debt_settlements s
+      LEFT JOIN users u1 ON s.from_user_id = u1.id
+      LEFT JOIN users u2 ON s.to_user_id = u2.id
     `;
     const params = [];
     if (groupId) {
-      sql += ` WHERE group_id = $1`;
+      sql += ` WHERE s.group_id = $1`;
       params.push(groupId);
     }
-    sql += ` ORDER BY updated_at DESC`;
+    sql += ` ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`;
     const result = await query(sql, params);
     res.json(result.rows);
   } catch (err) {
@@ -2324,20 +2378,35 @@ apiRouter.post("/settlements/toggle", async (req, res) => {
     const settlementId = `settle-${groupId}-${fromUserId}-${toUserId}`;
     const newStatus = status;
     const settledAt = newStatus === "settled" ? (/* @__PURE__ */ new Date()).toISOString() : null;
-    const result = await query(
+    await query(
       `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (id) DO UPDATE SET
          status = EXCLUDED.status,
          settled_at = EXCLUDED.settled_at,
          amount = EXCLUDED.amount,
-         updated_at = NOW()
-       RETURNING id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
-                 amount::float as amount, status, settled_at as "settledAt",
-                 created_at as "createdAt", updated_at as "updatedAt"`,
+         updated_at = NOW()`,
       [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
     );
-    const settlement = result.rows[0];
+    const fullResult = await query(
+      `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+              s.amount::float as amount, s.status, s.settled_at as "settledAt",
+              s.created_at as "createdAt", s.updated_at as "updatedAt",
+              COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
+              COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+              COALESCE(u1.avatar, '') as "fromUserAvatar",
+              COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
+              COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+              COALESCE(u2.avatar, '') as "toUserAvatar"
+       FROM debt_settlements s
+       LEFT JOIN users u1 ON s.from_user_id = u1.id
+       LEFT JOIN users u2 ON s.to_user_id = u2.id
+       WHERE s.id = $1`,
+      [settlementId]
+    );
+    const settlement = fullResult.rows[0];
     realtimeBroadcaster.broadcast({
       type: "settlement:updated",
       groupId,

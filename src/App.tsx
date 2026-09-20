@@ -301,6 +301,21 @@ export default function App() {
             )
           );
           break;
+        case 'message:read':
+          if (event.data?.groupId && event.data?.userId) {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.groupId === event.data.groupId) {
+                  const currentReadBy = m.readBy || [];
+                  if (!currentReadBy.includes(event.data.userId)) {
+                    return { ...m, readBy: [...currentReadBy, event.data.userId] };
+                  }
+                }
+                return m;
+              })
+            );
+          }
+          break;
         case 'notification:created':
           setNotifications((prev) => {
             const exists = prev.some((n) => n.id === event.data?.id);
@@ -637,14 +652,45 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-  const groupEvents = events.filter((e) => e.groupId === activeGroupId);
+  const groupEvents = useMemo(() => {
+    const seen = new Set<string>();
+    return events.filter((e) => {
+      if (e.groupId !== activeGroupId) return false;
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+  }, [events, activeGroupId]);
+
   const groupMessages = messages.filter((m) => m.groupId === activeGroupId);
   const groupPolls = polls.filter((p) => p.groupId === activeGroupId);
   const groupGallery = galleryItems.filter((item) => item.groupId === activeGroupId);
   const groupTasks = tasks.filter((t) => t.groupId === activeGroupId);
   const groupExpenses = expenses.filter((exp) => exp.groupId === activeGroupId);
 
+  const unreadMessagesCount = groupMessages.filter(
+    (m) =>
+      !m.isSystem &&
+      m.senderId !== currentUser?.id &&
+      (!m.readBy || !m.readBy.includes(currentUser?.id || 'user-me'))
+  ).length;
+
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
+
+  // Marquer automatiquement les messages comme lus dès qu'on consulte l'onglet Discussion
+  useEffect(() => {
+    if (activeTab === 'discussion' && activeGroupId && currentUser?.id && unreadMessagesCount > 0) {
+      api.markGroupMessagesAsRead(activeGroupId, currentUser.id).catch(() => {});
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.groupId === activeGroupId && (!m.readBy || !m.readBy.includes(currentUser.id))) {
+            return { ...m, readBy: [...(m.readBy || []), currentUser.id] };
+          }
+          return m;
+        })
+      );
+    }
+  }, [activeTab, activeGroupId, currentUser?.id, unreadMessagesCount]);
 
   // Handlers: Auth
   const handleAuthSuccess = (user: UserProfile) => {
@@ -923,7 +969,10 @@ export default function App() {
 
     try {
       const createdEvent = await api.createEvent(newEventData);
-      setEvents((prev) => [createdEvent, ...prev]);
+      setEvents((prev) => {
+        if (prev.some((e) => e.id === createdEvent.id)) return prev;
+        return [createdEvent, ...prev];
+      });
 
       // 3. Single conversion & immediate deletion/archive from PostgreSQL
       await api.deletePoll(poll.id);
@@ -1287,7 +1336,10 @@ export default function App() {
           groupId: activeGroupId,
           organizerId: currentUser.id,
         });
-        setEvents((prev) => [newEvent, ...prev]);
+        setEvents((prev) => {
+          if (prev.some((e) => e.id === newEvent.id)) return prev;
+          return [newEvent, ...prev];
+        });
         handleSendMessage(
           `Nouvel événement programmé : "${newEvent.title}" pour le ${new Date(newEvent.startDateTime).toLocaleDateString('fr-FR')}.`
         );
@@ -1498,7 +1550,7 @@ export default function App() {
 
   const tabBadges = {
     agenda: groupEvents.length,
-    discussion: 0,
+    discussion: unreadMessagesCount,
     sondages: groupPolls.length,
     logistique: groupTasks.filter((t) => !t.completed).length,
     partage_frais: 0,

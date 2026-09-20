@@ -10,11 +10,13 @@ import {
   Scale,
   Users,
   Wallet,
-  Sparkles
+  Sparkles,
+  History
 } from 'lucide-react';
 import { Expense, UserProfile, GroupMember, DebtSettlement } from '../../types';
 import { calculateExpensesAndDebts } from '../../utils/calculations';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
+import { DebtHistoryModal } from '../modals/DebtHistoryModal';
 
 interface PartageFraisTabProps {
   expenses?: Expense[];
@@ -35,6 +37,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   onToggleSettlementStatus,
   onViewAvatar,
 }) => {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const safeExpenses = expenses || [];
   const safeMembers = members || [];
   const safeSettlements = settlements || [];
@@ -138,11 +141,22 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
       {/* Simplified Debts Matrix Section */}
       <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs space-y-3">
-        <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-          <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
-            Équilibrage des dettes
-          </h4>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scale className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+            <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+              Équilibrage des dettes
+            </h4>
+          </div>
+
+          <button
+            id="frais-btn-history"
+            onClick={() => setIsHistoryOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Historique</span>
+          </button>
         </div>
 
         {calculatedSettlements.length === 0 ? (
@@ -313,6 +327,16 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal Historique des dettes & remboursements */}
+      <DebtHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        settlements={safeSettlements}
+        members={safeMembers}
+        currentUser={currentUser}
+        onViewAvatar={onViewAvatar}
+      />
     </div>
   );
 };

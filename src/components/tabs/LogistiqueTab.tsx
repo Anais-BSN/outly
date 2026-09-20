@@ -167,7 +167,7 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                    {task.title} {task.quantity && task.quantity !== '1' && `(${task.quantity})`}
+                    {task.title} {task.quantity ? `(${task.quantity})` : ''}
                   </div>
                   <div className="flex items-center gap-2 text-[10px] opacity-75 font-semibold text-[#6D2932] dark:text-zinc-400 mt-0.5 flex-wrap">
                     <span className="uppercase tracking-widest">{task.category}</span>
@@ -183,31 +183,7 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
               {/* Action, Assignee Badge & Direct Delete Trash Icon */}
               <div className="shrink-0 flex items-center gap-2">
-                {task.completed ? (
-                  <div className="flex flex-col items-end">
-                    {task.assignedToAvatar ? (
-                      <img
-                        src={task.assignedToAvatar}
-                        alt={task.assignedToName || 'Assigné'}
-                        title={`${task.assignedToName || 'Assigné'} (cliquer pour agrandir)`}
-                        onClick={() => {
-                          if (onViewAvatar && task.assignedToAvatar) {
-                            onViewAvatar(task.assignedToAvatar, task.assignedToName || 'Membre');
-                          }
-                        }}
-                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#6D2932] shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-[#9FB2AC] flex items-center justify-center text-[10px] text-white font-bold shadow-sm">
-                        ✓
-                      </div>
-                    )}
-                    <span className="text-[9px] font-bold text-[#6D2932] dark:text-zinc-400 mt-0.5">
-                      Fait
-                    </span>
-                  </div>
-                ) : task.assignedToId ? (
+                {task.completed ? null : task.assignedToId ? (
                   <div className="flex items-center gap-1.5">
                     <div className="flex items-center gap-1.5 bg-[#FFF9EB] dark:bg-zinc-900 px-2.5 py-1 rounded-full border border-[#C7B7A3] dark:border-zinc-700 shadow-xs">
                       <img
@@ -277,7 +253,7 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
             className="flex items-center gap-2 text-xs font-bold opacity-70 hover:opacity-100 text-[#6D2932] dark:text-[#FFF9EB] transition-opacity cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Ajouter une tâche / objet</span>
+            <span>Ajouter une tâche</span>
           </button>
         </div>
       </div>

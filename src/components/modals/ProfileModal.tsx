@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  Pencil
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { CARTOON_AVATARS } from '../../constants/avatars';
@@ -70,6 +71,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Field-specific inline editing states
+  const [isEditingFirstName, setIsEditingFirstName] = useState(false);
+  const [isEditingLastName, setIsEditingLastName] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setFirstName(currentUser?.firstName || 'Thomas');
@@ -83,6 +89,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       const savedTheme = localStorage.getItem('outly_theme') as 'light' | 'dark' | null;
       const effectiveTheme = savedTheme || currentUser?.themePreference || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       setThemePreference(effectiveTheme);
+      setIsEditingFirstName(false);
+      setIsEditingLastName(false);
+      setIsEditingEmail(false);
     }
   }, [isOpen, currentUser]);
 
@@ -99,24 +108,130 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-save on Avatar Selection
+  const handleSelectAvatar = (newAvatarUrl: string) => {
+    setAvatar(newAvatarUrl);
+    onSaveProfile({
+      ...currentUser,
+      firstName: firstName.trim() || currentUser.firstName,
+      lastName: lastName.trim() || currentUser.lastName,
+      email: email.trim() || currentUser.email,
+      avatar: newAvatarUrl,
+      shares,
+      themePreference,
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
         const compressed = await compressImage(file, 400, 400, 0.85);
-        setAvatar(compressed);
+        handleSelectAvatar(compressed);
       } catch (err) {
         console.error('Erreur compression avatar:', err);
       }
     }
   };
 
+  // Auto-save on Theme Toggle
+  const handleThemeToggle = (newTheme: 'light' | 'dark') => {
+    setThemePreference(newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+    localStorage.setItem('outly_theme', newTheme);
+    onSaveProfile({
+      ...currentUser,
+      firstName: firstName.trim() || currentUser.firstName,
+      lastName: lastName.trim() || currentUser.lastName,
+      email: email.trim() || currentUser.email,
+      avatar,
+      shares,
+      themePreference: newTheme,
+    });
+  };
+
+  // Coordinate Inline Save Handlers
+  const handleSaveFirstName = () => {
+    const finalVal = firstName.trim() || currentUser.firstName || 'Prénom';
+    setFirstName(finalVal);
+    setIsEditingFirstName(false);
+    onSaveProfile({
+      ...currentUser,
+      firstName: finalVal,
+      lastName: lastName.trim() || currentUser.lastName,
+      email: email.trim() || currentUser.email,
+      avatar,
+      shares,
+      themePreference,
+    });
+  };
+
+  const handleSaveLastName = () => {
+    const finalVal = lastName.trim() || currentUser.lastName || 'Nom';
+    setLastName(finalVal);
+    setIsEditingLastName(false);
+    onSaveProfile({
+      ...currentUser,
+      firstName: firstName.trim() || currentUser.firstName,
+      lastName: finalVal,
+      email: email.trim() || currentUser.email,
+      avatar,
+      shares,
+      themePreference,
+    });
+  };
+
+  const handleSaveEmail = () => {
+    const finalVal = email.trim() || currentUser.email;
+    setEmail(finalVal);
+    setIsEditingEmail(false);
+    onSaveProfile({
+      ...currentUser,
+      firstName: firstName.trim() || currentUser.firstName,
+      lastName: lastName.trim() || currentUser.lastName,
+      email: finalVal,
+      avatar,
+      shares,
+      themePreference,
+    });
+  };
+
   const incrementShares = () => {
-    if (shares < 20) setShares(shares + 1);
+    if (shares < 20) {
+      const newShares = shares + 1;
+      setShares(newShares);
+      onSaveProfile({
+        ...currentUser,
+        firstName: firstName.trim() || currentUser.firstName,
+        lastName: lastName.trim() || currentUser.lastName,
+        email: email.trim() || currentUser.email,
+        avatar,
+        shares: newShares,
+        themePreference,
+      });
+    }
   };
 
   const decrementShares = () => {
-    if (shares > 1) setShares(shares - 1);
+    if (shares > 1) {
+      const newShares = shares - 1;
+      setShares(newShares);
+      onSaveProfile({
+        ...currentUser,
+        firstName: firstName.trim() || currentUser.firstName,
+        lastName: lastName.trim() || currentUser.lastName,
+        email: email.trim() || currentUser.email,
+        avatar,
+        shares: newShares,
+        themePreference,
+      });
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -150,8 +265,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     e.preventDefault();
     onSaveProfile({
       ...currentUser,
-      firstName: firstName.trim() || 'Prénom',
-      lastName: lastName.trim() || 'Nom',
+      firstName: firstName.trim() || currentUser.firstName || 'Prénom',
+      lastName: lastName.trim() || currentUser.lastName || 'Nom',
       email: email.trim() || currentUser.email,
       avatar,
       shares,
@@ -217,7 +332,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         : 'bg-[#FFF9EB] dark:bg-zinc-700 text-[#27272A] dark:text-zinc-300'
                     }`}
                   >
-                    Galerie animaux
+                    Avatar
                   </button>
 
                   <button
@@ -254,7 +369,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setAvatar(item.url)}
+                    onClick={() => handleSelectAvatar(item.url)}
                     className={`relative p-1 rounded-xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                       avatar === item.url
                         ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] ring-2 ring-[#5D0D18]'
@@ -278,73 +393,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 ))}
               </div>
             )}
-          </div>
-
-          {/* First & Last name */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Prénom
-              </label>
-              <input
-                type="text"
-                id="profile-firstname-input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Nom
-              </label>
-              <input
-                type="text"
-                id="profile-lastname-input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-              />
-            </div>
-          </div>
-
-          {/* Email + Fixed @pseudo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                E-mail
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  id="profile-email-input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-                />
-                <Mail className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Pseudo
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={currentUser.handle}
-                  disabled
-                  title="Le @pseudo unique est attribué à la création"
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-900 border border-[#C7B7A3]/40 dark:border-zinc-800 text-xs sm:text-sm text-[#5D0D18] dark:text-amber-200 font-bold cursor-not-allowed"
-                />
-                <AtSign className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
-              </div>
-            </div>
           </div>
 
           {/* Shares Adjustment (Ajustement des parts de 1 à 20 via des boutons + et -) */}
@@ -391,7 +439,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           </div>
 
-          {/* Theme Selector (Strict Dark/Light Mode) */}
+          {/* Theme Selector (Strict Dark/Light Mode avec auto-save et contraste survol parfait) */}
           <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] block">
@@ -403,16 +451,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 id="profile-theme-light-btn"
-                onClick={() => {
-                  setThemePreference('light');
-                  document.documentElement.classList.remove('dark');
-                  document.body.classList.remove('dark');
-                  localStorage.setItem('outly_theme', 'light');
-                }}
+                onClick={() => handleThemeToggle('light')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   themePreference === 'light'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]/50'
+                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#5D0D18] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
@@ -422,16 +465,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 id="profile-theme-dark-btn"
-                onClick={() => {
-                  setThemePreference('dark');
-                  document.documentElement.classList.add('dark');
-                  document.body.classList.add('dark');
-                  localStorage.setItem('outly_theme', 'dark');
-                }}
+                onClick={() => handleThemeToggle('dark')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   themePreference === 'dark'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:bg-zinc-800'
+                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#5D0D18] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
@@ -566,10 +604,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 {availableUsers.length} compte{availableUsers.length > 1 ? 's' : ''}
               </span>
             </div>
-
-            <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-              Seuls les comptes déjà connectés avec succès avec leur mot de passe sur ce navigateur sont mémorisés ici.
-            </p>
 
             <div className="space-y-2">
               {availableUsers.map((u) => {

@@ -1729,6 +1729,40 @@ apiRouter.post('/messages/:id/react', async (req: Request, res: Response) => {
   }
 });
 
+// Marquer tous les messages d'un groupe comme lus pour un utilisateur
+apiRouter.post('/groups/:groupId/messages/read', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { userId = 'user-me' } = req.body;
+
+    if (!groupId || !userId) {
+      return res.status(400).json({ error: 'groupId and userId are required' });
+    }
+
+    await query(
+      `UPDATE chat_messages
+       SET read_by = CASE
+         WHEN read_by IS NULL OR jsonb_typeof(read_by) != 'array' THEN jsonb_build_array($1::text)
+         WHEN NOT (read_by ? $1) THEN read_by || jsonb_build_array($1::text)
+         ELSE read_by
+       END
+       WHERE group_id = $2 AND (read_by IS NULL OR NOT (read_by ? $1))`,
+      [userId, groupId]
+    );
+
+    realtimeBroadcaster.broadcast({
+      type: 'message:read',
+      groupId,
+      data: { groupId, userId },
+    });
+
+    res.json({ success: true, groupId, userId });
+  } catch (err: any) {
+    console.error('Error in POST /groups/:groupId/messages/read:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 7. SONDAGES & VOTES
 // ==========================================
@@ -2437,17 +2471,27 @@ apiRouter.get('/settlements', async (req: Request, res: Response) => {
   try {
     const groupId = req.query.groupId as string | undefined;
     let sql = `
-      SELECT id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
-             amount::float as amount, status, settled_at as "settledAt",
-             created_at as "createdAt", updated_at as "updatedAt"
-      FROM debt_settlements
+      SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+             s.amount::float as amount, s.status, s.settled_at as "settledAt",
+             s.created_at as "createdAt", s.updated_at as "updatedAt",
+             COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
+             COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
+             COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+             COALESCE(u1.avatar, '') as "fromUserAvatar",
+             COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
+             COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
+             COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+             COALESCE(u2.avatar, '') as "toUserAvatar"
+      FROM debt_settlements s
+      LEFT JOIN users u1 ON s.from_user_id = u1.id
+      LEFT JOIN users u2 ON s.to_user_id = u2.id
     `;
     const params: any[] = [];
     if (groupId) {
-      sql += ` WHERE group_id = $1`;
+      sql += ` WHERE s.group_id = $1`;
       params.push(groupId);
     }
-    sql += ` ORDER BY updated_at DESC`;
+    sql += ` ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`;
 
     const result = await query(sql, params);
     res.json(result.rows);
@@ -2475,21 +2519,37 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
     const newStatus = status;
     const settledAt = newStatus === 'settled' ? new Date().toISOString() : null;
 
-    const result = await query(
+    await query(
       `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (id) DO UPDATE SET
          status = EXCLUDED.status,
          settled_at = EXCLUDED.settled_at,
          amount = EXCLUDED.amount,
-         updated_at = NOW()
-       RETURNING id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
-                 amount::float as amount, status, settled_at as "settledAt",
-                 created_at as "createdAt", updated_at as "updatedAt"`,
+         updated_at = NOW()`,
       [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
     );
 
-    const settlement = result.rows[0];
+    const fullResult = await query(
+      `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+              s.amount::float as amount, s.status, s.settled_at as "settledAt",
+              s.created_at as "createdAt", s.updated_at as "updatedAt",
+              COALESCE(u1.first_name, split_part(u1.name, ' ', 1), 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, split_part(u1.name, ' ', 2), '') as "fromUserLastName",
+              COALESCE(u1.name, concat(u1.first_name, ' ', u1.last_name), 'Membre') as "fromUserName",
+              COALESCE(u1.avatar, '') as "fromUserAvatar",
+              COALESCE(u2.first_name, split_part(u2.name, ' ', 1), 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, split_part(u2.name, ' ', 2), '') as "toUserLastName",
+              COALESCE(u2.name, concat(u2.first_name, ' ', u2.last_name), 'Membre') as "toUserName",
+              COALESCE(u2.avatar, '') as "toUserAvatar"
+       FROM debt_settlements s
+       LEFT JOIN users u1 ON s.from_user_id = u1.id
+       LEFT JOIN users u2 ON s.to_user_id = u2.id
+       WHERE s.id = $1`,
+      [settlementId]
+    );
+
+    const settlement = fullResult.rows[0];
 
     realtimeBroadcaster.broadcast({
       type: 'settlement:updated',

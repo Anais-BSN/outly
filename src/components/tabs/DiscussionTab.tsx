@@ -61,9 +61,20 @@ const MessageItem = React.memo<MessageItemProps>(({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isMe = message.senderId === currentUser.id;
-  const otherReaders = (message.readBy || []).filter(
-    (id) => id !== currentUser.id && id !== message.senderId
+
+  // Tous les autres membres du groupe en dehors de l'expéditeur
+  const otherGroupMembers = members.filter(
+    (m) => (m.userId || m.id) !== message.senderId
   );
+
+  // Les autres membres qui ont lu ce message
+  const readOtherMembers = otherGroupMembers.filter((m) => {
+    const mId = m.userId || m.id;
+    return (message.readBy || []).includes(mId);
+  });
+
+  const isReadByEveryone =
+    otherGroupMembers.length > 0 && readOtherMembers.length >= otherGroupMembers.length;
 
   const handleTouchStart = () => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -379,15 +390,16 @@ const MessageItem = React.memo<MessageItemProps>(({
           )}
         </div>
 
-        {/* Accusé de lecture discret : uniquement si des tiers l'ont vu (exclut "vu par moi") */}
-        {isMe && otherReaders.length > 0 && (
-          <div className="flex items-center justify-end gap-1 mt-0.5 px-1 text-[9px] text-[#27272A]/50 dark:text-zinc-500">
+        {/* Accusé de lecture intelligent : uniquement sous les messages envoyés si des tiers l'ont vu */}
+        {isMe && readOtherMembers.length > 0 && (
+          <div className="flex items-center justify-end gap-1 mt-0.5 px-1 text-[9px] text-[#27272A]/60 dark:text-zinc-400 font-medium">
             <CheckCheck className="w-3 h-3 text-[#9FB2AC]" />
             <span>
-              Vu par{' '}
-              {otherReaders
-                .map((id) => members.find((m) => m.id === id || m.userId === id)?.firstName || 'Un ami')
-                .join(', ')}
+              {isReadByEveryone
+                ? 'Vu par tout le monde'
+                : `Vu par ${readOtherMembers
+                    .map((m) => m.firstName || m.name.split(' ')[0] || 'Un membre')
+                    .join(', ')}`}
             </span>
           </div>
         )}

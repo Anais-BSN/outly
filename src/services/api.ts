@@ -298,6 +298,13 @@ export const api = {
     });
   },
 
+  async markGroupMessagesAsRead(groupId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/groups/${encodeURIComponent(groupId)}/messages/read`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  },
+
   // 7. Sondages & Votes
   async getPolls(groupId?: string): Promise<Poll[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';

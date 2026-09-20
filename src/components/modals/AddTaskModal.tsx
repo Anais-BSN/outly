@@ -32,7 +32,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   if (!isOpen) return null;
 
   const [title, setTitle] = useState('');
-  const [quantity, setQuantity] = useState('1');
+  const [quantity, setQuantity] = useState('');
   const [category, setCategory] = useState<TaskCategory>('Matériel');
   const [assignedToId, setAssignedToId] = useState<string>('');
 
@@ -45,7 +45,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     onAddTask({
       groupId,
       title: title.trim(),
-      quantity: quantity.trim() || '1',
+      quantity: quantity.trim(),
       category,
       completed: false,
       assignedToId: assignedToId || undefined,
@@ -74,7 +74,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <div className="flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-display">
-              Ajouter un objet ou une mission
+              Ajouter une tâche
             </h3>
           </div>
           <button
@@ -177,7 +177,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               disabled={!title.trim()}
               className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 transition-all shadow-md active:scale-95"
             >
-              Ajouter l'élément
+              Ajouter une tâche
             </button>
           </div>
         </form>

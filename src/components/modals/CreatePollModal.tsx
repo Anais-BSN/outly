@@ -314,11 +314,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
                   type === 'date'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
-                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 hover:bg-[#E8D8C4]'
+                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <div className="font-bold text-xs text-center">
-                  Sondage de dates
+                  Sondage de date
                 </div>
               </button>
 
@@ -329,11 +329,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
                   type === 'choice'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
-                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 hover:bg-[#E8D8C4]'
+                    : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <div className="font-bold text-xs text-center">
-                  Sondage autres
+                  Autres sondages
                 </div>
               </button>
             </div>

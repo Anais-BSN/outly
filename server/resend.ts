@@ -84,11 +84,15 @@ export const emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             ${groupName ? `Vous avez été invité(e) à rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${invitationUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
-              ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                <a href="${invitationUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                  ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
           Cet e-mail a été envoyé automatiquement par Outlys.
@@ -169,17 +173,25 @@ export const emailService = {
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ''}
           ${formattedGpsUrl ? `
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${formattedGpsUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
-                Voir l'itinéraire GPS
-              </a>
-            </div>
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+              <tr>
+                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                  <a href="${formattedGpsUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                    Voir l'itinéraire GPS
+                  </a>
+                </td>
+              </tr>
+            </table>
           ` : `
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${appUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
-                Voir les détails sur Outlys
-              </a>
-            </div>
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+              <tr>
+                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                  <a href="${appUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 13px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                    Voir les détails sur Outlys
+                  </a>
+                </td>
+              </tr>
+            </table>
           `}
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
@@ -229,11 +241,15 @@ export const emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
-              Réinitialiser mon mot de passe
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px; padding: 12px 28px;">
+                <a href="${resetUrl}" target="_blank" style="color: #FFF9EB; text-decoration: none; font-weight: bold; font-size: 14px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: inline-block;">
+                  Réinitialiser mon mot de passe
+                </a>
+              </td>
+            </tr>
+          </table>
           <p style="font-size: 12px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
             Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité. Ce lien est valable pendant 1 heure.
           </p>
