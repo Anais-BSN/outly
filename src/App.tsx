@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { SidebarDrawer } from './components/SidebarDrawer';
 import { GroupBanner } from './components/GroupBanner';
