@@ -83,11 +83,15 @@ export const emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             ${groupName ? `Vous avez été invité(e) à rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${finalInviteLink}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
-              ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
+                <a href="${finalInviteLink}" target="_blank" style="display: block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                  ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
           Cet e-mail a été envoyé automatiquement par Outlys.
@@ -166,11 +170,15 @@ export const emailService = {
           </p>
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ''}
           ${gpsUrl ? `
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${gpsUrl}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 10px 20px; border-radius: 9999px; font-weight: bold; font-size: 13px;">
-                Voir l'itinéraire GPS
-              </a>
-            </div>
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 20px auto; border-collapse: separate;">
+              <tr>
+                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
+                  <a href="${gpsUrl}" target="_blank" style="display: block; padding: 10px 22px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 13px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                    Voir l'itinéraire GPS
+                  </a>
+                </td>
+              </tr>
+            </table>
           ` : ''}
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
@@ -220,11 +228,15 @@ export const emailService = {
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
             Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 14px;">
-              Réinitialiser mon mot de passe
-            </a>
-          </div>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
+            <tr>
+              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
+                <a href="${resetUrl}" target="_blank" style="display: block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                  Réinitialiser mon mot de passe
+                </a>
+              </td>
+            </tr>
+          </table>
           <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
             Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité. Ce lien est valable pendant 1 heure.
           </p>

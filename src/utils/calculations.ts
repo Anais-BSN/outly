@@ -28,30 +28,66 @@ export function calculateExpensesAndDebts(
   const safeExpenses = expenses || [];
   const safeSettlements = settlementsOverride || [];
 
-  safeMembers.forEach(m => {
-    if (!m) return;
-    const memberId = m.id || m.userId || '';
-    if (!memberId) return;
-    userBalances[memberId] = {
-      userId: memberId,
-      userName: m.firstName || m.name || 'Membre',
-      userAvatar: m.avatar || '',
+  // Helper pour trouver ou créer une balance utilisateur de manière robuste
+  const getOrCreateBalance = (userKey?: string, fallbackName?: string, fallbackAvatar?: string): DebtBalance | null => {
+    if (!userKey) return null;
+    if (userBalances[userKey]) return userBalances[userKey];
+
+    // Recherche par userId existant
+    const existing = Object.values(userBalances).find(b => b.userId === userKey);
+    if (existing) {
+      userBalances[userKey] = existing;
+      return existing;
+    }
+
+    const member = safeMembers.find(m => m && (m.id === userKey || m.userId === userKey));
+    const finalUserId = member?.userId || member?.id || userKey;
+
+    if (userBalances[finalUserId]) {
+      userBalances[userKey] = userBalances[finalUserId];
+      return userBalances[finalUserId];
+    }
+
+    const newBal: DebtBalance = {
+      userId: finalUserId,
+      userName: member?.firstName || member?.name || fallbackName || 'Membre',
+      userAvatar: member?.avatar || fallbackAvatar || '',
       paid: 0,
       share: 0,
       net: 0,
     };
+
+    userBalances[finalUserId] = newBal;
+    if (userKey !== finalUserId) {
+      userBalances[userKey] = newBal;
+    }
+    return newBal;
+  };
+
+  // 1. Initialisation des balances pour tous les membres du groupe
+  safeMembers.forEach(m => {
+    if (!m) return;
+    const uid = m.userId || m.id;
+    if (uid) {
+      getOrCreateBalance(uid, m.firstName || m.name, m.avatar);
+      if (m.id && m.id !== uid) {
+        getOrCreateBalance(m.id, m.firstName || m.name, m.avatar);
+      }
+    }
   });
 
+  // 2. Calcul des dépenses et répartition des parts
   safeExpenses.forEach(exp => {
     if (!exp) return;
     totalSpent += exp.amount || 0;
 
-    // Credit payer
-    if (userBalances[exp.paidById]) {
-      userBalances[exp.paidById].paid += exp.amount || 0;
+    // Créditer celui qui a avancé les fonds (créancier initial)
+    const payerBal = getOrCreateBalance(exp.paidById, exp.paidByName, exp.paidByAvatar);
+    if (payerBal) {
+      payerBal.paid += exp.amount || 0;
     }
 
-    // Determine participants
+    // Déterminer les participants
     const participants = (exp.splitMode === 'all' 
       ? safeMembers 
       : safeMembers.filter(m => m && Array.isArray(exp.participantIds) && (exp.participantIds.includes(m.id) || (m.userId && exp.participantIds.includes(m.userId)))))
@@ -59,50 +95,56 @@ export function calculateExpensesAndDebts(
 
     const sharesSnapshot = exp.sharesSnapshot || {};
 
-    // Calculate total shares among participants
+    // Calcul du total des parts des participants
     const totalShares = participants.reduce((sum, p) => {
       if (!p) return sum;
-      const pid = p.id || p.userId || '';
-      const shares = sharesSnapshot[pid] ?? p.shares ?? 1;
+      const pid = p.userId || p.id || '';
+      const shares = sharesSnapshot[pid] ?? sharesSnapshot[p.id] ?? p.shares ?? 1;
       return sum + shares;
     }, 0);
 
     if (totalShares > 0) {
       participants.forEach(p => {
         if (!p) return;
-        const pid = p.id || p.userId || '';
-        const shares = sharesSnapshot[pid] ?? p.shares ?? 1;
+        const pid = p.userId || p.id || '';
+        const shares = sharesSnapshot[pid] ?? sharesSnapshot[p.id] ?? p.shares ?? 1;
         const participantCost = ((exp.amount || 0) * shares) / totalShares;
-        if (userBalances[pid]) {
-          userBalances[pid].share += participantCost;
+        const partBal = getOrCreateBalance(pid, p.firstName || p.name, p.avatar);
+        if (partBal) {
+          partBal.share += participantCost;
         }
       });
     }
   });
 
-  // Apply settled payments to user balances
+  // 3. Application stricte des remboursements soldés :
+  // Le débiteur (fromUserId) a payé son dû -> sa balance augmente de +amount (sa dette s'éteint)
+  // Le créancier (toUserId) a perçu son dû -> sa créance diminue de -amount (son avance est remboursée)
   safeSettlements.forEach(s => {
-    if (s.status === 'settled' && s.amount > 0) {
-      if (userBalances[s.fromUserId]) {
-        userBalances[s.fromUserId].paid += s.amount;
+    if (s && s.status === 'settled' && s.amount > 0) {
+      const debtorBal = getOrCreateBalance(s.fromUserId, s.fromUserFirstName || s.fromUserName, s.fromUserAvatar);
+      const creditorBal = getOrCreateBalance(s.toUserId, s.toUserFirstName || s.toUserName, s.toUserAvatar);
+
+      if (debtorBal) {
+        debtorBal.paid += s.amount;
       }
-      if (userBalances[s.toUserId]) {
-        userBalances[s.toUserId].paid -= s.amount;
+      if (creditorBal) {
+        creditorBal.paid -= s.amount;
       }
     }
   });
 
-  // Calculate net balances
-  Object.values(userBalances).forEach(b => {
+  // 4. Calcul du solde net unique par utilisateur (net = paid - share)
+  const uniqueBalances = Array.from(new Set(Object.values(userBalances)));
+  uniqueBalances.forEach(b => {
     b.net = b.paid - b.share;
   });
 
-  // Calculate simplified debt transactions (Greedy debt simplification)
+  // 5. Calcul des transactions d'équilibrage restantes (Greedy Debt Simplification)
   const debtors: { id: string; name: string; avatar: string; amount: number }[] = [];
   const creditors: { id: string; name: string; avatar: string; amount: number }[] = [];
 
-  Object.values(userBalances).forEach(b => {
-    // Round to 2 decimal places to avoid float precision issues
+  uniqueBalances.forEach(b => {
     const roundedNet = Math.round(b.net * 100) / 100;
     if (roundedNet < -0.01) {
       debtors.push({ id: b.userId, name: b.userName, avatar: b.userAvatar, amount: -roundedNet });
@@ -111,7 +153,6 @@ export function calculateExpensesAndDebts(
     }
   });
 
-  // Sort descending by amount
   debtors.sort((a, b) => b.amount - a.amount);
   creditors.sort((a, b) => b.amount - a.amount);
 
@@ -126,9 +167,6 @@ export function calculateExpensesAndDebts(
 
     if (settleAmount > 0.01) {
       const settlementId = `settle-${debtor.id}-${creditor.id}`;
-      // Check if there is an existing settlement status (e.g. marked as 'settled')
-      const existing = settlementsOverride.find(s => s.fromUserId === debtor.id && s.toUserId === creditor.id);
-
       calculatedSettlements.push({
         id: settlementId,
         groupId: groupId || safeExpenses[0]?.groupId || '',
