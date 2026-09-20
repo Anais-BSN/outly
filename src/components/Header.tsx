@@ -9,6 +9,7 @@ interface HeaderProps {
   notifications?: AppNotification[];
   unreadNotificationsCount?: number;
   currentUser?: UserProfile;
+  isDarkMode?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   notifications = [],
   unreadNotificationsCount,
   currentUser,
+  isDarkMode = false,
 }) => {
   const unreadCount =
     typeof unreadNotificationsCount === 'number'
@@ -40,9 +42,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center: Brand Logo */}
-        <div className="flex items-center justify-center h-full cursor-pointer select-none">
+        <div className="flex items-center justify-center h-full select-none">
           <img
-            src="/Logo_Outly.png"
+            src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
             alt="Logo Outlys"
             className="h-[90%] max-h-full w-auto object-contain select-none transition-transform hover:scale-105"
           />

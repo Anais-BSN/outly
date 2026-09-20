@@ -17,6 +17,7 @@ interface GroupBannerProps {
   onLeaveGroup?: () => void;
   onDeleteGroup?: () => void;
   onEditGroup?: () => void;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 export const GroupBanner: React.FC<GroupBannerProps> = ({
@@ -27,6 +28,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
   onLeaveGroup,
   onDeleteGroup,
   onEditGroup,
+  onViewAvatar,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,15 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           {/* Circular Thumbnail right next to group title */}
           {group.coverImage ? (
-            <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden ring-2 ring-[#C7B7A3] shadow-sm shrink-0">
+            <div
+              onClick={() => {
+                if (onViewAvatar && group.coverImage) {
+                  onViewAvatar(group.coverImage, group.name, `${safeMembers.length} membres`);
+                }
+              }}
+              className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden ring-2 ring-[#C7B7A3] shadow-sm shrink-0 cursor-pointer hover:scale-105 transition-transform"
+              title="Agrandir la photo du groupe"
+            >
               <img
                 src={group.coverImage}
                 alt={group.name}
@@ -65,7 +75,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
               />
             </div>
           ) : (
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#6D2932] flex items-center justify-center text-white text-lg font-serif shadow-sm shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#6D2932] flex items-center justify-center text-white text-lg font-serif shadow-sm shrink-0 select-none">
               {group.name?.charAt(0) || 'G'}
             </div>
           )}
@@ -84,8 +94,13 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                     key={member?.id || member?.userId || Math.random()}
                     src={member?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
                     alt={`${member?.firstName || ''} ${member?.lastName || ''}`.trim() || 'Membre'}
-                    title={`${member?.firstName || 'Membre'}`}
-                    className="w-6 h-6 rounded-full border-2 border-[#FFF9EB] dark:border-[#18181B] object-cover ring-1 ring-[#C7B7A3]/50"
+                    title={`${member?.firstName || 'Membre'} (cliquer pour agrandir)`}
+                    onClick={() => {
+                      if (onViewAvatar && member?.avatar) {
+                        onViewAvatar(member.avatar, `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.name || 'Membre', member.handle);
+                      }
+                    }}
+                    className="w-6 h-6 rounded-full border-2 border-[#FFF9EB] dark:border-[#18181B] object-cover ring-1 ring-[#C7B7A3]/50 cursor-pointer hover:scale-110 transition-transform"
                     referrerPolicy="no-referrer"
                   />
                 ))}

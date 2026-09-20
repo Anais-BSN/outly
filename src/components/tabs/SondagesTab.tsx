@@ -26,6 +26,7 @@ interface SondagesTabProps {
   onConvertPollToEvent: (poll, winningOption: PollOption, tiedOptions?: PollOption[]) => void;
   onEditPoll?: (poll: Poll) => void;
   onDeletePoll?: (pollId: string) => void;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 export const SondagesTab: React.FC<SondagesTabProps> = ({
@@ -37,20 +38,21 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
   onConvertPollToEvent,
   onEditPoll,
   onDeletePoll,
+  onViewAvatar,
 }) => {
   const safePolls = polls || [];
   const safeMembers = members || [];
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
-      {/* Top Header with Serif Typography and Actions */}
+      {/* Top Header with Bold Typography and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-serif italic mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
+          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
             Sondages
           </h3>
           <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
-            Trouvez la date idéale ou votez pour vos activités et repas favoris.
+            Trouvez une date ou votez une activité.
           </p>
         </div>
 

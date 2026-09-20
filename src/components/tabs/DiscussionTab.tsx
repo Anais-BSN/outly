@@ -28,6 +28,7 @@ interface DiscussionTabProps {
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
+  onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
 }
 
 const COMMON_EMOJIS = ['👍', '❤️', '🔥', '😂', '🎉', '🤤', '👏', '🙌'];
@@ -40,6 +41,7 @@ interface MessageItemProps {
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
+  onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
 }
 
 const MessageItem = React.memo<MessageItemProps>(({
@@ -50,6 +52,7 @@ const MessageItem = React.memo<MessageItemProps>(({
   onAddReaction,
   onEditMessage,
   onDeleteMessage,
+  onViewAvatar,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -58,6 +61,9 @@ const MessageItem = React.memo<MessageItemProps>(({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isMe = message.senderId === currentUser.id;
+  const otherReaders = (message.readBy || []).filter(
+    (id) => id !== currentUser.id && id !== message.senderId
+  );
 
   const handleTouchStart = () => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -129,7 +135,13 @@ const MessageItem = React.memo<MessageItemProps>(({
             <img
               src={message.senderAvatar}
               alt={message.senderName}
-              className="w-5 h-5 rounded-full object-cover ring-1 ring-[#C7B7A3]"
+              title={`${message.senderName} (cliquer pour agrandir)`}
+              onClick={() => {
+                if (onViewAvatar && message.senderAvatar) {
+                  onViewAvatar(message.senderAvatar, message.senderName);
+                }
+              }}
+              className="w-5 h-5 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
               referrerPolicy="no-referrer"
             />
           )}
@@ -143,7 +155,13 @@ const MessageItem = React.memo<MessageItemProps>(({
             <img
               src={currentUser.avatar}
               alt="Moi"
-              className="w-5 h-5 rounded-full object-cover ring-1 ring-[#6D2932]"
+              title="Moi (cliquer pour agrandir)"
+              onClick={() => {
+                if (onViewAvatar && currentUser.avatar) {
+                  onViewAvatar(currentUser.avatar, `${currentUser.firstName} ${currentUser.lastName}`.trim(), currentUser.handle);
+                }
+              }}
+              className="w-5 h-5 rounded-full object-cover ring-1 ring-[#6D2932] cursor-pointer hover:scale-110 transition-transform"
               referrerPolicy="no-referrer"
             />
           )}
@@ -161,7 +179,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           setIsMenuOpen((prev) => !prev);
         }}
       >
-        {/* Barre d'action contextuelle (Survol PC purement CSS & Appui long Mobile) */}
+        {/* Barre d'action contextuelle */}
         <div
           className={`absolute -top-3.5 ${
             isMe ? 'right-2' : 'left-2'
@@ -200,12 +218,10 @@ const MessageItem = React.memo<MessageItemProps>(({
               <Smile className="w-3.5 h-3.5" />
             </button>
 
-            {/* Popup complet de réactions */}
             {isPickerOpen && (
               <div
-                className={`absolute bottom-full mb-1 z-30 flex items-center gap-1 p-1 bg-[#FFF9EB] dark:bg-zinc-900 rounded-full shadow-lg border border-[#C7B7A3] dark:border-zinc-700 animate-fade-in ${
-                  isMe ? 'right-0' : 'left-0'
-                }`}
+                className="absolute left-0 bottom-full mb-1.5 p-2 bg-[#FFF9EB] dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3] dark:border-zinc-700 shadow-xl grid grid-cols-4 gap-1 z-30 animate-fade-in w-36"
+                onClick={(e) => e.stopPropagation()}
               >
                 {COMMON_EMOJIS.map((emoji) => (
                   <button
@@ -216,7 +232,7 @@ const MessageItem = React.memo<MessageItemProps>(({
                       setIsPickerOpen(false);
                       setIsMenuOpen(false);
                     }}
-                    className="w-7 h-7 flex items-center justify-center text-sm hover:scale-125 transition-transform cursor-pointer"
+                    className="w-7 h-7 flex items-center justify-center text-sm hover:scale-125 transition-transform rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
                   >
                     {emoji}
                   </button>
@@ -230,7 +246,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             <div className="w-[1px] h-3.5 bg-black/15 dark:bg-white/20 mx-0.5" />
           )}
 
-          {/* Bouton Modifier (crayon vectoriel) - Visible uniquement par l'auteur */}
+          {/* Bouton Modifier */}
           {isMe && !message.isSystem && onEditMessage && (
             <button
               type="button"
@@ -247,7 +263,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             </button>
           )}
 
-          {/* Bouton Supprimer (poubelle vectorielle) - Visible uniquement par l'auteur */}
+          {/* Bouton Supprimer */}
           {isMe && !message.isSystem && onDeleteMessage && (
             <button
               type="button"
@@ -266,7 +282,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           )}
         </div>
 
-        {/* Bulle de message proprement dite */}
+        {/* Bulle de message */}
         <div
           className={`p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all ${
             isMe
@@ -283,7 +299,13 @@ const MessageItem = React.memo<MessageItemProps>(({
                 src={message.imageUrl}
                 alt="Attachment"
                 className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                onClick={() => window.open(message.imageUrl, '_blank')}
+                onClick={() => {
+                  if (onViewAvatar && message.imageUrl) {
+                    onViewAvatar(message.imageUrl, 'Image partagée');
+                  } else {
+                    window.open(message.imageUrl, '_blank');
+                  }
+                }}
                 loading="lazy"
               />
             </div>
@@ -344,8 +366,8 @@ const MessageItem = React.memo<MessageItemProps>(({
                     onClick={() => onAddReaction(message.id, r.emoji)}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer ${
                       hasReacted
-                        ? 'bg-[#FFF9EB] text-[#6D2932] font-bold shadow-xs ring-1 ring-[#6D2932]'
-                        : 'bg-black/10 dark:bg-zinc-800 text-current hover:bg-black/15'
+                        ? 'bg-amber-400/30 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500/50 font-bold'
+                        : 'bg-black/5 dark:bg-white/10 text-current hover:bg-black/10'
                     }`}
                   >
                     <span>{r.emoji}</span>
@@ -357,13 +379,13 @@ const MessageItem = React.memo<MessageItemProps>(({
           )}
         </div>
 
-        {/* Horodatage discret et accusé de lecture pour ses propres messages */}
-        {isMe && message.readBy && message.readBy.length > 0 && (
+        {/* Accusé de lecture discret : uniquement si des tiers l'ont vu (exclut "vu par moi") */}
+        {isMe && otherReaders.length > 0 && (
           <div className="flex items-center justify-end gap-1 mt-0.5 px-1 text-[9px] text-[#27272A]/50 dark:text-zinc-500">
             <CheckCheck className="w-3 h-3 text-[#9FB2AC]" />
             <span>
               Vu par{' '}
-              {message.readBy
+              {otherReaders
                 .map((id) => members.find((m) => m.id === id || m.userId === id)?.firstName || 'Un ami')
                 .join(', ')}
             </span>
@@ -382,6 +404,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   onAddReaction,
   onEditMessage,
   onDeleteMessage,
+  onViewAvatar,
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -547,6 +570,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
               onAddReaction={onAddReaction}
               onEditMessage={onEditMessage}
               onDeleteMessage={onDeleteMessage}
+              onViewAvatar={onViewAvatar}
             />
           );
         })}

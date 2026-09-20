@@ -92,15 +92,12 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
-      {/* Top Header with Serif Typography and Actions */}
+      {/* Top Header with Bold Typography and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-serif font-bold italic mb-1 text-[#5D0D18] dark:text-[#FFF9EB]">
-            Galerie médias
+          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#5D0D18] dark:text-[#FFF9EB]">
+            Galerie
           </h3>
-          <p className="text-sm opacity-70 text-[#27272A] dark:text-zinc-300">
-            Grille compacte et épurée de tous les souvenirs partagés par le groupe.
-          </p>
         </div>
 
         <div>

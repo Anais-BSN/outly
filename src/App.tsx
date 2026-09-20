@@ -28,6 +28,7 @@ import { ImageViewerModal } from './components/modals/ImageViewerModal';
 import { AddGroupMemberModal } from './components/modals/AddGroupMemberModal';
 import { ConvertChoicePollModal } from './components/modals/ConvertChoicePollModal';
 import { ResetPasswordModal } from './components/modals/ResetPasswordModal';
+import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
 import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
@@ -58,11 +59,30 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Global App States - Default to null for clean unauthenticated state
+  // Global App States - Initialized with localStorage persistence
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [activeGroupId, setActiveGroupId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<TabType>('agenda');
+  const [activeGroupId, setActiveGroupId] = useState<string>(() => {
+    return localStorage.getItem('outly_active_group_id') || '';
+  });
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const savedTab = localStorage.getItem('outly_active_tab') as TabType;
+    const validTabs: TabType[] = ['agenda', 'discussion', 'sondages', 'galerie', 'logistique', 'partage_frais'];
+    return validTabs.includes(savedTab) ? savedTab : 'agenda';
+  });
+
+  // Persist Active Group and Active Tab
+  useEffect(() => {
+    if (activeGroupId) {
+      localStorage.setItem('outly_active_group_id', activeGroupId);
+    }
+  }, [activeGroupId]);
+
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('outly_active_tab', activeTab);
+    }
+  }, [activeTab]);
 
   // Local Saved Sessions (Isolement strict des sessions locales mémorisées sur cet appareil)
   const [savedSessions, setSavedSessions] = useState<UserProfile[]>(() => {
@@ -136,6 +156,7 @@ export default function App() {
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [viewingImage, setViewingImage] = useState<GalleryItem | null>(null);
+  const [viewingAvatar, setViewingAvatar] = useState<{ url: string; title?: string; subtitle?: string } | null>(null);
   const [initialEventDate, setInitialEventDate] = useState<string | undefined>(undefined);
 
   // Deep-link & Reset Password states
@@ -149,7 +170,7 @@ export default function App() {
     return localStorage.getItem('outly_theme') === 'dark';
   });
 
-  // Load all data from PostgreSQL Render
+  // Load all data from PostgreSQL
   const loadData = useCallback(async (userId?: string) => {
     setIsLoading(true);
     setLoadError(null);
@@ -168,6 +189,7 @@ export default function App() {
         setGalleryItems([]);
         setTasks([]);
         setExpenses([]);
+        setSettlements([]);
         setFriends([]);
         setNotifications([]);
         return;
@@ -182,6 +204,7 @@ export default function App() {
         galleryRes,
         tasksRes,
         expensesRes,
+        settlementsRes,
         friendsRes,
         notifsRes,
       ] = await Promise.all([
@@ -193,6 +216,7 @@ export default function App() {
         api.getGallery(),
         api.getTasks(),
         api.getExpenses(),
+        api.getSettlements(),
         api.getFriends(activeUserId),
         api.getNotifications(activeUserId),
       ]);
@@ -206,7 +230,16 @@ export default function App() {
 
       setGroups(groupsRes);
       if (groupsRes.length > 0) {
-        setActiveGroupId((prev) => (prev && groupsRes.some((g) => g.id === prev) ? prev : groupsRes[0].id));
+        setActiveGroupId((prev) => {
+          const savedId = localStorage.getItem('outly_active_group_id');
+          if (savedId && groupsRes.some((g) => g.id === savedId)) {
+            return savedId;
+          }
+          if (prev && groupsRes.some((g) => g.id === prev)) {
+            return prev;
+          }
+          return groupsRes[0].id;
+        });
       } else {
         setActiveGroupId('');
       }
@@ -216,16 +249,17 @@ export default function App() {
       setGalleryItems(galleryRes);
       setTasks(tasksRes);
       setExpenses(expensesRes);
+      setSettlements(settlementsRes);
       setFriends(friendsRes);
       setNotifications(notifsRes);
     } catch (err: any) {
-      console.error('Failed to load data from Render PostgreSQL database:', err);
+      console.error('Failed to load data from PostgreSQL database:', err);
       if (err.message && (err.message.includes('404') || err.message.includes('introuvable') || err.message.includes('non trouvé'))) {
         localStorage.removeItem('outly_user_id');
         setCurrentUser(null);
         setIsAuthOpen(true);
       } else {
-        setLoadError(err.message || 'Impossible de se connecter à la base PostgreSQL Render');
+        setLoadError(err.message || 'Impossible de se connecter à la base de données Outlys');
       }
     } finally {
       setIsLoading(false);
@@ -289,21 +323,47 @@ export default function App() {
           setGroups((prev) => {
             const exists = prev.some((g) => g.id === event.data?.id);
             if (exists) return prev;
-            return [event.data, ...prev];
+            const tempIndex = prev.findIndex((g) => g.id.startsWith('grp-') && g.name === event.data?.name);
+            if (tempIndex >= 0) {
+              const updated = [...prev];
+              updated[tempIndex] = event.data;
+              return updated;
+            }
+            const isMember = event.data?.members?.some((m: any) => m.id === currentUser.id || m.userId === currentUser.id);
+            if (isMember) {
+              return [event.data, ...prev];
+            }
+            return prev;
           });
           break;
         case 'group:member_added':
-          setGroups((prev) =>
-            prev.map((g) => {
-              if (g.id === event.groupId) {
-                const members = g.members || [];
-                const exists = members.some((m) => m.id === event.data?.member?.id || m.userId === event.data?.member?.userId);
-                if (exists) return g;
-                return { ...g, members: [...members, event.data.member] };
-              }
-              return g;
-            })
-          );
+          if (
+            event.data?.userId === currentUser.id ||
+            event.data?.member?.userId === currentUser.id ||
+            event.data?.member?.id === currentUser.id
+          ) {
+            api.getGroups(currentUser.id).then((refreshedGroups) => {
+              setGroups(refreshedGroups);
+              setActiveGroupId((prev) => {
+                if (prev && refreshedGroups.some((g) => g.id === prev)) return prev;
+                return event.groupId || (refreshedGroups.length > 0 ? refreshedGroups[0].id : '');
+              });
+            }).catch(() => {});
+          } else {
+            setGroups((prev) =>
+              prev.map((g) => {
+                if (g.id === event.groupId) {
+                  const members = g.members || [];
+                  const exists = members.some(
+                    (m) => m.id === event.data?.member?.id || m.userId === event.data?.member?.userId
+                  );
+                  if (exists) return g;
+                  return { ...g, members: [...members, event.data.member] };
+                }
+                return g;
+              })
+            );
+          }
           break;
         case 'group:member_removed':
           setGroups((prev) =>
@@ -393,6 +453,14 @@ export default function App() {
           setTasks((prev) => {
             const exists = prev.some((t) => t.id === event.data?.id);
             if (exists) return prev;
+            const tempIndex = prev.findIndex(
+              (t) => t.id.startsWith('task-') && t.title === event.data?.title && t.groupId === event.data?.groupId
+            );
+            if (tempIndex >= 0) {
+              const updated = [...prev];
+              updated[tempIndex] = event.data;
+              return updated;
+            }
             return [...prev, event.data];
           });
           break;
@@ -418,10 +486,33 @@ export default function App() {
             )
           );
           break;
+        case 'task:deleted':
+          setTasks((prev) => prev.filter((t) => t.id !== event.data?.id));
+          break;
         case 'expense:created':
           setExpenses((prev) => {
             const exists = prev.some((exp) => exp.id === event.data?.id);
             if (exists) return prev;
+            const tempIndex = prev.findIndex(
+              (exp) => exp.id.startsWith('exp-') && exp.title === event.data?.title && exp.groupId === event.data?.groupId
+            );
+            if (tempIndex >= 0) {
+              const updated = [...prev];
+              updated[tempIndex] = event.data;
+              return updated;
+            }
+            return [event.data, ...prev];
+          });
+          break;
+        case 'expense:deleted':
+          setExpenses((prev) => prev.filter((exp) => exp.id !== event.data?.id));
+          break;
+        case 'settlement:updated':
+          setSettlements((prev) => {
+            const exists = prev.some((s) => s.id === event.data?.id);
+            if (exists) {
+              return prev.map((s) => (s.id === event.data?.id ? event.data : s));
+            }
             return [event.data, ...prev];
           });
           break;
@@ -991,11 +1082,26 @@ export default function App() {
         assignedToId: taskData.assignedToId || null,
         createdBy: currentUser.id,
       });
-      setTasks((prev) => prev.map((t) => (t.id === tempId ? newTask : t)));
-      handleSendMessage(`Nouvel objet ajouté à la logistique : "${newTask.title}" (x${newTask.quantity}).`);
+      setTasks((prev) => {
+        const alreadyHasDbItem = prev.some((t) => t.id === newTask.id);
+        if (alreadyHasDbItem) {
+          return prev.filter((t) => t.id !== tempId);
+        }
+        return prev.map((t) => (t.id === tempId ? newTask : t));
+      });
+      // NOTE: Removed automatic chat message posting on task creation as requested in Lot Changements 14
     } catch (err) {
       console.error('Error adding task in PostgreSQL:', err);
       setTasks((prev) => prev.filter((t) => t.id !== tempId));
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    try {
+      await api.deleteTask(taskId);
+    } catch (err) {
+      console.error('Error deleting task in PostgreSQL:', err);
     }
   };
 
@@ -1035,25 +1141,51 @@ export default function App() {
         sharesSnapshot: expenseData.sharesSnapshot || {},
       });
 
-      setExpenses((prev) => prev.map((exp) => (exp.id === tempId ? newExp : exp)));
+      setExpenses((prev) => {
+        const alreadyHasDbItem = prev.some((e) => e.id === newExp.id);
+        if (alreadyHasDbItem) {
+          return prev.filter((e) => e.id !== tempId);
+        }
+        return prev.map((exp) => (exp.id === tempId ? newExp : exp));
+      });
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
       setExpenses((prev) => prev.filter((exp) => exp.id !== tempId));
     }
   };
 
-  const handleToggleSettlementStatus = (settlement: DebtSettlement) => {
+  const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
     const isNowSettled = settlement.status !== 'settled';
+    const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
 
+    // Optimistic state update
     setSettlements((prev) => {
-      const existing = prev.find((s) => s.id === settlement.id);
+      const existing = prev.find(
+        (s) =>
+          s.id === settlement.id ||
+          (s.groupId === settlement.groupId &&
+            s.fromUserId === settlement.fromUserId &&
+            s.toUserId === settlement.toUserId)
+      );
       if (existing) {
         return prev.map((s) =>
-          s.id === settlement.id ? { ...s, status: isNowSettled ? 'settled' : 'pending' } : s
+          s.id === existing.id ? { ...s, status: newStatus } : s
         );
       }
-      return [...prev, { ...settlement, status: isNowSettled ? 'settled' : 'pending' }];
+      return [{ ...settlement, status: newStatus }, ...prev];
     });
+
+    try {
+      await api.toggleSettlement({
+        groupId: settlement.groupId || activeGroupId,
+        fromUserId: settlement.fromUserId,
+        toUserId: settlement.toUserId,
+        amount: settlement.amount,
+        status: newStatus,
+      });
+    } catch (err) {
+      console.error('Error toggling settlement in PostgreSQL:', err);
+    }
   };
 
   // Handlers: Create & Edit & Delete Group
@@ -1087,7 +1219,13 @@ export default function App() {
 
     try {
       const newGroup = await api.createGroup(groupData, invitedFriendIds, currentUser.id);
-      setGroups((prev) => prev.map((g) => (g.id === tempId ? newGroup : g)));
+      setGroups((prev) => {
+        const alreadyHasDbItem = prev.some((g) => g.id === newGroup.id);
+        if (alreadyHasDbItem) {
+          return prev.filter((g) => g.id !== tempId);
+        }
+        return prev.map((g) => (g.id === tempId ? newGroup : g));
+      });
       setActiveGroupId(newGroup.id);
     } catch (err) {
       console.error('Error creating group in PostgreSQL:', err);
@@ -1369,12 +1507,11 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col items-center justify-center p-6 space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center animate-pulse">
-          <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
+        <div className="w-16 h-16 rounded-2xl bg-[#E8D8C4] dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-[#C7B7A3]/50">
+          <Loader2 className="w-8 h-8 text-[#6D2932] dark:text-amber-300 animate-spin" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Connexion à PostgreSQL Render</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Chargement en direct de vos données Outlys...</p>
+          <h2 className="text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">Chargement des données Outlys</h2>
         </div>
       </div>
     );
@@ -1388,7 +1525,7 @@ export default function App() {
           <p className="text-sm">{loadError}</p>
           <button
             onClick={() => loadData()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition inline-flex items-center gap-2 cursor-pointer"
+            className="mt-4 px-4 py-2 bg-[#6D2932] text-white rounded-full font-medium hover:bg-[#541C24] transition inline-flex items-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" /> Réessayer
           </button>
@@ -1406,6 +1543,8 @@ export default function App() {
         onOpenSearchFriends={() => setIsFriendsOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         unreadNotificationsCount={unreadNotifsCount}
+        isDarkMode={isDarkMode}
+        onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
       />
 
       {/* 2. Menu Burger / Lateral Drawer */}
@@ -1415,6 +1554,8 @@ export default function App() {
         currentUser={currentUser}
         groups={groups}
         activeGroupId={activeGroupId}
+        isDarkMode={isDarkMode}
+        onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
         onSelectGroup={(id) => {
           setActiveGroupId(id);
           setIsDrawerOpen(false);
@@ -1495,6 +1636,7 @@ export default function App() {
                 onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
                 onLeaveGroup={handleLeaveGroup}
                 onDeleteGroup={handleDeleteGroup}
+                onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
               />
             )}
 
@@ -1535,6 +1677,7 @@ export default function App() {
                   onAddReaction={handleAddReaction}
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
+                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
               </div>
 
@@ -1576,6 +1719,8 @@ export default function App() {
                   onToggleComplete={handleToggleTaskComplete}
                   onClaimTask={handleClaimTask}
                   onUnclaimTask={handleUnclaimTask}
+                  onDeleteTask={handleDeleteTask}
+                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
               </div>
 
@@ -1587,6 +1732,7 @@ export default function App() {
                   settlements={settlements}
                   onOpenAddExpense={() => setIsAddExpenseOpen(true)}
                   onToggleSettlementStatus={handleToggleSettlementStatus}
+                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
               </div>
             </div>
@@ -1829,6 +1975,15 @@ export default function App() {
         onDeleteImage={handleDeleteGalleryItem}
         currentUser={currentUser || undefined}
         members={activeGroup.members}
+      />
+
+      {/* Avatar Viewer Lightbox Modal */}
+      <AvatarViewerModal
+        isOpen={Boolean(viewingAvatar)}
+        onClose={() => setViewingAvatar(null)}
+        imageUrl={viewingAvatar?.url || ''}
+        title={viewingAvatar?.title}
+        subtitle={viewingAvatar?.subtitle}
       />
     </div>
   );

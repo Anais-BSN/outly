@@ -24,6 +24,8 @@ interface SidebarDrawerProps {
   onOpenAddFriends: () => void;
   onOpenProfile: () => void;
   notifications?: AppNotification[];
+  isDarkMode?: boolean;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 interface GroupDrawerItemProps {
@@ -31,6 +33,7 @@ interface GroupDrawerItemProps {
   isActive: boolean;
   onSelectGroup: (groupId: string) => void;
   onClose: () => void;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 const GroupDrawerItem = React.memo<GroupDrawerItemProps>(({
@@ -38,15 +41,12 @@ const GroupDrawerItem = React.memo<GroupDrawerItemProps>(({
   isActive,
   onSelectGroup,
   onClose,
+  onViewAvatar,
 }) => {
   return (
-    <button
+    <div
       id={`drawer-group-item-${group.id}`}
-      onClick={() => {
-        onSelectGroup(group.id);
-        onClose();
-      }}
-      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+      className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all ${
         isActive
           ? 'bg-[#6D2932] text-[#FFF9EB] font-bold shadow-sm'
           : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800/80'
@@ -55,21 +55,36 @@ const GroupDrawerItem = React.memo<GroupDrawerItemProps>(({
       <img
         src={group.coverImage}
         alt={group.name}
-        className="w-8 h-8 rounded-lg object-cover ring-1 ring-black/10"
+        onClick={(e) => {
+          if (onViewAvatar && group.coverImage) {
+            e.stopPropagation();
+            onViewAvatar(group.coverImage, group.name, `${group.members?.length || 0} membres`);
+          }
+        }}
+        className="w-9 h-9 rounded-lg object-cover ring-1 ring-black/10 shrink-0 cursor-pointer hover:scale-105 transition-transform"
         loading="lazy"
       />
-      <div className="flex-1 min-w-0">
-        <div className="truncate text-xs font-semibold">{group.name}</div>
-        <div
-          className={`text-[10px] ${
-            isActive ? 'text-[#FFF9EB]/80' : 'text-[#6D2932]/70 dark:text-zinc-400'
-          }`}
-        >
-          {group.members.length} membres
+      <button
+        type="button"
+        onClick={() => {
+          onSelectGroup(group.id);
+          onClose();
+        }}
+        className="flex-1 min-w-0 text-left cursor-pointer flex items-center justify-between"
+      >
+        <div className="min-w-0 pr-2">
+          <div className="truncate text-xs font-semibold">{group.name}</div>
+          <div
+            className={`text-[10px] ${
+              isActive ? 'text-[#FFF9EB]/80' : 'text-[#6D2932]/70 dark:text-zinc-400'
+            }`}
+          >
+            {group.members.length} membres
+          </div>
         </div>
-      </div>
-      {isActive && <CheckCircle2 className="w-4 h-4 shrink-0 text-[#9FB2AC]" />}
-    </button>
+        {isActive && <CheckCircle2 className="w-4 h-4 shrink-0 text-[#9FB2AC]" />}
+      </button>
+    </div>
   );
 });
 
@@ -86,46 +101,55 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   onOpenAddFriends,
   onOpenProfile,
   notifications = [],
+  isDarkMode = false,
+  onViewAvatar,
 }) => {
-  if (!isOpen) return null;
-
   const safeNotifications = notifications || [];
   const unreadCount = safeNotifications.filter((n) => !n.read).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div
+      className={`fixed inset-0 z-50 flex transition-all duration-300 ${
+        isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
+      }`}
+    >
       {/* Backdrop */}
       <div
         id="drawer-backdrop"
         onClick={onClose}
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+        className={`fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-out ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
       />
 
       {/* Drawer content */}
       <div
         id="sidebar-drawer-panel"
-        className="relative w-[85%] max-w-sm bg-[#FFF9EB] dark:bg-[#18181B] h-full shadow-2xl border-r border-[#C7B7A3]/50 dark:border-zinc-800 flex flex-col justify-between overflow-y-auto custom-scrollbar z-10 transition-transform"
+        className={`relative w-[85%] max-w-sm bg-[#FFF9EB] dark:bg-[#18181B] h-full shadow-2xl border-r border-[#C7B7A3]/50 dark:border-zinc-800 flex flex-col justify-between overflow-y-auto custom-scrollbar z-10 transition-transform duration-300 ease-out transform ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className="flex-1 flex flex-col">
           {/* Header of Drawer */}
           <div className="relative px-4 py-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-center min-h-[60px]">
             <div className="w-full flex justify-center items-center">
               <img
-                src="/Logo_Outly.png"
+                src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
                 alt="Logo Outlys"
-                className="h-10 sm:h-11 w-auto max-w-[170px] object-contain select-none"
+                className="h-10 sm:h-11 w-auto max-w-[170px] object-contain select-none transition-all duration-200"
               />
             </div>
             <button
               id="drawer-close-btn"
               onClick={onClose}
+              aria-label="Fermer le menu"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full text-[#6D2932] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Primary Navigation Menu (Order: Notifications & Rappels, Mon calendrier, Mes groupes, Créer un groupe, Ajouter des amis) */}
+          {/* Primary Navigation Menu */}
           <nav className="p-3 space-y-1.5">
             {/* 1. Notifications */}
             <button
@@ -205,7 +229,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             </button>
           </nav>
 
-          {/* Section: Mes groupes (liste cliquable pour basculer de groupe) */}
+          {/* Section: Mes groupes */}
           <div className="p-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex-1">
             <div className="flex items-center justify-between px-2 mb-2">
               <div className="flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase text-[#6D2932] dark:text-zinc-400">
@@ -248,6 +272,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                     isActive={group.id === activeGroupId}
                     onSelectGroup={onSelectGroup}
                     onClose={onClose}
+                    onViewAvatar={onViewAvatar}
                   />
                 ))
               )}
@@ -273,7 +298,13 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                   <img
                     src={currentUser.avatar}
                     alt={currentUser.firstName}
-                    className="w-11 h-11 rounded-full object-cover ring-2 ring-[#6D2932] dark:ring-[#E8D8C4]"
+                    onClick={(e) => {
+                      if (onViewAvatar && currentUser.avatar) {
+                        e.stopPropagation();
+                        onViewAvatar(currentUser.avatar, `${currentUser.firstName} ${currentUser.lastName}`.trim(), currentUser.handle);
+                      }
+                    }}
+                    className="w-11 h-11 rounded-full object-cover ring-2 ring-[#6D2932] dark:ring-[#E8D8C4] cursor-pointer hover:scale-105 transition-transform"
                     referrerPolicy="no-referrer"
                   />
                   <span className="absolute -bottom-1 -right-1 bg-[#6D2932] text-[#FFF9EB] text-[9px] font-bold px-1.5 py-0.2 rounded-full">

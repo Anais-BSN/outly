@@ -74,7 +74,7 @@ var emailService = {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
     const invitationUrl = inviteLink ? buildAbsoluteEmailUrl(inviteLink) : token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl();
     const htmlContent = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -84,19 +84,9 @@ var emailService = {
             ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
-              <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
-                    Rejoindre sur Outlys
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
-              Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${invitationUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${invitationUrl}</a>
-            </p>
+            <a href="${invitationUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
+              ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
+            </a>
           </div>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
@@ -156,7 +146,7 @@ var emailService = {
     const appUrl = getCleanAppUrl();
     const formattedGpsUrl = gpsUrl ? gpsUrl.startsWith("http://") || gpsUrl.startsWith("https://") ? gpsUrl : buildAbsoluteEmailUrl(gpsUrl) : void 0;
     const htmlContent = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
           <p style="color: #6D2932; font-size: 14px; margin-top: 4px; margin-bottom: 0;">Rappel d'\xE9v\xE9nement</p>
@@ -169,35 +159,15 @@ var emailService = {
           ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
           ${formattedGpsUrl ? `
             <div style="text-align: center; margin: 24px 0;">
-              <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
-                <tr>
-                  <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                    <a href="${formattedGpsUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
-                      Voir l'itin\xE9raire GPS
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
-                Lien de l'itin\xE9raire :<br/>
-                <a href="${formattedGpsUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${formattedGpsUrl}</a>
-              </p>
+              <a href="${formattedGpsUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
+                Voir l'itin\xE9raire GPS
+              </a>
             </div>
           ` : `
             <div style="text-align: center; margin: 24px 0;">
-              <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
-                <tr>
-                  <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                    <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
-                      Voir les d\xE9tails sur Outlys
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
-                Acc\xE9der \xE0 l'application :<br/>
-                <a href="${appUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${appUrl}</a>
-              </p>
+              <a href="${appUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-weight: bold; font-size: 13px; text-align: center;">
+                Voir les d\xE9tails sur Outlys
+              </a>
             </div>
           `}
         </div>
@@ -230,7 +200,7 @@ var emailService = {
     const resetUrl = resetLink ? buildAbsoluteEmailUrl(resetLink) : token ? buildAbsoluteEmailUrl(`/reset-password?token=${token}`) : buildAbsoluteEmailUrl("/reset-password");
     const subject = "R\xE9initialisation de votre mot de passe - Outlys";
     const htmlContent = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
+      <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
         </div>
@@ -240,25 +210,15 @@ var emailService = {
             Bonjour${userName ? ` <strong>${userName}</strong>` : ""}, vous avez demand\xE9 la r\xE9initialisation de votre mot de passe sur Outlys.
           </p>
           <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe. Ce lien est valable pendant 1 heure.
+            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
-              <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                  <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
-                    R\xE9initialiser mon mot de passe
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
-              Si le bouton ci-dessus ne r\xE9agit pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${resetUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${resetUrl}</a>
-            </p>
+            <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #6D2932; color: #FFF9EB; text-decoration: none; padding: 12px 26px; border-radius: 9999px; font-weight: bold; font-size: 14px; text-align: center;">
+              R\xE9initialiser mon mot de passe
+            </a>
           </div>
           <p style="font-size: 12px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
-            Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9.
+            Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9. Ce lien est valable pendant 1 heure.
           </p>
         </div>
         <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px; margin-bottom: 0;">
@@ -375,6 +335,19 @@ apiRouter.get("/sse", handleSseConnection);
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         expires_at TIMESTAMP WITH TIME ZONE
+      );
+    `);
+    await query(`
+      CREATE TABLE IF NOT EXISTS debt_settlements (
+        id VARCHAR(100) PRIMARY KEY,
+        group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
+        from_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        settled_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
   } catch (e) {
@@ -2193,6 +2166,23 @@ apiRouter.put("/tasks/:id/unclaim", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+apiRouter.delete("/tasks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM logistics_tasks WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
+    await query(`DELETE FROM logistics_tasks WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "task:deleted",
+      groupId,
+      data: { id, groupId }
+    });
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error("Error in DELETE /tasks/:id:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 apiRouter.get("/expenses", async (req, res) => {
   try {
     const groupId = req.query.groupId;
@@ -2277,6 +2267,85 @@ apiRouter.post("/expenses", async (req, res) => {
     res.json(newExpense);
   } catch (err) {
     console.error("Error in POST /expenses:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.delete("/expenses/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM expenses WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
+    await query(`DELETE FROM expenses WHERE id = $1`, [id]);
+    realtimeBroadcaster.broadcast({
+      type: "expense:deleted",
+      groupId,
+      data: { id, groupId }
+    });
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error("Error in DELETE /expenses/:id:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/settlements", async (req, res) => {
+  try {
+    const groupId = req.query.groupId;
+    let sql = `
+      SELECT id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
+             amount::float as amount, status, settled_at as "settledAt",
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM debt_settlements
+    `;
+    const params = [];
+    if (groupId) {
+      sql += ` WHERE group_id = $1`;
+      params.push(groupId);
+    }
+    sql += ` ORDER BY updated_at DESC`;
+    const result = await query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error in GET /settlements:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/settlements/toggle", async (req, res) => {
+  try {
+    const {
+      groupId,
+      fromUserId,
+      toUserId,
+      amount,
+      status = "settled"
+    } = req.body;
+    if (!groupId || !fromUserId || !toUserId) {
+      return res.status(400).json({ error: "groupId, fromUserId and toUserId are required" });
+    }
+    const settlementId = `settle-${groupId}-${fromUserId}-${toUserId}`;
+    const newStatus = status;
+    const settledAt = newStatus === "settled" ? (/* @__PURE__ */ new Date()).toISOString() : null;
+    const result = await query(
+      `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status,
+         settled_at = EXCLUDED.settled_at,
+         amount = EXCLUDED.amount,
+         updated_at = NOW()
+       RETURNING id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
+                 amount::float as amount, status, settled_at as "settledAt",
+                 created_at as "createdAt", updated_at as "updatedAt"`,
+      [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
+    );
+    const settlement = result.rows[0];
+    realtimeBroadcaster.broadcast({
+      type: "settlement:updated",
+      groupId,
+      data: settlement
+    });
+    res.json(settlement);
+  } catch (err) {
+    console.error("Error in POST /settlements/toggle:", err);
     res.status(500).json({ error: err.message });
   }
 });

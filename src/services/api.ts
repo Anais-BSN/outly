@@ -8,6 +8,7 @@ import {
   GalleryItem,
   LogisticsTask,
   Expense,
+  DebtSettlement,
   AppNotification,
 } from '../types';
 
@@ -392,7 +393,13 @@ export const api = {
     });
   },
 
-  // 10. Partage des Frais
+  async deleteTask(taskId: string): Promise<{ success: boolean; id: string }> {
+    return request<{ success: boolean; id: string }>(`/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 10. Partage des Frais & Règlements
   async getExpenses(groupId?: string): Promise<Expense[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
     return request<Expense[]>(`/expenses${query}`);
@@ -402,6 +409,30 @@ export const api = {
     return request<Expense>('/expenses', {
       method: 'POST',
       body: JSON.stringify(expenseData),
+    });
+  },
+
+  async deleteExpense(expenseId: string): Promise<{ success: boolean; id: string }> {
+    return request<{ success: boolean; id: string }>(`/expenses/${expenseId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async getSettlements(groupId?: string): Promise<DebtSettlement[]> {
+    const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+    return request<DebtSettlement[]>(`/settlements${query}`);
+  },
+
+  async toggleSettlement(data: {
+    groupId: string;
+    fromUserId: string;
+    toUserId: string;
+    amount: number;
+    status: 'pending' | 'settled';
+  }): Promise<DebtSettlement> {
+    return request<DebtSettlement>('/settlements/toggle', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   },
 

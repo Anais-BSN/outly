@@ -79,6 +79,18 @@ export function calculateExpensesAndDebts(
     }
   });
 
+  // Apply settled payments to user balances
+  safeSettlements.forEach(s => {
+    if (s.status === 'settled' && s.amount > 0) {
+      if (userBalances[s.fromUserId]) {
+        userBalances[s.fromUserId].paid += s.amount;
+      }
+      if (userBalances[s.toUserId]) {
+        userBalances[s.toUserId].paid -= s.amount;
+      }
+    }
+  });
+
   // Calculate net balances
   Object.values(userBalances).forEach(b => {
     b.net = b.paid - b.share;

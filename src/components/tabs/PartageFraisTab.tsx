@@ -23,6 +23,7 @@ interface PartageFraisTabProps {
   settlements?: DebtSettlement[];
   onOpenAddExpense: () => void;
   onToggleSettlementStatus: (settlement: DebtSettlement) => void;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
@@ -32,6 +33,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   settlements = [],
   onOpenAddExpense,
   onToggleSettlementStatus,
+  onViewAvatar,
 }) => {
   const safeExpenses = expenses || [];
   const safeMembers = members || [];
@@ -49,14 +51,14 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
-      {/* Top Header with Serif Typography and Actions */}
+      {/* Top Header with Bold Typography and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-serif italic mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
+          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
             Partage des frais
           </h3>
           <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
-            Équilibrez automatiquement les comptes entre amis selon le nombre de parts.
+            Équilibre des comptes.
           </p>
         </div>
 
@@ -136,16 +138,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
       {/* Simplified Debts Matrix Section */}
       <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
-              Équilibrage simplifié des dettes
-            </h4>
-          </div>
-          <span className="text-xs text-[#27272A]/70 dark:text-zinc-400">
-            {calculatedSettlements.length} règlements calculés
-          </span>
+        <div className="flex items-center gap-2">
+          <Scale className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+          <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+            Équilibrage des dettes
+          </h4>
         </div>
 
         {calculatedSettlements.length === 0 ? (
@@ -172,7 +169,13 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     <img
                       src={settle.fromUserAvatar}
                       alt={settle.fromUserName}
-                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3]"
+                      title={`${settle.fromUserName} (cliquer pour agrandir)`}
+                      onClick={() => {
+                        if (onViewAvatar && settle.fromUserAvatar) {
+                          onViewAvatar(settle.fromUserAvatar, settle.fromUserName);
+                        }
+                      }}
+                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
                       referrerPolicy="no-referrer"
                     />
 
@@ -191,7 +194,13 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     <img
                       src={settle.toUserAvatar}
                       alt={settle.toUserName}
-                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3]"
+                      title={`${settle.toUserName} (cliquer pour agrandir)`}
+                      onClick={() => {
+                        if (onViewAvatar && settle.toUserAvatar) {
+                          onViewAvatar(settle.toUserAvatar, settle.toUserName);
+                        }
+                      }}
+                      className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
                       referrerPolicy="no-referrer"
                     />
                   </div>
@@ -209,12 +218,12 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     {isSettled ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                        <span>Soldé & Réglé</span>
+                        <span>Réglé</span>
                       </>
                     ) : (
                       <>
                         <Clock className="w-4 h-4" />
-                        <span>En cours • Marquer comme soldé</span>
+                        <span>Marquer comme soldé</span>
                       </>
                     )}
                   </button>
@@ -231,17 +240,9 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           <div className="flex items-center gap-2">
             <Receipt className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB]">
-              Historique des dépenses ({expenses.length})
+              Historique des dépenses
             </h4>
           </div>
-
-          <button
-            id="frais-btn-add-expense-secondary"
-            onClick={onOpenAddExpense}
-            className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer"
-          >
-            Nouvelle dépense
-          </button>
         </div>
 
         {expenses.length === 0 ? (
@@ -269,7 +270,13 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     <img
                       src={expense.paidByAvatar}
                       alt={expense.paidByName}
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-[#6D2932] shrink-0"
+                      title={`${expense.paidByName} (cliquer pour agrandir)`}
+                      onClick={() => {
+                        if (onViewAvatar && expense.paidByAvatar) {
+                          onViewAvatar(expense.paidByAvatar, expense.paidByName);
+                        }
+                      }}
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-[#6D2932] shrink-0 cursor-pointer hover:scale-110 transition-transform"
                       referrerPolicy="no-referrer"
                     />
 
@@ -285,7 +292,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                         <span className="bg-[#FFF9EB] dark:bg-zinc-800 px-2 py-0.5 rounded-full font-semibold text-[#6D2932] dark:text-amber-200">
                           {expense.category}
                         </span>
-                        <span>•</span>
                         <span>{formatDateOnly(expense.date)}</span>
                       </div>
                     </div>

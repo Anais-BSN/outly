@@ -54,6 +54,19 @@ apiRouter.get('/sse', handleSseConnection);
         expires_at TIMESTAMP WITH TIME ZONE
       );
     `);
+    await query(`
+      CREATE TABLE IF NOT EXISTS debt_settlements (
+        id VARCHAR(100) PRIMARY KEY,
+        group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
+        from_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        settled_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
   } catch (e) {
     console.error('Migration error (can be ignored if table locked):', e);
   }
@@ -2278,8 +2291,29 @@ apiRouter.put('/tasks/:id/unclaim', async (req: Request, res: Response) => {
   }
 });
 
+apiRouter.delete('/tasks/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM logistics_tasks WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
+
+    await query(`DELETE FROM logistics_tasks WHERE id = $1`, [id]);
+
+    realtimeBroadcaster.broadcast({
+      type: 'task:deleted',
+      groupId,
+      data: { id, groupId },
+    });
+
+    res.json({ success: true, id });
+  } catch (err: any) {
+    console.error('Error in DELETE /tasks/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
-// 10. PARTAGE DES FRAIS (EXPENSES)
+// 10. PARTAGE DES FRAIS (EXPENSES) & DETTES
 // ==========================================
 
 apiRouter.get('/expenses', async (req: Request, res: Response) => {
@@ -2373,6 +2407,99 @@ apiRouter.post('/expenses', async (req: Request, res: Response) => {
     res.json(newExpense);
   } catch (err: any) {
     console.error('Error in POST /expenses:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.delete('/expenses/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT group_id as "groupId" FROM expenses WHERE id = $1`, [id]);
+    const groupId = existing.rows[0]?.groupId;
+
+    await query(`DELETE FROM expenses WHERE id = $1`, [id]);
+
+    realtimeBroadcaster.broadcast({
+      type: 'expense:deleted',
+      groupId,
+      data: { id, groupId },
+    });
+
+    res.json({ success: true, id });
+  } catch (err: any) {
+    console.error('Error in DELETE /expenses/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Gestion des règlements de dettes (Debt Settlements)
+apiRouter.get('/settlements', async (req: Request, res: Response) => {
+  try {
+    const groupId = req.query.groupId as string | undefined;
+    let sql = `
+      SELECT id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
+             amount::float as amount, status, settled_at as "settledAt",
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM debt_settlements
+    `;
+    const params: any[] = [];
+    if (groupId) {
+      sql += ` WHERE group_id = $1`;
+      params.push(groupId);
+    }
+    sql += ` ORDER BY updated_at DESC`;
+
+    const result = await query(sql, params);
+    res.json(result.rows);
+  } catch (err: any) {
+    console.error('Error in GET /settlements:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
+  try {
+    const {
+      groupId,
+      fromUserId,
+      toUserId,
+      amount,
+      status = 'settled',
+    } = req.body;
+
+    if (!groupId || !fromUserId || !toUserId) {
+      return res.status(400).json({ error: 'groupId, fromUserId and toUserId are required' });
+    }
+
+    const settlementId = `settle-${groupId}-${fromUserId}-${toUserId}`;
+    const newStatus = status;
+    const settledAt = newStatus === 'settled' ? new Date().toISOString() : null;
+
+    const result = await query(
+      `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status,
+         settled_at = EXCLUDED.settled_at,
+         amount = EXCLUDED.amount,
+         updated_at = NOW()
+       RETURNING id, group_id as "groupId", from_user_id as "fromUserId", to_user_id as "toUserId",
+                 amount::float as amount, status, settled_at as "settledAt",
+                 created_at as "createdAt", updated_at as "updatedAt"`,
+      [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
+    );
+
+    const settlement = result.rows[0];
+
+    realtimeBroadcaster.broadcast({
+      type: 'settlement:updated',
+      groupId,
+      data: settlement,
+    });
+
+    res.json(settlement);
+  } catch (err: any) {
+    console.error('Error in POST /settlements/toggle:', err);
     res.status(500).json({ error: err.message });
   }
 });
