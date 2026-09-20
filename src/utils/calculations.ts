@@ -4,9 +4,12 @@ export interface DebtBalance {
   userId: string;
   userName: string;
   userAvatar: string;
-  paid: number;
-  share: number;
-  net: number; // positive = should receive, negative = owes
+  paidExpenses: number; // Sommes avancées par l'utilisateur
+  share: number;        // Part dans toutes les dépenses
+  reimbursedPaid: number; // Remboursements déjà versés par l'utilisateur (+)
+  reimbursedReceived: number; // Remboursements déjà perçus par l'utilisateur (-)
+  paid: number;         // Total payé (dépenses avancées)
+  net: number;          // Équilibre dynamique = (paidExpenses - share) + reimbursedPaid - reimbursedReceived
 }
 
 /**
@@ -52,8 +55,11 @@ export function calculateExpensesAndDebts(
       userId: finalUserId,
       userName: member?.firstName || member?.name || fallbackName || 'Membre',
       userAvatar: member?.avatar || fallbackAvatar || '',
-      paid: 0,
+      paidExpenses: 0,
       share: 0,
+      reimbursedPaid: 0,
+      reimbursedReceived: 0,
+      paid: 0,
       net: 0,
     };
 
@@ -69,9 +75,10 @@ export function calculateExpensesAndDebts(
     if (!m) return;
     const uid = m.userId || m.id;
     if (uid) {
-      getOrCreateBalance(uid, m.firstName || m.name, m.avatar);
-      if (m.id && m.id !== uid) {
-        getOrCreateBalance(m.id, m.firstName || m.name, m.avatar);
+      const bal = getOrCreateBalance(uid, m.firstName || m.name, m.avatar);
+      if (bal) {
+        if (m.id) userBalances[m.id] = bal;
+        if (m.userId) userBalances[m.userId] = bal;
       }
     }
   });
@@ -84,6 +91,7 @@ export function calculateExpensesAndDebts(
     // Créditer celui qui a avancé les fonds (créancier initial)
     const payerBal = getOrCreateBalance(exp.paidById, exp.paidByName, exp.paidByAvatar);
     if (payerBal) {
+      payerBal.paidExpenses += exp.amount || 0;
       payerBal.paid += exp.amount || 0;
     }
 
@@ -118,26 +126,27 @@ export function calculateExpensesAndDebts(
   });
 
   // 3. Application stricte des remboursements soldés :
-  // Le débiteur (fromUserId) a payé son dû -> sa balance augmente de +amount (sa dette s'éteint)
-  // Le créancier (toUserId) a perçu son dû -> sa créance diminue de -amount (son avance est remboursée)
+  // Débiteur (fromUserId) a remboursé -> reimbursedPaid augmente (+)
+  // Créancier (toUserId) a perçu son dû -> reimbursedReceived augmente (-)
   safeSettlements.forEach(s => {
     if (s && s.status === 'settled' && s.amount > 0) {
       const debtorBal = getOrCreateBalance(s.fromUserId, s.fromUserFirstName || s.fromUserName, s.fromUserAvatar);
       const creditorBal = getOrCreateBalance(s.toUserId, s.toUserFirstName || s.toUserName, s.toUserAvatar);
 
       if (debtorBal) {
-        debtorBal.paid += s.amount;
+        debtorBal.reimbursedPaid += s.amount;
       }
       if (creditorBal) {
-        creditorBal.paid -= s.amount;
+        creditorBal.reimbursedReceived += s.amount;
       }
     }
   });
 
-  // 4. Calcul du solde net unique par utilisateur (net = paid - share)
+  // 4. Calcul du solde net dynamique unique par utilisateur
+  // Formule : total des sommes avancées - part dans toutes les dépenses + remboursements versés - remboursements perçus
   const uniqueBalances = Array.from(new Set(Object.values(userBalances)));
   uniqueBalances.forEach(b => {
-    b.net = b.paid - b.share;
+    b.net = (b.paidExpenses - b.share) + b.reimbursedPaid - b.reimbursedReceived;
   });
 
   // 5. Calcul des transactions d'équilibrage restantes (Greedy Debt Simplification)

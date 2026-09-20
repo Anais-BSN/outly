@@ -37,6 +37,9 @@ export interface SendReminderEmailParams {
 export function getCleanAppUrl(): string {
   const rawUrl = (process.env.APP_URL || 'https://outlys.fr').trim();
   const withoutTrailingSlashes = rawUrl.replace(/\/+$/, '');
+  if (withoutTrailingSlashes.startsWith('http://outlys.fr')) {
+    return withoutTrailingSlashes.replace('http://', 'https://');
+  }
   if (!withoutTrailingSlashes.startsWith('http://') && !withoutTrailingSlashes.startsWith('https://')) {
     return `https://${withoutTrailingSlashes}`;
   }
@@ -52,7 +55,13 @@ export function buildAbsoluteEmailUrl(pathOrUrl?: string): string {
     return baseUrl;
   }
   const trimmed = pathOrUrl.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  if (trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('http://outlys.fr')) {
+    return trimmed.replace('http://', 'https://');
+  }
+  if (trimmed.startsWith('http://')) {
     return trimmed;
   }
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
@@ -86,7 +95,7 @@ export const emailService = {
           <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
             <tr>
               <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${finalInviteLink}" target="_blank" style="display: block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                <a href="${finalInviteLink}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
                   ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
                 </a>
               </td>
@@ -173,7 +182,7 @@ export const emailService = {
             <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 20px auto; border-collapse: separate;">
               <tr>
                 <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                  <a href="${gpsUrl}" target="_blank" style="display: block; padding: 10px 22px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 13px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                  <a href="${gpsUrl}" target="_blank" style="display: inline-block; padding: 10px 22px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 13px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
                     Voir l'itinéraire GPS
                   </a>
                 </td>
@@ -231,7 +240,7 @@ export const emailService = {
           <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
             <tr>
               <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${resetUrl}" target="_blank" style="display: block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
+                <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
                   Réinitialiser mon mot de passe
                 </a>
               </td>

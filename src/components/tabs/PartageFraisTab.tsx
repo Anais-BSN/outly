@@ -51,7 +51,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     groupId
   );
 
-  const myBalance = userBalances[currentUser.id]?.net || 0;
+  const myBalObj = userBalances[currentUser.id] || (currentUser.userId ? userBalances[currentUser.userId] : null);
+  const myBalance = myBalObj?.net || 0;
   const isPositive = myBalance >= 0.01;
   const isNeutral = Math.abs(myBalance) < 0.01;
 
@@ -136,8 +137,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </div>
 
           <div className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 mt-0.5">
-            Payé : {formatCurrency(userBalances[currentUser.id]?.paid || 0)} • Ma part :{' '}
-            {formatCurrency(userBalances[currentUser.id]?.share || 0)}
+            Payé : {formatCurrency(myBalObj?.paidExpenses ?? myBalObj?.paid ?? 0)} • Ma part :{' '}
+            {formatCurrency(myBalObj?.share || 0)}
           </div>
         </div>
       </div>
