@@ -26,6 +26,8 @@ import { AddExpenseModal } from './components/modals/AddExpenseModal';
 import { AddTaskModal } from './components/modals/AddTaskModal';
 import { ImageViewerModal } from './components/modals/ImageViewerModal';
 import { AddGroupMemberModal } from './components/modals/AddGroupMemberModal';
+import { EditGroupModal } from './components/modals/EditGroupModal';
+import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { ConvertChoicePollModal } from './components/modals/ConvertChoicePollModal';
 import { ResetPasswordModal } from './components/modals/ResetPasswordModal';
 import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
@@ -155,6 +157,9 @@ export default function App() {
   const [convertChoiceData, setConvertChoiceData] = useState<{ poll: Poll; winningOption: PollOption | null } | null>(null);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
+  const [isMembersListOpen, setIsMembersListOpen] = useState(false);
+  const [eventIdForTask, setEventIdForTask] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<GalleryItem | null>(null);
   const [viewingAvatar, setViewingAvatar] = useState<{ url: string; title?: string; subtitle?: string } | null>(null);
   const [initialEventDate, setInitialEventDate] = useState<string | undefined>(undefined);
@@ -1057,6 +1062,7 @@ export default function App() {
   };
 
   const handleClaimTask = async (taskId: string) => {
+    if (!currentUser) return;
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
@@ -1072,10 +1078,6 @@ export default function App() {
 
     try {
       await api.claimTask(taskId, currentUser.id);
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) {
-        handleSendMessage(`Je me charge de "${task.title}" (quantité : ${task.quantity}).`);
-      }
     } catch (err) {
       console.error('Error claiming task in PostgreSQL:', err);
     }
@@ -1105,9 +1107,11 @@ export default function App() {
   const handleAddTask = async (taskData: Partial<LogisticsTask>) => {
     if (!currentUser || !activeGroupId) return;
     const tempId = `task-${Date.now()}`;
+    const targetEventId = taskData.eventId || eventIdForTask || undefined;
     const optimisticTask: LogisticsTask = {
       id: tempId,
       groupId: activeGroupId,
+      eventId: targetEventId,
       title: taskData.title || 'Nouvelle tâche',
       quantity: taskData.quantity || '1',
       category: (taskData.category as TaskCategory) || 'Matériel',
@@ -1125,6 +1129,7 @@ export default function App() {
     try {
       const newTask = await api.createTask({
         groupId: activeGroupId,
+        eventId: targetEventId,
         title: taskData.title || 'Nouvelle tâche',
         quantity: taskData.quantity || '1',
         category: (taskData.category as TaskCategory) || 'Matériel',
@@ -1138,7 +1143,6 @@ export default function App() {
         }
         return prev.map((t) => (t.id === tempId ? newTask : t));
       });
-      // NOTE: Removed automatic chat message posting on task creation as requested in Lot Changements 14
     } catch (err) {
       console.error('Error adding task in PostgreSQL:', err);
       setTasks((prev) => prev.filter((t) => t.id !== tempId));
@@ -1313,6 +1317,36 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error leaving group in PostgreSQL:', err);
+    }
+  };
+
+  const handleUpdateGroup = async (groupId: string, data: Partial<Group>) => {
+    try {
+      const updated = await api.updateGroup(groupId, data);
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...updated } : g)));
+    } catch (err) {
+      console.error('Error updating group in PostgreSQL:', err);
+    }
+  };
+
+  const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
+    try {
+      await api.removeGroupMember(groupId, memberIdOrUserId);
+      setGroups((prev) =>
+        prev.map((g) => {
+          if (g.id === groupId) {
+            return {
+              ...g,
+              members: (g.members || []).filter(
+                (m) => m.id !== memberIdOrUserId && m.userId !== memberIdOrUserId
+              ),
+            };
+          }
+          return g;
+        })
+      );
+    } catch (err) {
+      console.error('Error removing group member in PostgreSQL:', err);
     }
   };
 
@@ -1611,6 +1645,10 @@ export default function App() {
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenSearchFriends={() => setIsFriendsOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onGoHome={() => {
+          setActiveGroupId('');
+          localStorage.removeItem('outly_active_group_id');
+        }}
         unreadNotificationsCount={unreadNotifsCount}
         isDarkMode={isDarkMode}
         onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
@@ -1662,7 +1700,7 @@ export default function App() {
               Veuillez vous connecter pour accéder à votre espace Outlys.
             </p>
           </div>
-        ) : groups.length === 0 || !activeGroupId || !isUserInActiveGroup ? (
+        ) : groups.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto my-auto space-y-4">
             <div className="w-16 h-16 rounded-3xl bg-[#E8D8C4] dark:bg-[#27272A] flex items-center justify-center text-[#6D2932] dark:text-amber-300 shadow-sm border border-[#C7B7A3]/50">
               <Users className="w-8 h-8" />
@@ -1694,6 +1732,98 @@ export default function App() {
               </button>
             </div>
           </div>
+        ) : !activeGroupId || !isUserInActiveGroup ? (
+          /* Tableau de bord / Liste des groupes */
+          <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
+                  Mes Groupes & Escapades
+                </h2>
+                <p className="text-xs sm:text-sm text-[#27272A]/70 dark:text-zinc-400 mt-1">
+                  Sélectionnez un groupe pour voir les événements, l'organisation et partager les frais.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsCreateGroupOpen(true)}
+                  className="px-4 py-2 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Nouveau groupe</span>
+                </button>
+                <button
+                  onClick={() => setIsFriendsOpen(true)}
+                  className="px-4 py-2 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] text-xs font-bold hover:bg-[#C7B7A3] transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-1.5 border border-[#C7B7A3]/50"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Amis</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groups.map((group) => {
+                const memberCount = group.members?.length || 0;
+                return (
+                  <div
+                    key={group.id}
+                    onClick={() => {
+                      setActiveGroupId(group.id);
+                      setActiveTab('agenda');
+                    }}
+                    className="group bg-[#E8D8C4] dark:bg-[#27272A] rounded-2xl overflow-hidden border border-[#C7B7A3] dark:border-zinc-700 shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="relative h-32 w-full overflow-hidden bg-zinc-800">
+                        <img
+                          src={group.coverImage || 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=1000&auto=format&fit=crop&q=80'}
+                          alt={group.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white">
+                          <span className="text-xs font-semibold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-full">
+                            {memberCount} membre{memberCount > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 space-y-1.5">
+                        <h3 className="font-serif font-bold text-base text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                          {group.name}
+                        </h3>
+                        {group.description && (
+                          <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
+                            {group.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-4 pt-0 flex items-center justify-between">
+                      {/* Avatars Preview */}
+                      <div className="flex -space-x-1.5 overflow-hidden">
+                        {(group.members || []).slice(0, 4).map((m) => (
+                          <img
+                            key={m.userId || m.id}
+                            src={m.avatar || '/Avatar_Herisson.jpg'}
+                            alt={m.name}
+                            className="inline-block h-6 w-6 rounded-full ring-2 ring-[#E8D8C4] dark:ring-[#27272A] object-cover"
+                          />
+                        ))}
+                      </div>
+
+                      <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200 group-hover:underline">
+                        Ouvrir →
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <>
             {/* 3. Group Cover Banner (masqué sur l'onglet Discussion pour offrir une interface de messagerie plein écran et épurée) */}
@@ -1703,6 +1833,8 @@ export default function App() {
                 currentUser={currentUser}
                 onInviteMember={() => setIsAddGroupMemberOpen(true)}
                 onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
+                onEditGroup={() => setIsEditGroupOpen(true)}
+                onOpenMembersList={() => setIsMembersListOpen(true)}
                 onLeaveGroup={handleLeaveGroup}
                 onDeleteGroup={handleDeleteGroup}
                 onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
@@ -1720,6 +1852,7 @@ export default function App() {
                   currentUser={currentUser}
                   members={activeGroup.members}
                   groupId={activeGroupId}
+                  tasks={groupTasks}
                   onOpenCreateEvent={(date?: string) => {
                     setEditingEvent(null);
                     setInitialEventDate(date);
@@ -1733,6 +1866,15 @@ export default function App() {
                     setIsCreateEventOpen(true);
                   }}
                   onDeleteEvent={handleDeleteEvent}
+                  onOpenAddTask={(eventId?: string) => {
+                    setEventIdForTask(eventId || null);
+                    setIsAddTaskOpen(true);
+                  }}
+                  onToggleCompleteTask={handleToggleTaskComplete}
+                  onClaimTask={handleClaimTask}
+                  onUnclaimTask={handleUnclaimTask}
+                  onDeleteTask={handleDeleteTask}
+                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
               </div>
 
@@ -1776,20 +1918,6 @@ export default function App() {
                   members={activeGroup.members}
                   onUploadImage={handleUploadGalleryImage}
                   onViewImage={(item) => setViewingImage(item)}
-                />
-              </div>
-
-              <div className={activeTab === 'logistique' ? 'block' : 'hidden'}>
-                <LogistiqueTab
-                  tasks={groupTasks}
-                  currentUser={currentUser}
-                  members={activeGroup.members}
-                  onOpenAddTask={() => setIsAddTaskOpen(true)}
-                  onToggleComplete={handleToggleTaskComplete}
-                  onClaimTask={handleClaimTask}
-                  onUnclaimTask={handleUnclaimTask}
-                  onDeleteTask={handleDeleteTask}
-                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
               </div>
 
@@ -2030,11 +2158,41 @@ export default function App() {
       {currentUser && (
         <AddTaskModal
           isOpen={isAddTaskOpen}
-          onClose={() => setIsAddTaskOpen(false)}
+          onClose={() => {
+            setIsAddTaskOpen(false);
+            setEventIdForTask(null);
+          }}
           currentUser={currentUser}
           members={activeGroup.members}
           groupId={activeGroupId}
+          eventId={eventIdForTask}
           onAddTask={handleAddTask}
+        />
+      )}
+
+      {/* Edit Group Modal */}
+      {currentUser && activeGroup && (
+        <EditGroupModal
+          isOpen={isEditGroupOpen}
+          onClose={() => setIsEditGroupOpen(false)}
+          group={activeGroup}
+          onUpdateGroup={(data) => handleUpdateGroup(activeGroupId, data)}
+        />
+      )}
+
+      {/* Group Members & Exclusion Modal */}
+      {currentUser && activeGroup && (
+        <GroupMembersModal
+          isOpen={isMembersListOpen}
+          onClose={() => setIsMembersListOpen(false)}
+          group={activeGroup}
+          currentUser={currentUser}
+          onRemoveMember={(memberId) => handleRemoveGroupMember(activeGroupId, memberId)}
+          onInviteMore={() => {
+            setIsMembersListOpen(false);
+            setIsAddGroupMemberOpen(true);
+          }}
+          onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
         />
       )}
 

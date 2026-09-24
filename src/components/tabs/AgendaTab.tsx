@@ -12,25 +12,38 @@ import {
   ExternalLink,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Edit,
   Trash2,
-  Grid,
-  List
+  Share2,
+  Download,
+  Package,
+  Check,
+  UserCheck,
+  X
 } from 'lucide-react';
-import { EventItem, UserProfile, GroupMember } from '../../types';
-import { formatDateOnly, formatTimeOnly, formatEventCardDate, getLocalDateString } from '../../utils/formatters';
-import { api } from '../../services/api';
+import { EventItem, UserProfile, GroupMember, LogisticsTask } from '../../types';
+import { formatEventCardDate, getLocalDateString } from '../../utils/formatters';
+import { exportToGoogleCalendar, downloadIcsFile } from '../../utils/calendarExport';
 
 interface AgendaTabProps {
   events: EventItem[];
   currentUser: UserProfile;
   members: GroupMember[];
   groupId: string;
+  tasks?: LogisticsTask[];
   onOpenCreateEvent: (date?: string) => void;
   onOpenCalendarView: () => void;
   onRsvp: (eventId: string, status: 'going' | 'maybe' | 'declined') => void;
   onEditEvent?: (event: EventItem) => void;
   onDeleteEvent?: (eventId: string) => void;
+  onOpenAddTask?: (eventId?: string) => void;
+  onToggleCompleteTask?: (taskId: string) => void;
+  onClaimTask?: (taskId: string) => void;
+  onUnclaimTask?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string) => void;
+  onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
 export const AgendaTab: React.FC<AgendaTabProps> = ({
@@ -38,19 +51,36 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
   currentUser,
   members,
   groupId,
+  tasks = [],
   onOpenCreateEvent,
   onOpenCalendarView,
   onRsvp,
   onEditEvent,
   onDeleteEvent,
+  onOpenAddTask,
+  onToggleCompleteTask,
+  onClaimTask,
+  onUnclaimTask,
+  onDeleteTask,
+  onViewAvatar,
 }) => {
   const safeEvents = events || [];
+  const safeMembers = members || [];
   const [activeSubView, setActiveSubView] = useState<'events' | 'teams_scheduler'>('events');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString(new Date()));
   const [availabilityData, setAvailabilityData] = useState<any>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
-  // Charger les disponibilités style Assistant de planification lorsque la sous-vue est ouverte ou la date change
+  // Modal / State for Attendee Details
+  const [viewingAttendeesEvent, setViewingAttendeesEvent] = useState<EventItem | null>(null);
+
+  // State for Export Menu per event
+  const [openExportMenuId, setOpenExportMenuId] = useState<string | null>(null);
+
+  // State for expanded event Organisation sub-module
+  const [expandedOrganisationEventId, setExpandedOrganisationEventId] = useState<string | null>(null);
+
+  // Charger les disponibilités style Assistant de planification
   useEffect(() => {
     if (activeSubView === 'teams_scheduler' && groupId) {
       setLoadingAvailability(true);
@@ -75,7 +105,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       return start <= dayEndLocal && end >= dayStartLocal;
     });
 
-    const membersAvailability = (members || []).map((m) => {
+    const membersAvailability = safeMembers.map((m) => {
       const slots = timeSlots.map((slot) => {
         const [hour] = slot.split(':').map(Number);
         const slotStart = new Date(selYear, selMonth - 1, selDay, hour, 0, 0).getTime();
@@ -137,7 +167,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
         {/* View Switcher & Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Sub-view switcher: Events List vs Assistant de planification */}
+          {/* Sub-view switcher */}
           <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-full border border-[#C7B7A3]/50">
             <button
               onClick={() => setActiveSubView('events')}
@@ -185,7 +215,6 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       {/* VIEW 1: TEAMS-STYLE COLLECTIVE SCHEDULING ASSISTANT */}
       {activeSubView === 'teams_scheduler' && (
         <div className="p-5 sm:p-6 rounded-3xl bg-[#FFF9EB] dark:bg-[#18181B] border border-[#C7B7A3]/70 dark:border-zinc-800 shadow-md space-y-5 animate-fade-in">
-          {/* Header of Teams Assistant */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
             <div>
               <div className="flex items-center gap-2">
@@ -264,7 +293,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                     <tr key={member.memberId} className="border-t border-[#C7B7A3]/40 dark:border-zinc-800">
                       <td className="p-2 flex items-center gap-2">
                         <img
-                          src={member.memberAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                          src={member.memberAvatar || '/Avatar_Herisson.jpg'}
                           alt={member.memberName}
                           className="w-6 h-6 rounded-full object-cover ring-1 ring-[#C7B7A3]"
                         />
@@ -301,7 +330,6 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
             </div>
           )}
 
-          {/* Quick CTA to create event on this date */}
           <div className="pt-2 flex items-center justify-end">
             <button
               onClick={() => onOpenCreateEvent(selectedDate)}
@@ -327,7 +355,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 Soyez le premier à proposer une sortie ou un week-end !
               </p>
               <button
-                onClick={onOpenCreateEvent}
+                onClick={() => onOpenCreateEvent()}
                 className="mt-3 px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] cursor-pointer"
               >
                 Créer un événement
@@ -338,7 +366,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
               {safeEvents.map((event) => {
                 const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
                 const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
-                const isCreator = event.organizerId === currentUser.id;
+                const eventTasks = tasks.filter((t) => t.eventId === event.id || (!t.eventId && t.groupId === event.groupId));
+                const isOrgExpanded = expandedOrganisationEventId === event.id;
 
                 return (
                   <div
@@ -350,7 +379,6 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                       {/* Title, Circular Thumbnail & Actions */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {/* Compact circular photo vignette next to title */}
                           {event.bannerImage ? (
                             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#5D0D18]">
                               <img
@@ -402,95 +430,454 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         </div>
                       </div>
 
-                      {/* Date & Time formatted as: 9 sept, 7h – 10 sept, 16h */}
+                      {/* Date & Time */}
                       <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
                         <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
                         <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
                       </div>
 
-                        {/* Location */}
-                        {event.location && (
-                          <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300">
-                            <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                            <span className="truncate">{event.location}</span>
-                            {event.gpsUrl && (
-                              <a
-                                href={event.gpsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#6D2932] dark:text-amber-300 hover:underline shrink-0"
-                              >
-                                <ExternalLink className="w-3 h-3 inline" />
-                              </a>
+                      {/* Location */}
+                      {event.location && (
+                        <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300">
+                          <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
+                          <span className="truncate">{event.location}</span>
+                          {event.gpsUrl && (
+                            <a
+                              href={event.gpsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#6D2932] dark:text-amber-300 hover:underline shrink-0"
+                            >
+                              <ExternalLink className="w-3 h-3 inline" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      {event.description && (
+                        <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer: RSVPs & Attendance Action & Organisation */}
+                    <div className="pt-3 border-t border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2.5">
+                      {/* Clickable Attendee Count */}
+                      <div className="flex items-center justify-between text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setViewingAttendeesEvent(event)}
+                          className="font-bold text-[#6D2932] dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Voir la liste détaillée des présences"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          <span>
+                            {goingCount} participant{goingCount > 1 ? 's' : ''} confirmé{goingCount > 1 ? 's' : ''} (voir le détail)
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* RSVP Buttons */}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          onClick={() => onRsvp(event.id, 'going')}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                            userRsvp === 'going'
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-emerald-50'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>J'y vais</span>
+                        </button>
+
+                        <button
+                          onClick={() => onRsvp(event.id, 'maybe')}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                            userRsvp === 'maybe'
+                              ? 'bg-amber-600 text-white shadow-xs'
+                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-amber-50'
+                          }`}
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                          <span>Peut-être</span>
+                        </button>
+
+                        <button
+                          onClick={() => onRsvp(event.id, 'declined')}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                            userRsvp === 'declined'
+                              ? 'bg-zinc-600 text-white shadow-xs'
+                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-zinc-200'
+                          }`}
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Non</span>
+                        </button>
+                      </div>
+
+                      {/* Export to Personal Calendar Button */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setOpenExportMenuId(openExportMenuId === event.id ? null : event.id)}
+                          className="w-full py-1.5 px-3 rounded-xl bg-[#FFF9EB]/80 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#FFF9EB] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                          <span>Exporter vers mon agenda personnel</span>
+                          <ChevronDown className="w-3 h-3 ml-1" />
+                        </button>
+
+                        {/* Export Dropdown Popover */}
+                        {openExportMenuId === event.id && (
+                          <div className="absolute left-0 right-0 top-full mt-1.5 p-2 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 z-20 space-y-1 animate-scale-in">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                exportToGoogleCalendar(event);
+                                setOpenExportMenuId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Ajouter dans Google Agenda</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                downloadIcsFile(event);
+                                setOpenExportMenuId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                              <span>Télécharger le fichier calendrier (.ics pour Apple & Outlook)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Organisation & Items Sub-Module Button */}
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedOrganisationEventId(isOrgExpanded ? null : event.id)
+                          }
+                          className="w-full py-2 px-3 rounded-xl bg-[#5D0D18]/10 dark:bg-zinc-800/80 border border-[#5D0D18]/30 dark:border-zinc-700 text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:bg-[#5D0D18]/20 flex items-center justify-between cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4" />
+                            <span>Organisation & Matériel ({eventTasks.length} éléments)</span>
+                          </div>
+                          {isOrgExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+
+                        {/* Expandable Event Tasks List */}
+                        {isOrgExpanded && (
+                          <div className="mt-2 p-3 bg-[#FFF9EB]/90 dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 space-y-2.5 animate-fade-in">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-[#5D0D18] dark:text-amber-300">
+                                Tâches et objets spécifiques à cet événement
+                              </span>
+                              {onOpenAddTask && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenAddTask(event.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>Ajouter</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {eventTasks.length === 0 ? (
+                              <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 py-2 text-center italic">
+                                Aucun objet ou tâche assigné pour l'instant. Cliquez sur "Ajouter" pour vous organiser !
+                              </p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                {eventTasks.map((t) => {
+                                  const isAssignedToMe = t.assignedToId === currentUser.id;
+                                  return (
+                                    <div
+                                      key={t.id}
+                                      className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all ${
+                                        t.completed
+                                          ? 'bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border-[#C7B7A3]/40 line-through opacity-75'
+                                          : 'bg-white dark:bg-zinc-800 border-[#C7B7A3]/60 dark:border-zinc-700'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        {onToggleCompleteTask && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onToggleCompleteTask(t.id)}
+                                            className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${
+                                              t.completed
+                                                ? 'bg-emerald-600 text-white'
+                                                : 'border border-[#C7B7A3] bg-[#FFF9EB] dark:bg-zinc-900'
+                                            }`}
+                                          >
+                                            {t.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                                          </button>
+                                        )}
+                                        <span className="truncate font-semibold text-[#27272A] dark:text-[#FFF9EB]">
+                                          {t.title} {t.quantity ? `(${t.quantity})` : ''}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {t.assignedToId ? (
+                                          <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                                            <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
+                                            {isAssignedToMe && onUnclaimTask && (
+                                              <button
+                                                type="button"
+                                                onClick={() => onUnclaimTask(t.id)}
+                                                className="text-red-600 dark:text-red-400 hover:underline ml-1 cursor-pointer"
+                                              >
+                                                ✕
+                                              </button>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          onClaimTask && (
+                                            <button
+                                              type="button"
+                                              onClick={() => onClaimTask(t.id)}
+                                              className="px-2 py-0.5 rounded-full bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] cursor-pointer"
+                                            >
+                                              Je prends
+                                            </button>
+                                          )
+                                        )}
+
+                                        {onDeleteTask && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (window.confirm(`Supprimer "${t.title}" ?`)) {
+                                                onDeleteTask(t.id);
+                                              }
+                                            }}
+                                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
+                                            title="Supprimer"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         )}
-
-                        {/* Description */}
-                        {event.description && (
-                          <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
-                            {event.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Footer: RSVPs & Attendance Action */}
-                      <div className="pt-3 border-t border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-[#6D2932] dark:text-amber-200">
-                            {goingCount} participant{goingCount > 1 ? 's' : ''} confirmé{goingCount > 1 ? 's' : ''}
-                          </span>
-                          <span className="text-[11px] opacity-70 text-[#27272A] dark:text-zinc-400">
-                            Par {event.organizerName || 'Organisateur'}
-                          </span>
-                        </div>
-
-                        {/* RSVP Buttons */}
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <button
-                            onClick={() => onRsvp(event.id, 'going')}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                              userRsvp === 'going'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-emerald-50'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>J'y vais</span>
-                          </button>
-
-                          <button
-                            onClick={() => onRsvp(event.id, 'maybe')}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                              userRsvp === 'maybe'
-                                ? 'bg-amber-600 text-white shadow-xs'
-                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-amber-50'
-                            }`}
-                          >
-                            <HelpCircle className="w-3.5 h-3.5" />
-                            <span>Peut-être</span>
-                          </button>
-
-                          <button
-                            onClick={() => onRsvp(event.id, 'declined')}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                              userRsvp === 'declined'
-                                ? 'bg-zinc-600 text-white shadow-xs'
-                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-zinc-200'
-                            }`}
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Non</span>
-                          </button>
-                        </div>
                       </div>
                     </div>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
       )}
+
+      {/* ATTENDEES BREAKDOWN MODAL */}
+      {viewingAttendeesEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs animate-fade-in"
+            onClick={() => setViewingAttendeesEvent(null)}
+          />
+
+          <div className="relative w-full max-w-md bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[90vh] overflow-y-auto custom-scrollbar animate-scale-in space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+                    Présences : {viewingAttendeesEvent.title}
+                  </h3>
+                  <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
+                    {formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setViewingAttendeesEvent(null)}
+                className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Breakdown into 3 Categories: Going / Declined / Pending */}
+            {(() => {
+              const rsvps = viewingAttendeesEvent.rsvp || {};
+              const goingMembers = safeMembers.filter((m) => rsvps[m.userId || m.id] === 'going');
+              const declinedMembers = safeMembers.filter((m) => rsvps[m.userId || m.id] === 'declined');
+              const pendingMembers = safeMembers.filter(
+                (m) =>
+                  !rsvps[m.userId || m.id] ||
+                  rsvps[m.userId || m.id] === 'pending' ||
+                  rsvps[m.userId || m.id] === 'maybe'
+              );
+
+              return (
+                <div className="space-y-4 text-xs">
+                  {/* Category 1: Présents */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Présents (« J'y vais »)</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[10px]">
+                        {goingMembers.length}
+                      </span>
+                    </div>
+
+                    {goingMembers.length === 0 ? (
+                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
+                        Aucun participant confirmé pour le moment.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 pl-2">
+                        {goingMembers.map((m) => (
+                          <div
+                            key={m.userId || m.id}
+                            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={m.avatar || '/Avatar_Herisson.jpg'}
+                                alt={m.name}
+                                className="w-6 h-6 rounded-full object-cover ring-1 ring-emerald-500"
+                              />
+                              <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                                {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                              Confirmé
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category 2: Décliné (Non) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-red-800 dark:text-red-300 font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <XCircle className="w-4 h-4" />
+                        <span>Absents (« Non »)</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-[10px]">
+                        {declinedMembers.length}
+                      </span>
+                    </div>
+
+                    {declinedMembers.length === 0 ? (
+                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
+                        Personne n'a décliné l'invitation.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 pl-2">
+                        {declinedMembers.map((m) => (
+                          <div
+                            key={m.userId || m.id}
+                            className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={m.avatar || '/Avatar_Herisson.jpg'}
+                                alt={m.name}
+                                className="w-6 h-6 rounded-full object-cover ring-1 ring-red-400 opacity-80"
+                              />
+                              <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                                {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-red-600 dark:text-red-400">
+                              Absent
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category 3: En attente ou Peut-être */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[#5D0D18] dark:text-zinc-300 font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <HelpCircle className="w-4 h-4" />
+                        <span>En attente de réponse</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 text-[10px]">
+                        {pendingMembers.length}
+                      </span>
+                    </div>
+
+                    {pendingMembers.length === 0 ? (
+                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
+                        Tous les membres ont répondu !
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 pl-2">
+                        {pendingMembers.map((m) => {
+                          const status = rsvps[m.userId || m.id];
+                          return (
+                            <div
+                              key={m.userId || m.id}
+                              className="p-2 rounded-xl bg-white dark:bg-zinc-800 border border-[#C7B7A3]/40 dark:border-zinc-700 flex items-center justify-between opacity-85"
+                            >
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={m.avatar || '/Avatar_Herisson.jpg'}
+                                  alt={m.name}
+                                  className="w-6 h-6 rounded-full object-cover ring-1 ring-[#C7B7A3]"
+                                />
+                                <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                                  {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-[#5D0D18] dark:text-amber-300">
+                                {status === 'maybe' ? 'Peut-être' : 'Sans réponse'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="pt-2 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingAttendeesEvent(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#C7B7A3]"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
 import {
   X,
-  Users,
-  Plus,
+  Edit,
   Image as ImageIcon,
-  Sparkles,
-  Check
+  Check,
+  Upload
 } from 'lucide-react';
-import { Friend, UserProfile, Group } from '../../types';
+import { Group } from '../../types';
 
-interface CreateGroupModalProps {
+interface EditGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  friends: Friend[];
-  currentUser: UserProfile;
-  onCreateGroup: (groupData: Partial<Group>, invitedFriendIds: string[]) => void;
+  group: Group;
+  onUpdateGroup: (groupId: string, data: Partial<Group>) => Promise<void> | void;
 }
 
 const PRESET_COVERS = [
@@ -26,69 +24,60 @@ const PRESET_COVERS = [
   'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1000&auto=format&fit=crop&q=80',
 ];
 
-export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
+export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   isOpen,
   onClose,
-  friends = [],
-  currentUser,
-  onCreateGroup,
+  group,
+  onUpdateGroup,
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !group) return null;
 
-  const safeFriends = friends || [];
-  const [name, setName] = useState('');
-  const [coverImage, setCoverImage] = useState(PRESET_COVERS[0]);
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [name, setName] = useState(group.name || '');
+  const [description, setDescription] = useState(group.description || '');
+  const [coverImage, setCoverImage] = useState(group.coverImage || PRESET_COVERS[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const acceptedFriends = safeFriends.filter((f) => f && f.status === 'accepted');
-
-  const toggleFriend = (id: string) => {
-    if (selectedFriendIds.includes(id)) {
-      setSelectedFriendIds(selectedFriendIds.filter((fId) => fId !== id));
-    } else {
-      setSelectedFriendIds([...selectedFriendIds, id]);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    onCreateGroup(
-      {
+    try {
+      setIsSubmitting(true);
+      await onUpdateGroup(group.id, {
         name: name.trim(),
-        description: '',
+        description: description.trim(),
         coverImage,
-      },
-      selectedFriendIds
-    );
-    onClose();
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        id="create-group-modal-backdrop"
+        id="edit-group-modal-backdrop"
         onClick={onClose}
         className="fixed inset-0 bg-black/50 backdrop-blur-xs animate-fade-in"
       />
 
       {/* Modal Card */}
       <div
-        id="create-group-modal-card"
+        id="edit-group-modal-card"
         className="relative w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[90vh] overflow-y-auto custom-scrollbar animate-scale-in space-y-4"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+            <Edit className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
-              Créer un nouveau groupe
+              Modifier le groupe
             </h3>
           </div>
           <button
-            id="create-group-close-btn"
+            id="edit-group-close-btn"
             onClick={onClose}
             className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
@@ -104,12 +93,27 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             </label>
             <input
               type="text"
-              id="new-group-name-input"
+              id="edit-group-name-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Escapade Normandie, Soirée Bowling, etc."
+              placeholder="Ex: Escapade Normandie..."
               required
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+              Description
+            </label>
+            <textarea
+              id="edit-group-desc-input"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description ou thème du groupe..."
+              rows={2}
+              className="w-full px-3.5 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
             />
           </div>
 
@@ -117,18 +121,18 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Photo d'illustration du groupe
+                Image d'illustration du groupe
               </label>
               <label
-                htmlFor="create-group-file-upload"
+                htmlFor="edit-group-file-upload"
                 className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
               >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>Importer une photo</span>
+                <Upload className="w-3.5 h-3.5" />
+                <span>Téléverser depuis l'appareil</span>
               </label>
               <input
                 type="file"
-                id="create-group-file-upload"
+                id="edit-group-file-upload"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
@@ -146,22 +150,20 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               />
             </div>
 
-            {/* If a custom uploaded image is selected, preview it prominently */}
-            {!PRESET_COVERS.includes(coverImage) && (
-              <div className="mb-2 relative h-28 rounded-xl overflow-hidden border-2 border-[#5D0D18] shadow-sm">
-                <img src={coverImage} alt="Illustration personnalisée" className="w-full h-full object-cover" />
-                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#5D0D18] text-white">
-                  Photo personnalisée
-                </span>
+            {/* Current / Custom cover preview */}
+            <div className="mb-2 relative h-32 rounded-2xl overflow-hidden border-2 border-[#5D0D18] shadow-sm bg-black/5">
+              <img src={coverImage} alt="Aperçu de l'illustration" className="w-full h-full object-cover" />
+              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/60 text-white backdrop-blur-xs">
+                Aperçu actuel
               </div>
-            )}
+            </div>
 
             <div className="grid grid-cols-3 gap-2">
               {PRESET_COVERS.map((url, i) => (
                 <div
                   key={i}
                   onClick={() => setCoverImage(url)}
-                  className={`relative h-18 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                  className={`relative h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
                     coverImage === url
                       ? 'border-[#5D0D18] ring-2 ring-[#5D0D18]'
                       : 'border-transparent opacity-70 hover:opacity-100'
@@ -178,53 +180,6 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             </div>
           </div>
 
-          {/* Select Friends to invite */}
-          <div className="space-y-2 pt-1">
-            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-              Inviter des amis ({selectedFriendIds.length} sélectionnés)
-            </label>
-
-            <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-              {acceptedFriends.map((friend) => {
-                const isSelected = selectedFriendIds.includes(friend.id);
-
-                return (
-                  <div
-                    key={friend.id}
-                    onClick={() => toggleFriend(friend.id)}
-                    className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] shadow-xs'
-                        : 'bg-[#E8D8C4]/40 dark:bg-zinc-900 border-[#C7B7A3]/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={friend.avatar}
-                        alt={friend.firstName}
-                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3]"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                        {friend.firstName} {friend.lastName}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${
-                        isSelected
-                          ? 'bg-[#5D0D18] text-[#FFF9EB]'
-                          : 'border border-[#C7B7A3] text-transparent'
-                      }`}
-                    >
-                      ✓
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Submit */}
           <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-end gap-2">
             <button
@@ -237,11 +192,10 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
             <button
               type="submit"
-              id="submit-create-group-btn"
-              disabled={!name.trim()}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
             >
-              Créer le groupe
+              {isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
           </div>
         </form>

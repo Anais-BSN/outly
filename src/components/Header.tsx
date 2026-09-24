@@ -6,6 +6,7 @@ interface HeaderProps {
   onOpenDrawer: () => void;
   onOpenSearchFriends: () => void;
   onOpenNotifications: () => void;
+  onGoHome?: () => void;
   notifications?: AppNotification[];
   unreadNotificationsCount?: number;
   currentUser?: UserProfile;
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDrawer,
   onOpenSearchFriends,
   onOpenNotifications,
+  onGoHome,
   notifications = [],
   unreadNotificationsCount,
   currentUser,
@@ -41,13 +43,21 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* Center: Brand Logo */}
+        {/* Center: Brand Logo (Clickable to return Home/Dashboard) */}
         <div className="flex items-center justify-center h-full select-none">
-          <img
-            src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
-            alt="Logo Outlys"
-            className="h-[90%] max-h-full w-auto object-contain select-none transition-transform hover:scale-105"
-          />
+          <button
+            id="header-logo-btn"
+            onClick={onGoHome}
+            aria-label="Retour à l'accueil"
+            title="Retour à l'accueil"
+            className="h-full py-1.5 flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95 bg-transparent border-none p-0 focus:outline-none"
+          >
+            <img
+              src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
+              alt="Logo Outlys"
+              className="h-full max-h-12 w-auto object-contain select-none"
+            />
+          </button>
         </div>
 
         {/* Right: Search Friends + Notifications */}
@@ -86,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
               title={currentUser.firstName || 'Profil'}
             >
               <img
-                src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                src={currentUser.avatar || '/Avatar_Herisson.jpg'}
                 alt={currentUser.firstName || 'Avatar'}
                 className="w-7 h-7 rounded-full object-cover"
                 referrerPolicy="no-referrer"

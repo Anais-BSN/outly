@@ -101,11 +101,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
     if (initialPoll?.type === 'choice' && initialPoll.options && initialPoll.options.length > 0) {
       return initialPoll.options.map((opt) => opt.text);
     }
-    return [
-      'Fondue savoyarde aux 3 fromages',
-      'Grillades & Barbecue au feu de bois',
-      'Burgers maison & frites',
-    ];
+    return ['', ''];
   });
   const [newChoiceInput, setNewChoiceInput] = useState('');
 
@@ -239,14 +235,15 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         });
       }
     } else {
-      if (choiceOptions.length < 2) return;
+      const validChoices = choiceOptions.map(c => c.trim()).filter(Boolean);
+      if (validChoices.length < 2) return;
 
       const pollData: Partial<Poll> = {
         groupId: initialPoll?.groupId || groupId,
         title: title.trim(),
         type: 'choice',
         description: description.trim(),
-        options: choiceOptions.map((opt, i) => ({
+        options: validChoices.map((opt, i) => ({
           id: initialPoll?.options?.[i]?.id || `opt-choice-${Date.now()}-${i}`,
           text: opt,
           votes: initialPoll?.options?.[i]?.votes || [],
@@ -404,7 +401,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5">
-                          Début (obligatoire)
+                          Début *
                         </label>
                         <input
                           type="datetime-local"
@@ -420,7 +417,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5">
-                          Fin (obligatoire)
+                          Fin *
                         </label>
                         <input
                           type="datetime-local"
@@ -445,7 +442,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 className="w-full py-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] text-xs font-bold hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 flex items-center justify-center gap-1.5 cursor-pointer transition-colors border border-[#C7B7A3]/50 dark:border-zinc-700"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Ajouter une autre date / créneau</span>
+                <span>Ajouter une proposition</span>
               </button>
             </div>
           ) : (
@@ -464,12 +461,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                     <input
                       type="text"
                       value={opt}
+                      placeholder={`Ex: Option ${idx + 1}...`}
                       onChange={(e) => {
                         const updated = [...choiceOptions];
                         updated[idx] = e.target.value;
                         setChoiceOptions(updated);
                       }}
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#E8D8C4]/50 dark:bg-zinc-800 border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#E8D8C4]/50 dark:bg-zinc-800 border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500"
                     />
                     {choiceOptions.length > 2 && (
                       <button
@@ -491,7 +489,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                   value={newChoiceInput}
                   onChange={(e) => setNewChoiceInput(e.target.value)}
                   placeholder="Ajouter une autre option..."
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();

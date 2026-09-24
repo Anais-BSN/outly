@@ -36,7 +36,6 @@ const TABS: TabConfig[] = [
   { id: 'discussion', label: 'Discussion', shortLabel: 'Discussion', icon: MessageSquare },
   { id: 'sondages', label: 'Sondages', shortLabel: 'Sondages', icon: BarChart2 },
   { id: 'galerie', label: 'Galerie', shortLabel: 'Galerie', icon: ImageIcon },
-  { id: 'logistique', label: 'Logistique', shortLabel: 'Logistique', icon: ClipboardList },
   { id: 'partage_frais', label: 'Partage des frais', shortLabel: 'Frais', icon: Receipt },
 ];
 
@@ -56,7 +55,7 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
     >
       <div
         ref={containerRef}
-        className="max-w-4xl mx-auto h-16 grid grid-cols-6 items-stretch px-1 sm:px-3 gap-1"
+        className="max-w-4xl mx-auto h-16 grid grid-cols-5 items-stretch px-1 sm:px-3 gap-1"
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;

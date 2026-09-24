@@ -59,8 +59,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [lastName, setLastName] = useState(currentUser?.lastName || 'Dubois');
   const [email, setEmail] = useState(currentUser?.email || 'thomas.dubois@outlys.fr');
   const [avatar, setAvatar] = useState(
-    currentUser?.avatar ||
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
+    currentUser?.avatar || '/Avatar_Herisson.jpg'
   );
   const [shares, setShares] = useState(currentUser?.shares || 1);
   const [themePreference, setThemePreference] = useState<'light' | 'dark'>(() => {
@@ -81,10 +80,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setFirstName(currentUser?.firstName || 'Thomas');
       setLastName(currentUser?.lastName || 'Dubois');
       setEmail(currentUser?.email || 'thomas.dubois@outlys.fr');
-      setAvatar(
-        currentUser?.avatar ||
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
-      );
+      setAvatar(currentUser?.avatar || '/Avatar_Herisson.jpg');
       setShares(currentUser?.shares || 1);
       const savedTheme = localStorage.getItem('outly_theme') as 'light' | 'dark' | null;
       const effectiveTheme = savedTheme || currentUser?.themePreference || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');

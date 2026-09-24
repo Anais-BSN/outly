@@ -16,6 +16,7 @@ interface AddTaskModalProps {
   currentUser: UserProfile;
   members: GroupMember[];
   groupId: string;
+  eventId?: string | null;
   onAddTask: (taskData: Partial<LogisticsTask>) => void;
 }
 
@@ -27,6 +28,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   currentUser,
   members,
   groupId,
+  eventId,
   onAddTask,
 }) => {
   if (!isOpen) return null;
@@ -44,6 +46,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
     onAddTask({
       groupId,
+      eventId: eventId || undefined,
       title: title.trim(),
       quantity: quantity.trim(),
       category,

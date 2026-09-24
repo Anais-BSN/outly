@@ -83,27 +83,22 @@ export const emailService = {
       : (token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl());
 
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">${senderName} vous invite !</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            ${groupName ? `Vous avez été invité(e) à rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
-          </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
-            <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${finalInviteLink}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                  ${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}
-                </a>
-              </td>
-            </tr>
-          </table>
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a été envoyé automatiquement par Outlys.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys</h2>
+        <p style="font-size: 15px;">Bonjour,</p>
+        <p style="font-size: 15px;">
+          ${groupName ? `<strong>${senderName}</strong> vous invite à rejoindre le groupe d'escapades <strong>${groupName}</strong> sur Outlys.` : `<strong>${senderName}</strong> vous invite à vous connecter sur Outlys.`}
+        </p>
+        <p style="margin: 24px 0; font-size: 16px;">
+          👉 <a href="${finalInviteLink}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">${groupName ? 'Rejoindre le groupe' : 'Accepter l\'invitation'}</a>
+        </p>
+        <p style="font-size: 13px; color: #555555; margin-top: 20px; word-break: break-all;">
+          Si le lien ci-dessus ne fonctionne pas, copiez-collez l'adresse suivante dans votre navigateur :<br/>
+          <a href="${finalInviteLink}" style="color: #1a73e8; text-decoration: underline;">${finalInviteLink}</a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a été envoyé par Outlys.
         </p>
       </div>
     `;
@@ -167,31 +162,24 @@ export const emailService = {
     const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
 
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-          <p style="color: #6D2932; font-size: 14px; margin-top: 4px;">Rappel d'événement</p>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">C'est demain !</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Votre sortie <strong>"${eventTitle}"</strong> débute le <strong>${formattedDate}</strong>.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys - Rappel de sortie</h2>
+        <p style="font-size: 15px;">Bonjour,</p>
+        <p style="font-size: 15px;">
+          Votre événement <strong>"${eventTitle}"</strong> débute le <strong>${formattedDate}</strong>.
+        </p>
+        ${location ? `<p style="font-size: 14px; color: #333333;"><strong>Lieu :</strong> ${location}</p>` : ''}
+        ${gpsUrl ? `
+          <p style="margin: 20px 0; font-size: 15px;">
+            📍 <a href="${gpsUrl}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">Voir l'itinéraire GPS</a>
           </p>
-          ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ''}
-          ${gpsUrl ? `
-            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 20px auto; border-collapse: separate;">
-              <tr>
-                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                  <a href="${gpsUrl}" target="_blank" style="display: inline-block; padding: 10px 22px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 13px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                    Voir l'itinéraire GPS
-                  </a>
-                </td>
-              </tr>
-            </table>
-          ` : ''}
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a été envoyé automatiquement par Outlys. N'oubliez pas vos équipements et prévenez le groupe en cas d'imprévu.
+          <p style="font-size: 13px; color: #555555; word-break: break-all;">
+            Lien direct : <a href="${gpsUrl}" style="color: #1a73e8; text-decoration: underline;">${gpsUrl}</a>
+          </p>
+        ` : ''}
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a été envoyé par Outlys.
         </p>
       </div>
     `;
@@ -225,33 +213,27 @@ export const emailService = {
     const subject = 'Réinitialisation de votre mot de passe - Outlys';
 
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">Réinitialisation de votre mot de passe</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Bonjour${userName ? ` <strong>${userName}</strong>` : ''}, vous avez demandé la réinitialisation de votre mot de passe sur Outlys.
-          </p>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
-          </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
-            <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                  Réinitialiser mon mot de passe
-                </a>
-              </td>
-            </tr>
-          </table>
-          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
-            Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité. Ce lien est valable pendant 1 heure.
-          </p>
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a été envoyé automatiquement par Outlys.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys</h2>
+        <p style="font-size: 15px;">
+          Bonjour${userName ? ` <strong>${userName}</strong>` : ''},
+        </p>
+        <p style="font-size: 15px;">
+          Vous avez demandé la réinitialisation de votre mot de passe sur Outlys.
+        </p>
+        <p style="margin: 24px 0; font-size: 16px;">
+          🔒 <a href="${resetUrl}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">Réinitialiser mon mot de passe</a>
+        </p>
+        <p style="font-size: 13px; color: #555555; margin-top: 20px; word-break: break-all;">
+          Si le lien ci-dessus ne fonctionne pas, copiez-collez l'adresse suivante dans votre navigateur :<br/>
+          <a href="${resetUrl}" style="color: #1a73e8; text-decoration: underline;">${resetUrl}</a>
+        </p>
+        <p style="font-size: 13px; color: #666666; margin-top: 15px;">
+          Ce lien est valable pendant 1 heure. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.
+        </p>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a été envoyé par Outlys.
         </p>
       </div>
     `;

@@ -191,6 +191,23 @@ export const api = {
     });
   },
 
+  async addVirtualMember(
+    groupId: string,
+    data: { firstName: string; avatar?: string; shares?: number }
+  ): Promise<any> {
+    return request<any>(`/groups/${groupId}/virtual-member`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateGroup(groupId: string, data: Partial<Group>): Promise<Group> {
+    return request<Group>(`/groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
   async deleteGroup(groupId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/groups/${groupId}`, {
       method: 'DELETE',
@@ -198,6 +215,12 @@ export const api = {
   },
 
   async leaveGroup(groupId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async removeGroupMember(groupId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
     });
@@ -362,9 +385,12 @@ export const api = {
     });
   },
 
-  // 9. Logistique & Tâches
-  async getTasks(groupId?: string): Promise<LogisticsTask[]> {
-    const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+  // 9. Organisation & Tâches (ex-Logistique)
+  async getTasks(groupId?: string, eventId?: string): Promise<LogisticsTask[]> {
+    const params = new URLSearchParams();
+    if (groupId) params.append('groupId', groupId);
+    if (eventId) params.append('eventId', eventId);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return request<LogisticsTask[]>(`/tasks${query}`);
   },
 

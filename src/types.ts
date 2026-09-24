@@ -32,6 +32,7 @@ export interface GroupMember {
   avatar: string;
   shares: number;
   role: 'admin' | 'member';
+  isVirtual?: boolean;
 }
 
 export interface Group {
@@ -130,6 +131,7 @@ export type TaskCategory = 'Matériel' | 'Nourriture' | 'Organisation' | 'Autre'
 export interface LogisticsTask {
   id: string;
   groupId: string;
+  eventId?: string | null;
   title: string;
   quantity: string;
   assignedToId: string | null;

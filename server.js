@@ -83,27 +83,22 @@ var emailService = {
     const subject = groupName ? `Invitation : Rejoignez le groupe "${groupName}" sur Outlys` : `Demande d'ami de ${senderName} sur Outlys`;
     const finalInviteLink = inviteLink ? buildAbsoluteEmailUrl(inviteLink) : token ? buildAbsoluteEmailUrl(`/invite/${token}`) : getCleanAppUrl();
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">${senderName} vous invite !</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            ${groupName ? `Vous avez \xE9t\xE9 invit\xE9(e) \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong>.` : `${senderName} souhaite se connecter avec vous sur Outlys.`}
-          </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
-            <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${finalInviteLink}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                  ${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}
-                </a>
-              </td>
-            </tr>
-          </table>
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys</h2>
+        <p style="font-size: 15px;">Bonjour,</p>
+        <p style="font-size: 15px;">
+          ${groupName ? `<strong>${senderName}</strong> vous invite \xE0 rejoindre le groupe d'escapades <strong>${groupName}</strong> sur Outlys.` : `<strong>${senderName}</strong> vous invite \xE0 vous connecter sur Outlys.`}
+        </p>
+        <p style="margin: 24px 0; font-size: 16px;">
+          \u{1F449} <a href="${finalInviteLink}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">${groupName ? "Rejoindre le groupe" : "Accepter l'invitation"}</a>
+        </p>
+        <p style="font-size: 13px; color: #555555; margin-top: 20px; word-break: break-all;">
+          Si le lien ci-dessus ne fonctionne pas, copiez-collez l'adresse suivante dans votre navigateur :<br/>
+          <a href="${finalInviteLink}" style="color: #1a73e8; text-decoration: underline;">${finalInviteLink}</a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a \xE9t\xE9 envoy\xE9 par Outlys.
         </p>
       </div>
     `;
@@ -157,31 +152,24 @@ var emailService = {
     });
     const subject = `Rappel Outlys : "${eventTitle}" a lieu demain !`;
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-          <p style="color: #6D2932; font-size: 14px; margin-top: 4px;">Rappel d'\xE9v\xE9nement</p>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">C'est demain !</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Votre sortie <strong>"${eventTitle}"</strong> d\xE9bute le <strong>${formattedDate}</strong>.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys - Rappel de sortie</h2>
+        <p style="font-size: 15px;">Bonjour,</p>
+        <p style="font-size: 15px;">
+          Votre \xE9v\xE9nement <strong>"${eventTitle}"</strong> d\xE9bute le <strong>${formattedDate}</strong>.
+        </p>
+        ${location ? `<p style="font-size: 14px; color: #333333;"><strong>Lieu :</strong> ${location}</p>` : ""}
+        ${gpsUrl ? `
+          <p style="margin: 20px 0; font-size: 15px;">
+            \u{1F4CD} <a href="${gpsUrl}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">Voir l'itin\xE9raire GPS</a>
           </p>
-          ${location ? `<p style="font-size: 13px; color: #27272A;"><strong>Lieu :</strong> ${location}</p>` : ""}
-          ${gpsUrl ? `
-            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 20px auto; border-collapse: separate;">
-              <tr>
-                <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                  <a href="${gpsUrl}" target="_blank" style="display: inline-block; padding: 10px 22px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 13px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                    Voir l'itin\xE9raire GPS
-                  </a>
-                </td>
-              </tr>
-            </table>
-          ` : ""}
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys. N'oubliez pas vos \xE9quipements et pr\xE9venez le groupe en cas d'impr\xE9vu.
+          <p style="font-size: 13px; color: #555555; word-break: break-all;">
+            Lien direct : <a href="${gpsUrl}" style="color: #1a73e8; text-decoration: underline;">${gpsUrl}</a>
+          </p>
+        ` : ""}
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a \xE9t\xE9 envoy\xE9 par Outlys.
         </p>
       </div>
     `;
@@ -209,33 +197,27 @@ var emailService = {
     const resetUrl = resetLink ? buildAbsoluteEmailUrl(resetLink) : token ? buildAbsoluteEmailUrl(`/reset-password?token=${token}`) : buildAbsoluteEmailUrl("/reset-password");
     const subject = "R\xE9initialisation de votre mot de passe - Outlys";
     const htmlContent = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif, Arial; background-color: #FFF9EB; color: #27272A; padding: 24px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid #C7B7A3;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #6D2932; font-family: Georgia, serif; font-size: 28px; margin: 0;">Outlys</h1>
-        </div>
-        <div style="background-color: #E8D8C4; padding: 20px; border-radius: 12px; border: 1px solid #C7B7A3;">
-          <h2 style="color: #6D2932; font-size: 18px; margin-top: 0;">R\xE9initialisation de votre mot de passe</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Bonjour${userName ? ` <strong>${userName}</strong>` : ""}, vous avez demand\xE9 la r\xE9initialisation de votre mot de passe sur Outlys.
-          </p>
-          <p style="font-size: 14px; line-height: 1.5; color: #27272A;">
-            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :
-          </p>
-          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto; border-collapse: separate;">
-            <tr>
-              <td align="center" bgcolor="#6D2932" style="background-color: #6D2932; border-radius: 9999px;">
-                <a href="${resetUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Plus Jakarta Sans', sans-serif, Arial; font-size: 14px; font-weight: bold; color: #FFF9EB; text-decoration: none; border-radius: 9999px;">
-                  R\xE9initialiser mon mot de passe
-                </a>
-              </td>
-            </tr>
-          </table>
-          <p style="font-size: 12px; color: #71717A; margin-top: 16px;">
-            Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail en toute s\xE9curit\xE9. Ce lien est valable pendant 1 heure.
-          </p>
-        </div>
-        <p style="text-align: center; font-size: 11px; color: #71717A; margin-top: 16px;">
-          Cet e-mail a \xE9t\xE9 envoy\xE9 automatiquement par Outlys.
+      <div style="font-family: Arial, sans-serif; color: #27272A; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #6D2932; margin-top: 0; font-size: 22px;">Outlys</h2>
+        <p style="font-size: 15px;">
+          Bonjour${userName ? ` <strong>${userName}</strong>` : ""},
+        </p>
+        <p style="font-size: 15px;">
+          Vous avez demand\xE9 la r\xE9initialisation de votre mot de passe sur Outlys.
+        </p>
+        <p style="margin: 24px 0; font-size: 16px;">
+          \u{1F512} <a href="${resetUrl}" style="color: #1a73e8; text-decoration: underline; font-weight: bold;">R\xE9initialiser mon mot de passe</a>
+        </p>
+        <p style="font-size: 13px; color: #555555; margin-top: 20px; word-break: break-all;">
+          Si le lien ci-dessus ne fonctionne pas, copiez-collez l'adresse suivante dans votre navigateur :<br/>
+          <a href="${resetUrl}" style="color: #1a73e8; text-decoration: underline;">${resetUrl}</a>
+        </p>
+        <p style="font-size: 13px; color: #666666; margin-top: 15px;">
+          Ce lien est valable pendant 1 heure. Si vous n'\xEAtes pas \xE0 l'origine de cette demande, vous pouvez ignorer cet e-mail.
+        </p>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0 15px 0;" />
+        <p style="font-size: 12px; color: #888888;">
+          Cet e-mail automatique a \xE9t\xE9 envoy\xE9 par Outlys.
         </p>
       </div>
     `;
@@ -337,6 +319,7 @@ apiRouter.get("/sse", handleSseConnection);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
+    await query(`ALTER TABLE logistics_tasks ADD COLUMN IF NOT EXISTS event_id VARCHAR(50) REFERENCES events(id) ON DELETE CASCADE;`);
     await query(`
       CREATE TABLE IF NOT EXISTS invitations (
         id VARCHAR(50) PRIMARY KEY,
@@ -1047,6 +1030,97 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
     res.json(memberData);
   } catch (err) {
     console.error("Error in POST /groups/:id/members:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/groups/:id/virtual-member", async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const { firstName, name, avatar = "/Avatar_Lapin.jpg", shares = 1 } = req.body;
+    const trimmedFirstName = (firstName || name || "Invit\xE9").trim();
+    if (!trimmedFirstName) {
+      return res.status(400).json({ error: "Le pr\xE9nom du participant est requis" });
+    }
+    const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const randomHandle = `@${trimmedFirstName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Math.random().toString(36).substring(2, 6)}`;
+    const dummyEmail = `${virtualUserId}@outlys.local`;
+    await query(
+      `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
+       VALUES ($1, $2, '', $3, $4, $5, $6, NOW())`,
+      [virtualUserId, trimmedFirstName, dummyEmail, randomHandle, avatar, shares || 1]
+    );
+    await query(
+      `INSERT INTO group_members (group_id, user_id, role, joined_at)
+       VALUES ($1, $2, 'member', NOW())`,
+      [groupId, virtualUserId]
+    );
+    const memberData = {
+      id: virtualUserId,
+      userId: virtualUserId,
+      firstName: trimmedFirstName,
+      lastName: "",
+      name: trimmedFirstName,
+      handle: randomHandle,
+      avatar,
+      shares: shares || 1,
+      role: "member",
+      isVirtual: true
+    };
+    realtimeBroadcaster.broadcast({
+      type: "group:member_added",
+      groupId,
+      data: { groupId, member: memberData }
+    });
+    res.json(memberData);
+  } catch (err) {
+    console.error("Error in POST /groups/:id/virtual-member:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.put("/groups/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, coverImage } = req.body;
+    const existingRes = await query(`SELECT id, name, description, cover_image FROM groups WHERE id = $1`, [id]);
+    if (existingRes.rows.length === 0) {
+      return res.status(404).json({ error: "Groupe introuvable" });
+    }
+    const current = existingRes.rows[0];
+    const newName = name !== void 0 ? name.trim() : current.name;
+    const newDesc = description !== void 0 ? description : current.description;
+    const newCover = coverImage !== void 0 ? coverImage : current.cover_image;
+    await query(
+      `UPDATE groups
+       SET name = $1, description = $2, cover_image = $3
+       WHERE id = $4`,
+      [newName, newDesc, newCover, id]
+    );
+    const updatedRes = await query(
+      `SELECT id, name, description, cover_image as "coverImage", created_at as "createdAt"
+       FROM groups
+       WHERE id = $1`,
+      [id]
+    );
+    const membersRes = await query(
+      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1`,
+      [id]
+    );
+    const updatedGroup = {
+      ...updatedRes.rows[0],
+      members: membersRes.rows
+    };
+    realtimeBroadcaster.broadcast({
+      type: "group:updated",
+      groupId: id,
+      data: updatedGroup
+    });
+    res.json(updatedGroup);
+  } catch (err) {
+    console.error("Error in PUT /groups/:id:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2048,8 +2122,9 @@ apiRouter.delete("/gallery/:id", async (req, res) => {
 apiRouter.get("/tasks", async (req, res) => {
   try {
     const groupId = req.query.groupId;
+    const eventId = req.query.eventId;
     let sql = `
-      SELECT t.id, t.group_id as "groupId", t.title, t.quantity,
+      SELECT t.id, t.group_id as "groupId", t.event_id as "eventId", t.title, t.quantity,
              t.assigned_to_id as "assignedToId",
              u.first_name as "assignedToName",
              u.avatar as "assignedToAvatar",
@@ -2060,9 +2135,15 @@ apiRouter.get("/tasks", async (req, res) => {
       LEFT JOIN users u ON t.assigned_to_id = u.id
     `;
     const params = [];
-    if (groupId) {
+    if (groupId && eventId) {
+      sql += ` WHERE t.group_id = $1 AND t.event_id = $2`;
+      params.push(groupId, eventId);
+    } else if (groupId) {
       sql += ` WHERE t.group_id = $1`;
       params.push(groupId);
+    } else if (eventId) {
+      sql += ` WHERE t.event_id = $1`;
+      params.push(eventId);
     }
     sql += ` ORDER BY t.created_at ASC`;
     const result = await query(sql, params);
@@ -2076,6 +2157,7 @@ apiRouter.post("/tasks", async (req, res) => {
   try {
     const {
       groupId,
+      eventId = null,
       title,
       quantity = "1",
       assignedToId = null,
@@ -2084,9 +2166,9 @@ apiRouter.post("/tasks", async (req, res) => {
     } = req.body;
     const taskId = `task-${Date.now()}`;
     await query(
-      `INSERT INTO logistics_tasks (id, group_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, false, $6, $7, NOW())`,
-      [taskId, groupId, title, quantity, assignedToId, category, createdBy]
+      `INSERT INTO logistics_tasks (id, group_id, event_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, NOW())`,
+      [taskId, groupId, eventId || null, title, quantity, assignedToId, category, createdBy]
     );
     let assignedToName = null;
     let assignedToAvatar = null;
@@ -2100,6 +2182,7 @@ apiRouter.post("/tasks", async (req, res) => {
     const newTask = {
       id: taskId,
       groupId,
+      eventId: eventId || null,
       title,
       quantity,
       assignedToId,

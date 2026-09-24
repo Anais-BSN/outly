@@ -15,6 +15,7 @@ import {
 import { Group, Friend, UserProfile } from '../../types';
 import { api } from '../../services/api';
 import { MultiEmailInput } from '../ui/MultiEmailInput';
+import { CARTOON_AVATARS } from '../../constants/avatars';
 
 interface AddGroupMemberModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ const EligibleFriendRow = React.memo<EligibleFriendRowProps>(({ friend, isAdding
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <img
-          src={friend.avatar}
+          src={friend.avatar || '/Avatar_Herisson.jpg'}
           alt={friend.firstName}
           className="w-9 h-9 rounded-full object-cover ring-1 ring-[#6D2932]"
           referrerPolicy="no-referrer"
@@ -81,7 +82,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
 }) => {
   if (!isOpen || !group) return null;
 
-  const [activeTab, setActiveTab] = useState<'friends' | 'invite'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'invite' | 'virtual'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
   const [emails, setEmails] = useState<string[]>([]);
@@ -89,6 +90,12 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Virtual member state
+  const [virtualName, setVirtualName] = useState('');
+  const [virtualAvatar, setVirtualAvatar] = useState(CARTOON_AVATARS[6]?.url || '/Avatar_Lapin.jpg');
+  const [virtualShares, setVirtualShares] = useState(1);
+  const [addingVirtual, setAddingVirtual] = useState(false);
 
   const existingMemberIds = new Set(
     (group.members || []).map((m) => m.userId || m.id)
@@ -187,6 +194,36 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     }
   };
 
+  const handleCreateVirtualMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!virtualName.trim() || addingVirtual) return;
+
+    setAddingVirtual(true);
+    setFeedbackMsg(null);
+
+    try {
+      const newMember = await api.addVirtualMember(group.id, {
+        firstName: virtualName.trim(),
+        avatar: virtualAvatar,
+        shares: virtualShares || 1,
+      });
+
+      onMemberAdded(newMember);
+      setFeedbackMsg({
+        type: 'success',
+        text: `Le participant sans compte "${virtualName.trim()}" a été ajouté avec succès ! 🎉`,
+      });
+      setVirtualName('');
+    } catch (err: any) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || "Erreur lors de l'ajout du participant virtuel",
+      });
+    } finally {
+      setAddingVirtual(false);
+    }
+  };
+
   const getInviteButtonText = () => {
     if (sendingEmail) {
       return `Envoi de ${emails.length} invitation${emails.length > 1 ? 's' : ''}...`;
@@ -239,8 +276,8 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher: Sélectionner des amis vs Lien & E-mail */}
-        <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50">
+        {/* Tab Switcher: Sélectionner des amis vs Lien & E-mail vs Sans compte */}
+        <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50 gap-1">
           <button
             type="button"
             onClick={() => {
@@ -254,6 +291,21 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
             }`}
           >
             <span>Mes amis ({eligibleFriends.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('virtual');
+              setFeedbackMsg(null);
+            }}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+              activeTab === 'virtual'
+                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                : 'text-[#27272A] dark:text-zinc-300'
+            }`}
+          >
+            <span>Sans compte</span>
           </button>
 
           <button
@@ -401,6 +453,88 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
               </button>
             </form>
           </div>
+        )}
+
+        {/* TAB 3: VIRTUAL MEMBER (WITHOUT ACCOUNT) */}
+        {activeTab === 'virtual' && (
+          <form onSubmit={handleCreateVirtualMember} className="space-y-4">
+            <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                  Prénom du participant *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={virtualName}
+                  onChange={(e) => setVirtualName(e.target.value)}
+                  placeholder="Ex: Thomas, Marie..."
+                  className="w-full px-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
+                />
+                <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 mt-1">
+                  Ce participant n'a pas besoin de compte Outlys. Il sera inclus dans les calculs de dépenses et remboursements.
+                </p>
+              </div>
+
+              {/* Avatar Picker */}
+              <div>
+                <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-2">
+                  Avatar d'illustration
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {CARTOON_AVATARS.map((av) => (
+                    <button
+                      key={av.id}
+                      type="button"
+                      onClick={() => setVirtualAvatar(av.url)}
+                      className={`relative p-1 rounded-2xl border-2 transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                        virtualAvatar === av.url
+                          ? 'border-[#6D2932] bg-[#FFF9EB] dark:bg-zinc-900 shadow-xs scale-105'
+                          : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={av.url}
+                        alt={av.name}
+                        className="w-10 h-10 rounded-full object-cover shadow-xs"
+                      />
+                      <span className="text-[10px] font-medium text-[#27272A] dark:text-zinc-300 truncate w-full text-center">
+                        {av.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Shares */}
+              <div>
+                <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                  Nombre de parts de dépenses (par défaut 1)
+                </label>
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  value={virtualShares}
+                  onChange={(e) => setVirtualShares(parseFloat(e.target.value) || 1)}
+                  className="w-24 px-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={addingVirtual || !virtualName.trim()}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+            >
+              {addingVirtual ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UserPlus className="w-4 h-4" />
+              )}
+              <span>Ajouter ce participant</span>
+            </button>
+          </form>
         )}
       </div>
     </div>

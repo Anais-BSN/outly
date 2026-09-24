@@ -1,10 +1,11 @@
 export const CARTOON_AVATARS = [
-  { id: 'fox', name: 'Renard Rusé', url: 'https://images.unsplash.com/photo-1516934024742-b461fba47600?w=150&auto=format&fit=crop&q=80' },
-  { id: 'raccoon', name: 'Raton Laveur', url: 'https://images.unsplash.com/photo-1497752531616-c3afd9760a11?w=150&auto=format&fit=crop&q=80' },
-  { id: 'cat', name: 'Chat Malin', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&auto=format&fit=crop&q=80' },
-  { id: 'panda', name: 'Panda Zen', url: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=150&auto=format&fit=crop&q=80' },
-  { id: 'bear', name: 'Ours Douillet', url: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?w=150&auto=format&fit=crop&q=80' },
-  { id: 'hedgehog', name: 'Hérisson', url: '/avatar_herisson.svg' },
-  { id: 'monkey', name: 'Singe', url: 'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=150&auto=format&fit=crop&q=80' },
-  { id: 'deer', name: 'Cerf Majestueux', url: 'https://images.unsplash.com/photo-1484406566174-9da000fda645?w=150&auto=format&fit=crop&q=80' },
+  { id: 'herisson', name: 'Hérisson', url: '/Avatar_Herisson.jpg' },
+  { id: 'renard', name: 'Renard', url: '/Avatar_Renard.jpg' },
+  { id: 'raton', name: 'Raton laveur', url: '/Avatar_Raton.jpg' },
+  { id: 'ecureuil', name: 'Écureuil', url: '/Avatar_Ecureuil.jpg' },
+  { id: 'panda', name: 'Panda', url: '/Avatar_Panda.jpg' },
+  { id: 'ours', name: 'Ours polaire', url: '/Avatar_Ours.jpg' },
+  { id: 'lapin', name: 'Lapin', url: '/Avatar_Lapin.jpg' },
+  { id: 'cerf', name: 'Cerf', url: '/Avatar_Cerf.jpg' },
 ];
+

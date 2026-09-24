@@ -41,6 +41,7 @@ apiRouter.get('/sse', handleSseConnection);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
+    await query(`ALTER TABLE logistics_tasks ADD COLUMN IF NOT EXISTS event_id VARCHAR(50) REFERENCES events(id) ON DELETE CASCADE;`);
     await query(`
       CREATE TABLE IF NOT EXISTS invitations (
         id VARCHAR(50) PRIMARY KEY,
@@ -922,6 +923,115 @@ apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
     res.json(memberData);
   } catch (err: any) {
     console.error('Error in POST /groups/:id/members:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ajouter un membre virtuel (sans compte Outlys)
+apiRouter.post('/groups/:id/virtual-member', async (req: Request, res: Response) => {
+  try {
+    const { id: groupId } = req.params;
+    const { firstName, name, avatar = '/Avatar_Lapin.jpg', shares = 1 } = req.body;
+    const trimmedFirstName = (firstName || name || 'Invité').trim();
+    if (!trimmedFirstName) {
+      return res.status(400).json({ error: 'Le prénom du participant est requis' });
+    }
+
+    const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const randomHandle = `@${trimmedFirstName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Math.random().toString(36).substring(2, 6)}`;
+    const dummyEmail = `${virtualUserId}@outlys.local`;
+
+    await query(
+      `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
+       VALUES ($1, $2, '', $3, $4, $5, $6, NOW())`,
+      [virtualUserId, trimmedFirstName, dummyEmail, randomHandle, avatar, shares || 1]
+    );
+
+    await query(
+      `INSERT INTO group_members (group_id, user_id, role, joined_at)
+       VALUES ($1, $2, 'member', NOW())`,
+      [groupId, virtualUserId]
+    );
+
+    const memberData = {
+      id: virtualUserId,
+      userId: virtualUserId,
+      firstName: trimmedFirstName,
+      lastName: '',
+      name: trimmedFirstName,
+      handle: randomHandle,
+      avatar,
+      shares: shares || 1,
+      role: 'member',
+      isVirtual: true,
+    };
+
+    realtimeBroadcaster.broadcast({
+      type: 'group:member_added',
+      groupId,
+      data: { groupId, member: memberData },
+    });
+
+    res.json(memberData);
+  } catch (err: any) {
+    console.error('Error in POST /groups/:id/virtual-member:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Modifier les paramètres d'un groupe (Nom, image de couverture, description)
+apiRouter.put('/groups/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, coverImage } = req.body;
+
+    const existingRes = await query(`SELECT id, name, description, cover_image FROM groups WHERE id = $1`, [id]);
+    if (existingRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Groupe introuvable' });
+    }
+
+    const current = existingRes.rows[0];
+    const newName = name !== undefined ? name.trim() : current.name;
+    const newDesc = description !== undefined ? description : current.description;
+    const newCover = coverImage !== undefined ? coverImage : current.cover_image;
+
+    await query(
+      `UPDATE groups
+       SET name = $1, description = $2, cover_image = $3
+       WHERE id = $4`,
+      [newName, newDesc, newCover, id]
+    );
+
+    const updatedRes = await query(
+      `SELECT id, name, description, cover_image as "coverImage", created_at as "createdAt"
+       FROM groups
+       WHERE id = $1`,
+      [id]
+    );
+
+    const membersRes = await query(
+      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1`,
+      [id]
+    );
+
+    const updatedGroup = {
+      ...updatedRes.rows[0],
+      members: membersRes.rows,
+    };
+
+    realtimeBroadcaster.broadcast({
+      type: 'group:updated',
+      groupId: id,
+      data: updatedGroup,
+    });
+
+    res.json(updatedGroup);
+  } catch (err: any) {
+    console.error('Error in PUT /groups/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2145,8 +2255,9 @@ apiRouter.delete('/gallery/:id', async (req: Request, res: Response) => {
 apiRouter.get('/tasks', async (req: Request, res: Response) => {
   try {
     const groupId = req.query.groupId as string | undefined;
+    const eventId = req.query.eventId as string | undefined;
     let sql = `
-      SELECT t.id, t.group_id as "groupId", t.title, t.quantity,
+      SELECT t.id, t.group_id as "groupId", t.event_id as "eventId", t.title, t.quantity,
              t.assigned_to_id as "assignedToId",
              u.first_name as "assignedToName",
              u.avatar as "assignedToAvatar",
@@ -2157,9 +2268,15 @@ apiRouter.get('/tasks', async (req: Request, res: Response) => {
       LEFT JOIN users u ON t.assigned_to_id = u.id
     `;
     const params: any[] = [];
-    if (groupId) {
+    if (groupId && eventId) {
+      sql += ` WHERE t.group_id = $1 AND t.event_id = $2`;
+      params.push(groupId, eventId);
+    } else if (groupId) {
       sql += ` WHERE t.group_id = $1`;
       params.push(groupId);
+    } else if (eventId) {
+      sql += ` WHERE t.event_id = $1`;
+      params.push(eventId);
     }
     sql += ` ORDER BY t.created_at ASC`;
 
@@ -2175,6 +2292,7 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
   try {
     const {
       groupId,
+      eventId = null,
       title,
       quantity = '1',
       assignedToId = null,
@@ -2184,9 +2302,9 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
 
     const taskId = `task-${Date.now()}`;
     await query(
-      `INSERT INTO logistics_tasks (id, group_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, false, $6, $7, NOW())`,
-      [taskId, groupId, title, quantity, assignedToId, category, createdBy]
+      `INSERT INTO logistics_tasks (id, group_id, event_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, NOW())`,
+      [taskId, groupId, eventId || null, title, quantity, assignedToId, category, createdBy]
     );
 
     let assignedToName = null;
@@ -2202,6 +2320,7 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
     const newTask = {
       id: taskId,
       groupId,
+      eventId: eventId || null,
       title,
       quantity,
       assignedToId,
