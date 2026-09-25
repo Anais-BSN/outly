@@ -382,7 +382,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <span className="text-[10px] font-medium text-[#27272A] dark:text-zinc-300 truncate w-full text-center">
-                      {item.name.split(' ')[0]}
+                      {item.name}
                     </span>
                     {avatar === item.url && (
                       <div className="absolute -top-1 -right-1 bg-[#5D0D18] text-white rounded-full p-0.5">

@@ -635,11 +635,12 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                         {t.assignedToId ? (
                                           <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
                                             <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
-                                            {isAssignedToMe && onUnclaimTask && (
+                                            {onUnclaimTask && (
                                               <button
                                                 type="button"
                                                 onClick={() => onUnclaimTask(t.id)}
-                                                className="text-red-600 dark:text-red-400 hover:underline ml-1 cursor-pointer"
+                                                className="text-red-600 dark:text-red-400 hover:text-red-800 ml-1 cursor-pointer font-bold px-0.5"
+                                                title="Désassigner"
                                               >
                                                 ✕
                                               </button>
@@ -689,7 +690,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
         </div>
       )}
 
-      {/* ATTENDEES BREAKDOWN MODAL */}
+      {/* ATTENDEES BREAKDOWN MODAL - SINGLE CLEAN UNIFIED LIST */}
       {viewingAttendeesEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div
@@ -719,148 +720,78 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
               </button>
             </div>
 
-            {/* Breakdown into 3 Categories: Going / Declined / Pending */}
+            {/* Single clean list of all group members with discreet status badges */}
             {(() => {
               const rsvps = viewingAttendeesEvent.rsvp || {};
-              const goingMembers = safeMembers.filter((m) => rsvps[m.userId || m.id] === 'going');
-              const declinedMembers = safeMembers.filter((m) => rsvps[m.userId || m.id] === 'declined');
-              const pendingMembers = safeMembers.filter(
-                (m) =>
-                  !rsvps[m.userId || m.id] ||
-                  rsvps[m.userId || m.id] === 'pending' ||
-                  rsvps[m.userId || m.id] === 'maybe'
-              );
+              const rawMembers = safeMembers || [];
+              const seenIds = new Set<string>();
+              const deduplicatedMembers = rawMembers.filter((m) => {
+                const uid = m.userId || m.id;
+                if (!uid || seenIds.has(uid)) return false;
+                seenIds.add(uid);
+                return true;
+              });
+
+              if (deduplicatedMembers.length === 0) {
+                return (
+                  <p className="text-xs text-center text-[#27272A]/70 dark:text-zinc-400 py-4 italic">
+                    Aucun membre dans le groupe.
+                  </p>
+                );
+              }
 
               return (
-                <div className="space-y-4 text-xs">
-                  {/* Category 1: Présents */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
-                      <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Présents (« J'y vais »)</span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[10px]">
-                        {goingMembers.length}
-                      </span>
-                    </div>
+                <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1">
+                  {deduplicatedMembers.map((m) => {
+                    const uid = m.userId || m.id;
+                    const rsvpStatus = rsvps[uid];
+                    const memberName = m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Membre';
 
-                    {goingMembers.length === 0 ? (
-                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
-                        Aucun participant confirmé pour le moment.
-                      </p>
-                    ) : (
-                      <div className="space-y-1.5 pl-2">
-                        {goingMembers.map((m) => (
-                          <div
-                            key={m.userId || m.id}
-                            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={m.avatar || '/Avatar_Herisson.jpg'}
-                                alt={m.name}
-                                className="w-6 h-6 rounded-full object-cover ring-1 ring-emerald-500"
-                              />
-                              <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                                {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                              Confirmé
+                    return (
+                      <div
+                        key={uid}
+                        className="p-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#C7B7A3]/50 dark:border-zinc-800 flex items-center justify-between gap-3 shadow-xs hover:border-[#C7B7A3] transition-all"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <img
+                            src={m.avatar || '/Avatar_Herisson.jpg'}
+                            alt={memberName}
+                            title={`${memberName} (cliquer pour agrandir)`}
+                            onClick={() => {
+                              if (onViewAvatar && m.avatar) {
+                                onViewAvatar(m.avatar, memberName);
+                              }
+                            }}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#C7B7A3]/60 cursor-pointer hover:scale-105 transition-transform shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                            {memberName}
+                          </span>
+                        </div>
+
+                        {/* Discreet Status Badge */}
+                        <div className="shrink-0">
+                          {rsvpStatus === 'going' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span>Confirmé</span>
                             </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Category 2: Décliné (Non) */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-red-800 dark:text-red-300 font-bold">
-                      <div className="flex items-center gap-1.5">
-                        <XCircle className="w-4 h-4" />
-                        <span>Absents (« Non »)</span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-[10px]">
-                        {declinedMembers.length}
-                      </span>
-                    </div>
-
-                    {declinedMembers.length === 0 ? (
-                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
-                        Personne n'a décliné l'invitation.
-                      </p>
-                    ) : (
-                      <div className="space-y-1.5 pl-2">
-                        {declinedMembers.map((m) => (
-                          <div
-                            key={m.userId || m.id}
-                            className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={m.avatar || '/Avatar_Herisson.jpg'}
-                                alt={m.name}
-                                className="w-6 h-6 rounded-full object-cover ring-1 ring-red-400 opacity-80"
-                              />
-                              <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                                {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-red-600 dark:text-red-400">
-                              Absent
+                          ) : rsvpStatus === 'declined' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-300/60 dark:border-zinc-700 flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-zinc-500" />
+                              <span>Décliné</span>
                             </span>
-                          </div>
-                        ))}
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#E8D8C4]/70 text-[#5D0D18] dark:bg-zinc-800 dark:text-amber-200 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                              <span>Sans réponse</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Category 3: En attente ou Peut-être */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[#5D0D18] dark:text-zinc-300 font-bold">
-                      <div className="flex items-center gap-1.5">
-                        <HelpCircle className="w-4 h-4" />
-                        <span>En attente de réponse</span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 text-[10px]">
-                        {pendingMembers.length}
-                      </span>
-                    </div>
-
-                    {pendingMembers.length === 0 ? (
-                      <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 pl-5 italic">
-                        Tous les membres ont répondu !
-                      </p>
-                    ) : (
-                      <div className="space-y-1.5 pl-2">
-                        {pendingMembers.map((m) => {
-                          const status = rsvps[m.userId || m.id];
-                          return (
-                            <div
-                              key={m.userId || m.id}
-                              className="p-2 rounded-xl bg-white dark:bg-zinc-800 border border-[#C7B7A3]/40 dark:border-zinc-700 flex items-center justify-between opacity-85"
-                            >
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src={m.avatar || '/Avatar_Herisson.jpg'}
-                                  alt={m.name}
-                                  className="w-6 h-6 rounded-full object-cover ring-1 ring-[#C7B7A3]"
-                                />
-                                <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                                  {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim()}
-                                </span>
-                              </div>
-                              <span className="text-[10px] font-semibold text-[#5D0D18] dark:text-amber-300">
-                                {status === 'maybe' ? 'Peut-être' : 'Sans réponse'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               );
             })()}

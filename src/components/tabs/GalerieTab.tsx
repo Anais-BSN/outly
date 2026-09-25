@@ -222,38 +222,84 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
     setSelectedIds(new Set());
   };
 
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Convert Data URL to Blob reliably in pure JavaScript
+  const dataUrlToBlob = (dataUrl: string): Blob => {
+    try {
+      const parts = dataUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    } catch {
+      return new Blob([], { type: 'image/jpeg' });
+    }
+  };
+
+  const triggerDownload = (blobOrUrl: Blob | string, filename: string) => {
+    let blobUrl: string;
+    if (typeof blobOrUrl === 'string') {
+      if (blobOrUrl.startsWith('data:')) {
+        const blob = dataUrlToBlob(blobOrUrl);
+        blobUrl = URL.createObjectURL(blob);
+      } else {
+        blobUrl = blobOrUrl;
+      }
+    } else {
+      blobUrl = URL.createObjectURL(blobOrUrl);
+    }
+
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    if (blobUrl.startsWith('blob:')) {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    }
+  };
+
   const handleBatchDownload = async () => {
     const itemsToDownload = safeItems.filter((i) => selectedIds.has(i.id));
     if (itemsToDownload.length === 0) return;
 
     setIsDownloading(true);
+    setDownloadProgress({ current: 0, total: itemsToDownload.length });
+
     try {
       for (let idx = 0; idx < itemsToDownload.length; idx++) {
         const item = itemsToDownload[idx];
-        try {
-          const response = await fetch(item.imageUrl);
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = `outly_photo_${idx + 1}.jpg`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(blobUrl);
-          await new Promise((res) => setTimeout(res, 250));
-        } catch {
-          const a = document.createElement('a');
-          a.href = item.imageUrl;
-          a.download = `outly_photo_${idx + 1}.jpg`;
-          a.target = '_blank';
-          a.click();
+        setDownloadProgress({ current: idx + 1, total: itemsToDownload.length });
+        const filename = `outly_photo_${idx + 1}.jpg`;
+
+        if (item.imageUrl.startsWith('data:')) {
+          triggerDownload(item.imageUrl, filename);
+        } else {
+          try {
+            const response = await fetch(item.imageUrl, { mode: 'cors' });
+            if (!response.ok) throw new Error('Fetch failed');
+            const blob = await response.blob();
+            triggerDownload(blob, filename);
+          } catch {
+            triggerDownload(item.imageUrl, filename);
+          }
         }
+        // Small delay between downloads so the browser handles each cleanly
+        await new Promise((res) => setTimeout(res, 350));
       }
       setIsSelectionMode(false);
       setSelectedIds(new Set());
     } finally {
       setIsDownloading(false);
+      setDownloadProgress(null);
     }
   };
 
@@ -443,7 +489,13 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
                 ) : (
                   <Download className="w-3.5 h-3.5" />
                 )}
-                <span>{isDownloading ? 'Téléchargement...' : 'Télécharger'}</span>
+                <span>
+                  {isDownloading
+                    ? downloadProgress
+                      ? `Téléchargement (${downloadProgress.current}/${downloadProgress.total})...`
+                      : 'Téléchargement...'
+                    : 'Télécharger'}
+                </span>
               </button>
             </div>
           </div>

@@ -1329,6 +1329,32 @@ export default function App() {
     }
   };
 
+  const handleAddVirtualMember = async (groupId: string, firstName: string) => {
+    try {
+      const newMember = await api.addVirtualMember(groupId, { firstName });
+      setGroups((prev) =>
+        prev.map((g) => {
+          if (g.id === groupId) {
+            const currentMembers = g.members || [];
+            const exists = currentMembers.some(
+              (m) => m.id === newMember.id || m.userId === newMember.userId
+            );
+            if (exists) return g;
+            return {
+              ...g,
+              members: [...currentMembers, newMember],
+            };
+          }
+          return g;
+        })
+      );
+      return newMember;
+    } catch (err) {
+      console.error('Error adding virtual member in PostgreSQL:', err);
+      throw err;
+    }
+  };
+
   const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
     try {
       await api.removeGroupMember(groupId, memberIdOrUserId);
@@ -2151,6 +2177,7 @@ export default function App() {
           members={activeGroup.members}
           groupId={activeGroupId}
           onAddExpense={handleAddExpense}
+          onAddVirtualMember={(name) => handleAddVirtualMember(activeGroupId, name)}
         />
       )}
 

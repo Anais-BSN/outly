@@ -128,19 +128,8 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
           </div>
         </div>
 
-        {/* Right: Quick Members Info '?' Icon + 3-dots Menu */}
+        {/* Right: 3-dots Menu (Question mark button removed) */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Question mark icon button for quick members display */}
-          <button
-            id="banner-btn-members-info"
-            onClick={onOpenMembersList}
-            aria-label="Afficher la liste des membres"
-            title="Liste des membres et rôles (?)"
-            className="p-2 border border-[#C7B7A3] bg-[#FFF9EB]/90 dark:bg-zinc-800 text-[#5D0D18] dark:text-[#FFF9EB] rounded-full hover:bg-white dark:hover:bg-zinc-700 transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-
           {/* 3-dots Menu */}
           <div className="relative shrink-0" ref={menuRef}>
             <button

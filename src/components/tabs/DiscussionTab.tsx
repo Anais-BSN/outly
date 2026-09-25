@@ -197,7 +197,7 @@ const MessageItem = React.memo<MessageItemProps>(({
   return (
     <div
       id={`chat-msg-${message.id}`}
-      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group ${
+      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
         isConsecutive ? 'mt-0.5' : 'mt-2.5'
       }`}
     >
@@ -243,7 +243,7 @@ const MessageItem = React.memo<MessageItemProps>(({
 
       {/* Conteneur principal de la bulle (w-fit pour épouser strictement le texte du message) */}
       <div
-        className="relative w-fit max-w-[85%] sm:max-w-md select-none touch-manipulation"
+        className="relative group/bubble w-fit max-w-[85%] sm:max-w-md select-none touch-manipulation"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -261,7 +261,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           } z-20 flex items-center gap-0.5 px-1.5 py-1 bg-[#FFF9EB] dark:bg-zinc-900 rounded-full border border-[#C7B7A3] dark:border-zinc-700 shadow-md ${
             isMenuOpen
               ? 'opacity-100 pointer-events-auto scale-100 ring-2 ring-[#6D2932]/30'
-              : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto scale-95 group-hover:scale-100'
+              : 'opacity-0 pointer-events-none group-hover/bubble:opacity-100 group-hover/bubble:pointer-events-auto scale-95 group-hover/bubble:scale-100'
           } transition-all duration-150`}
           onClick={(e) => e.stopPropagation()}
         >

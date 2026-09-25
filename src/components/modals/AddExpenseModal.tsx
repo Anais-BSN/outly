@@ -7,7 +7,10 @@ import {
   Check,
   Tag,
   Calendar,
-  Sparkles
+  Sparkles,
+  Plus,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 import { Expense, ExpenseCategory, GroupMember, UserProfile } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -19,6 +22,7 @@ interface AddExpenseModalProps {
   members: GroupMember[];
   groupId: string;
   onAddExpense: (expenseData: Partial<Expense>) => void;
+  onAddVirtualMember?: (firstName: string) => Promise<GroupMember | any> | void;
 }
 
 const CATEGORIES: ExpenseCategory[] = [
@@ -37,6 +41,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   members,
   groupId,
   onAddExpense,
+  onAddVirtualMember,
 }) => {
   if (!isOpen) return null;
 
@@ -44,7 +49,38 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('Courses');
   const [paidById, setPaidById] = useState<string>(currentUser.id);
-  const [participantIds, setParticipantIds] = useState<string[]>(members.map((m) => m.userId));
+  const [participantIds, setParticipantIds] = useState<string[]>(
+    members.map((m) => m.userId || m.id)
+  );
+
+  // Virtual member inline creation state
+  const [showAddVirtualInput, setShowAddVirtualInput] = useState(false);
+  const [virtualFirstName, setVirtualFirstName] = useState('');
+  const [isAddingVirtual, setIsAddingVirtual] = useState(false);
+
+  const handleCreateVirtualMember = async () => {
+    const trimmed = virtualFirstName.trim();
+    if (!trimmed || isAddingVirtual) return;
+
+    try {
+      setIsAddingVirtual(true);
+      if (onAddVirtualMember) {
+        const newMember = await onAddVirtualMember(trimmed);
+        if (newMember) {
+          const newUserId = newMember.userId || newMember.id;
+          if (newUserId) {
+            setParticipantIds((prev) => [...prev, newUserId]);
+          }
+        }
+      }
+      setVirtualFirstName('');
+      setShowAddVirtualInput(false);
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout du participant sans compte:', err);
+    } finally {
+      setIsAddingVirtual(false);
+    }
+  };
 
   const parsedAmount = parseFloat(amount) || 0;
 
@@ -193,11 +229,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               onChange={(e) => setPaidById(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB]"
             >
-              {members.map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {m.name} {m.userId === currentUser.id ? '(Moi)' : ''}
-                </option>
-              ))}
+              {members.map((m) => {
+                const uid = m.userId || m.id;
+                return (
+                  <option key={uid} value={uid}>
+                    {m.name || m.firstName || 'Membre'} {uid === currentUser.id ? '(Moi)' : m.isVirtual ? '(Sans compte)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -215,7 +254,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             {/* Individual Checkbox List */}
             <div className="p-3 bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-700 max-h-44 overflow-y-auto space-y-1.5 custom-scrollbar">
               {members.map((member) => {
-                const isSelected = participantIds.includes(member.userId);
+                const memberUid = member.userId || member.id;
+                const isSelected = participantIds.includes(memberUid);
                 const memberShare =
                   parsedAmount > 0 && totalShares > 0 && isSelected
                     ? (parsedAmount * (member.shares || 1)) / totalShares
@@ -223,8 +263,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                 return (
                   <div
-                    key={member.userId}
-                    onClick={() => toggleParticipant(member.userId)}
+                    key={memberUid}
+                    onClick={() => toggleParticipant(memberUid)}
                     className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#6D2932]/40 shadow-xs'
@@ -243,18 +283,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       </div>
 
                       <img
-                        src={member.avatar}
-                        alt={member.name}
+                        src={member.avatar || '/Avatar_Herisson.jpg'}
+                        alt={member.name || member.firstName}
                         className="w-6 h-6 rounded-full object-cover ring-1 ring-[#C7B7A3]"
                         referrerPolicy="no-referrer"
                       />
 
                       <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                        {member.name} {member.userId === currentUser.id ? '(Moi)' : ''}
+                        {member.name || member.firstName} {memberUid === currentUser.id ? '(Moi)' : ''}
                       </span>
 
+                      {member.isVirtual && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300/60 dark:border-amber-800">
+                          Sans compte
+                        </span>
+                      )}
+
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#6D2932]/10 dark:bg-amber-900/40 text-[#6D2932] dark:text-amber-300 font-bold">
-                        {member.shares} {member.shares > 1 ? 'parts' : 'part'}
+                        {member.shares || 1} {(member.shares || 1) > 1 ? 'parts' : 'part'}
                       </span>
                     </div>
 
@@ -266,6 +312,64 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            {/* Ajout d'un participant sans compte (ami occasionnel) */}
+            <div className="pt-1">
+              {!showAddVirtualInput ? (
+                <button
+                  type="button"
+                  id="btn-add-virtual-participant-toggle"
+                  onClick={() => setShowAddVirtualInput(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#5D0D18] dark:text-amber-200 bg-[#E8D8C4]/60 dark:bg-zinc-800 hover:bg-[#E8D8C4] transition-all cursor-pointer border border-[#C7B7A3]/50"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Ajouter un participant sans compte</span>
+                </button>
+              ) : (
+                <div className="p-3 rounded-2xl bg-[#E8D8C4]/70 dark:bg-zinc-800/80 border border-[#C7B7A3] dark:border-zinc-700 space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-1.5">
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Ajouter un ami occasionnel (sans compte)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddVirtualInput(false)}
+                      className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      id="input-virtual-member-name"
+                      value={virtualFirstName}
+                      onChange={(e) => setVirtualFirstName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCreateVirtualMember();
+                        }
+                      }}
+                      placeholder="Prénom de l'ami (ex : Lucas)"
+                      autoFocus
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                    />
+                    <button
+                      type="button"
+                      id="btn-confirm-add-virtual-member"
+                      onClick={handleCreateVirtualMember}
+                      disabled={!virtualFirstName.trim() || isAddingVirtual}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#5D0D18] text-white text-xs font-bold hover:bg-[#450912] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                    >
+                      {isAddingVirtual ? 'Ajout...' : 'Ajouter'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

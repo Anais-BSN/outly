@@ -33,7 +33,16 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
 }) => {
   if (!isOpen || !group) return null;
 
-  const members = group.members || [];
+  const rawMembers = group.members || [];
+  // Deduplicate members by unique user ID to prevent duplicate listings on re-invitation
+  const seenMemberIds = new Set<string>();
+  const members = rawMembers.filter((m) => {
+    const uid = m.userId || m.id;
+    if (!uid || seenMemberIds.has(uid)) return false;
+    seenMemberIds.add(uid);
+    return true;
+  });
+
   const currentMember = members.find(
     (m) => m.id === currentUser.id || m.userId === currentUser.id
   );
