@@ -796,17 +796,23 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
       if (!membersByGroup[m.groupId]) {
         membersByGroup[m.groupId] = [];
       }
-      membersByGroup[m.groupId].push({
-        id: m.id,
-        userId: m.userId,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        name: m.name.trim(),
-        handle: m.handle,
-        avatar: m.avatar,
-        shares: m.shares,
-        role: m.role,
-      });
+      const uid = m.userId || m.id;
+      const alreadyInList = membersByGroup[m.groupId].some(
+        (existing) => (existing.userId || existing.id) === uid
+      );
+      if (!alreadyInList) {
+        membersByGroup[m.groupId].push({
+          id: m.id,
+          userId: m.userId,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          name: m.name.trim(),
+          handle: m.handle,
+          avatar: m.avatar,
+          shares: m.shares,
+          role: m.role,
+        });
+      }
     }
 
     const fullGroups = groupsRes.rows.map((g) => ({
@@ -899,7 +905,7 @@ apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
     await query(
       `INSERT INTO group_members (group_id, user_id, role, joined_at)
        VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (group_id, user_id) DO NOTHING`,
+       ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role, joined_at = NOW()`,
       [id, userId, role]
     );
 

@@ -42,7 +42,9 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const safeExpenses = expenses || [];
   const safeMembers = members || [];
-  const safeSettlements = settlements || [];
+  const safeSettlements = (settlements || []).filter(
+    (s) => !groupId || !s.groupId || s.groupId === groupId
+  );
 
   const { totalSpent, userBalances, calculatedSettlements } = calculateExpensesAndDebts(
     safeExpenses,

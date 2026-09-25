@@ -122,28 +122,36 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const size = 600;
-      canvas.width = size;
-      canvas.height = size;
+      const canvasW = 1200;
+      const canvasH = 500;
+      canvas.width = canvasW;
+      canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#18181B';
+      ctx.fillRect(0, 0, canvasW, canvasH);
 
       // Apply crop transformations
+      const viewportW = 380;
+      const scaleFactor = canvasW / viewportW;
+
       ctx.save();
-      ctx.translate(size / 2, size / 2);
+      ctx.translate(canvasW / 2, canvasH / 2);
       ctx.scale(zoom, zoom);
-      ctx.translate(pan.x * (size / 260), pan.y * (size / 260));
+      ctx.translate(pan.x * scaleFactor, pan.y * scaleFactor);
 
       const aspect = img.width / img.height;
-      let drawW = size;
-      let drawH = size;
-      if (aspect > 1) {
-        drawW = size * aspect;
+      const targetAspect = canvasW / canvasH; // 2.4
+
+      let drawW = canvasW;
+      let drawH = canvasH;
+      if (aspect > targetAspect) {
+        drawH = canvasH;
+        drawW = canvasH * aspect;
       } else {
-        drawH = size / aspect;
+        drawW = canvasW;
+        drawH = canvasW / aspect;
       }
 
       ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
@@ -210,7 +218,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#5D0D18] dark:text-amber-200">
                 <Crop className="w-4 h-4" />
-                <span>Ajuster & Recadrer la photo du groupe</span>
+                <span>Ajuster & Recadrer la bannière du groupe</span>
               </div>
               <button
                 type="button"
@@ -222,11 +230,11 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
             </div>
 
             <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-              Glissez pour déplacer l'image et ajustez le zoom pour un rendu centré et net.
+              Glissez librement l'image pour positionner la zone souhaitée au format panoramique de la bannière.
             </p>
 
-            {/* Interactive Crop Viewport with Circular Mask */}
-            <div className="relative w-full h-64 bg-black rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none flex items-center justify-center">
+            {/* Interactive Crop Viewport with Rectangular Panoramic 2.4:1 Mask */}
+            <div className="relative w-full h-56 sm:h-64 bg-zinc-950 rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none flex items-center justify-center">
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 onMouseDown={handleMouseDown}
@@ -253,8 +261,8 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
                 />
               </div>
 
-              {/* Viewport Circular & Square Guide Mask */}
-              <div className="absolute inset-0 pointer-events-none border-[3px] border-[#FFF9EB]/80 rounded-full w-48 h-48 m-auto shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]" />
+              {/* Viewport Rectangular Panoramic Guide Mask */}
+              <div className="absolute inset-0 pointer-events-none border-2 border-[#FFF9EB] rounded-2xl w-[92%] max-w-[400px] aspect-[2.4/1] m-auto shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ring-2 ring-[#5D0D18]/60" />
             </div>
 
             {/* Zoom Slider & Reset */}

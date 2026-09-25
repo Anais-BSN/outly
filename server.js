@@ -45,36 +45,53 @@ dotenv2.config();
 var apiKey = process.env.RESEND_API_KEY;
 var isConfigured = apiKey && apiKey.startsWith("re_") && !apiKey.includes("123456789") && !apiKey.includes("your_resend");
 var resend = isConfigured ? new Resend(apiKey) : null;
+function sanitizeEmailUrl(input) {
+  if (!input) return "https://outlys.fr";
+  let str = String(input).trim();
+  const mdLinkMatch = str.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+  if (mdLinkMatch && mdLinkMatch[1]) {
+    str = mdLinkMatch[1].trim();
+  }
+  str = str.replace(/[\[\]\(\)\"\'\<\>]/g, "").trim();
+  str = str.replace(/https?:\/\/[a-zA-Z0-9-]+\.onrender\.com/gi, "https://outlys.fr").replace(/https?:\/\/[a-zA-Z0-9-]+\.render\.com/gi, "https://outlys.fr");
+  while (/^(https?:\/\/)+https?:\/\//i.test(str)) {
+    str = str.replace(/^(https?:\/\/)+/i, "");
+  }
+  while (str.match(/^(https?:\/\/){2,}/i)) {
+    str = str.replace(/^(https?:\/\/)+/i, "https://");
+  }
+  if (str.startsWith("http://outlys.fr")) {
+    str = str.replace("http://outlys.fr", "https://outlys.fr");
+  }
+  if (str.startsWith("outlys.fr")) {
+    str = `https://${str}`;
+  }
+  return str;
+}
 function getCleanAppUrl() {
-  const rawUrl = (process.env.APP_URL || "https://outlys.fr").trim();
-  const withoutTrailingSlashes = rawUrl.replace(/\/+$/, "");
-  if (withoutTrailingSlashes.startsWith("http://outlys.fr")) {
-    return withoutTrailingSlashes.replace("http://", "https://");
+  const envUrl = process.env.APP_URL ? process.env.APP_URL.trim() : "";
+  let cleanUrl = sanitizeEmailUrl(envUrl || "https://outlys.fr");
+  if (cleanUrl.includes("localhost") || cleanUrl.includes("127.0.0.1")) {
+    return cleanUrl.replace(/\/+$/, "");
   }
-  if (!withoutTrailingSlashes.startsWith("http://") && !withoutTrailingSlashes.startsWith("https://")) {
-    return `https://${withoutTrailingSlashes}`;
+  if (!cleanUrl || cleanUrl.includes("onrender") || !cleanUrl.startsWith("http")) {
+    cleanUrl = "https://outlys.fr";
   }
-  if (withoutTrailingSlashes.startsWith("http://") && !withoutTrailingSlashes.includes("localhost") && !withoutTrailingSlashes.includes("127.0.0.1")) {
-    return withoutTrailingSlashes.replace("http://", "https://");
-  }
-  return withoutTrailingSlashes;
+  return cleanUrl.replace(/\/+$/, "");
 }
 function buildAbsoluteEmailUrl(pathOrUrl) {
   const baseUrl = getCleanAppUrl();
   if (!pathOrUrl || pathOrUrl.trim() === "") {
     return baseUrl;
   }
-  const trimmed = pathOrUrl.trim();
-  if (trimmed.startsWith("https://")) {
-    return trimmed;
+  let cleaned = sanitizeEmailUrl(pathOrUrl);
+  if (cleaned.startsWith("https://") || cleaned.startsWith("http://localhost") || cleaned.startsWith("http://127.0.0.1")) {
+    return cleaned;
   }
-  if (trimmed.startsWith("http://outlys.fr")) {
-    return trimmed.replace("http://", "https://");
+  if (cleaned.startsWith("outlys.fr")) {
+    return `https://${cleaned}`;
   }
-  if (trimmed.startsWith("http://")) {
-    return trimmed;
-  }
-  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  const cleanPath = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
   return `${baseUrl}${cleanPath}`;
 }
 var emailService = {
@@ -1058,17 +1075,23 @@ apiRouter.get("/groups", async (req, res) => {
       if (!membersByGroup[m.groupId]) {
         membersByGroup[m.groupId] = [];
       }
-      membersByGroup[m.groupId].push({
-        id: m.id,
-        userId: m.userId,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        name: m.name.trim(),
-        handle: m.handle,
-        avatar: m.avatar,
-        shares: m.shares,
-        role: m.role
-      });
+      const uid = m.userId || m.id;
+      const alreadyInList = membersByGroup[m.groupId].some(
+        (existing) => (existing.userId || existing.id) === uid
+      );
+      if (!alreadyInList) {
+        membersByGroup[m.groupId].push({
+          id: m.id,
+          userId: m.userId,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          name: m.name.trim(),
+          handle: m.handle,
+          avatar: m.avatar,
+          shares: m.shares,
+          role: m.role
+        });
+      }
     }
     const fullGroups = groupsRes.rows.map((g) => ({
       ...g,
@@ -1144,7 +1167,7 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
     await query(
       `INSERT INTO group_members (group_id, user_id, role, joined_at)
        VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (group_id, user_id) DO NOTHING`,
+       ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role, joined_at = NOW()`,
       [id, userId, role]
     );
     const memberRes = await query(

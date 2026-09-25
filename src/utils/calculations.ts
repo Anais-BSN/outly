@@ -29,7 +29,9 @@ export function calculateExpensesAndDebts(
   const userBalances: Record<string, DebtBalance> = {};
   const safeMembers = members || [];
   const safeExpenses = expenses || [];
-  const safeSettlements = settlementsOverride || [];
+  const safeSettlements = (settlementsOverride || []).filter(
+    (s) => !groupId || !s.groupId || s.groupId === groupId
+  );
 
   // Helper pour trouver ou créer une balance utilisateur de manière robuste
   const getOrCreateBalance = (userKey?: string, fallbackName?: string, fallbackAvatar?: string): DebtBalance | null => {

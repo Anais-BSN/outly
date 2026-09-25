@@ -50,7 +50,14 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
 
   if (!group) return null;
 
-  const safeMembers = group.members || [];
+  const rawMembers = group.members || [];
+  const seenMemberIds = new Set<string>();
+  const safeMembers = rawMembers.filter((m) => {
+    const uid = m?.userId || m?.id;
+    if (!uid || seenMemberIds.has(uid)) return false;
+    seenMemberIds.add(uid);
+    return true;
+  });
   const isAdmin = safeMembers.some(
     (m) => (m.userId === currentUser?.id || m.id === currentUser?.id) && m.role === 'admin'
   );

@@ -32,42 +32,88 @@ export interface SendReminderEmailParams {
 }
 
 /**
- * Construit l'adresse de base de l'application
+ * Nettoie une chaîne d'URL pour supprimer toute syntaxe Markdown, doubles protocoles ou domaines temporaires
  */
-export function getCleanAppUrl(): string {
-  const rawUrl = (process.env.APP_URL || 'https://outlys.fr').trim();
-  const withoutTrailingSlashes = rawUrl.replace(/\/+$/, '');
-  if (withoutTrailingSlashes.startsWith('http://outlys.fr')) {
-    return withoutTrailingSlashes.replace('http://', 'https://');
+export function sanitizeEmailUrl(input?: string): string {
+  if (!input) return 'https://outlys.fr';
+  let str = String(input).trim();
+
+  // Supprime la syntaxe Markdown [texte](url) -> url
+  const mdLinkMatch = str.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+  if (mdLinkMatch && mdLinkMatch[1]) {
+    str = mdLinkMatch[1].trim();
   }
-  if (!withoutTrailingSlashes.startsWith('http://') && !withoutTrailingSlashes.startsWith('https://')) {
-    return `https://${withoutTrailingSlashes}`;
+
+  // Supprimer les crochets, parenthèses, guillemets résiduels
+  str = str.replace(/[\[\]\(\)\"\'\<\>]/g, '').trim();
+
+  // Remplacement de tout domaine render technique par le domaine officiel de production outlys.fr
+  str = str.replace(/https?:\/\/[a-zA-Z0-9-]+\.onrender\.com/gi, 'https://outlys.fr')
+           .replace(/https?:\/\/[a-zA-Z0-9-]+\.render\.com/gi, 'https://outlys.fr');
+
+  // Supprime les doubles préfixes https://https:// ou http://https://
+  while (/^(https?:\/\/)+https?:\/\//i.test(str)) {
+    str = str.replace(/^(https?:\/\/)+/i, '');
   }
-  if (withoutTrailingSlashes.startsWith('http://') && !withoutTrailingSlashes.includes('localhost') && !withoutTrailingSlashes.includes('127.0.0.1')) {
-    return withoutTrailingSlashes.replace('http://', 'https://');
+
+  while (str.match(/^(https?:\/\/){2,}/i)) {
+    str = str.replace(/^(https?:\/\/)+/i, 'https://');
   }
-  return withoutTrailingSlashes;
+
+  // Si l'URL commence par http://outlys.fr, on force https://outlys.fr
+  if (str.startsWith('http://outlys.fr')) {
+    str = str.replace('http://outlys.fr', 'https://outlys.fr');
+  }
+
+  // Si l'URL commence par outlys.fr sans protocole
+  if (str.startsWith('outlys.fr')) {
+    str = `https://${str}`;
+  }
+
+  return str;
 }
 
 /**
- * Construit une URL absolue propre pour les e-mails (strictement HTTPS par défaut)
+ * Construit l'adresse de base propre de l'application (strictement outlys.fr en production)
+ */
+export function getCleanAppUrl(): string {
+  const envUrl = process.env.APP_URL ? process.env.APP_URL.trim() : '';
+  let cleanUrl = sanitizeEmailUrl(envUrl || 'https://outlys.fr');
+  
+  if (cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1')) {
+    return cleanUrl.replace(/\/+$/, '');
+  }
+
+  // En production, toujours utiliser strictement https://outlys.fr
+  if (!cleanUrl || cleanUrl.includes('onrender') || !cleanUrl.startsWith('http')) {
+    cleanUrl = 'https://outlys.fr';
+  }
+
+  return cleanUrl.replace(/\/+$/, '');
+}
+
+/**
+ * Construit une URL absolue propre pour les e-mails (sans Markdown, strictement HTTPS et domaine officiel outlys.fr)
  */
 export function buildAbsoluteEmailUrl(pathOrUrl?: string): string {
   const baseUrl = getCleanAppUrl();
   if (!pathOrUrl || pathOrUrl.trim() === '') {
     return baseUrl;
   }
-  const trimmed = pathOrUrl.trim();
-  if (trimmed.startsWith('https://')) {
-    return trimmed;
+
+  let cleaned = sanitizeEmailUrl(pathOrUrl);
+
+  // Si c'est déjà une URL complète avec protocole
+  if (cleaned.startsWith('https://') || cleaned.startsWith('http://localhost') || cleaned.startsWith('http://127.0.0.1')) {
+    return cleaned;
   }
-  if (trimmed.startsWith('http://outlys.fr')) {
-    return trimmed.replace('http://', 'https://');
+
+  // Si c'est une URL commençant par outlys.fr sans protocole
+  if (cleaned.startsWith('outlys.fr')) {
+    return `https://${cleaned}`;
   }
-  if (trimmed.startsWith('http://')) {
-    return trimmed;
-  }
-  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  const cleanPath = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
   return `${baseUrl}${cleanPath}`;
 }
 
