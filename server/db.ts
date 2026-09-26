@@ -14,11 +14,12 @@ if (!connectionString) {
 
 export const pool = new Pool({
   connectionString,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: connectionString && !connectionString.includes('localhost')
+    ? { rejectUnauthorized: false }
+    : { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {

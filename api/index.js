@@ -1,8 +1,3 @@
-// server/index.ts
-import express2 from "express";
-import path from "path";
-import { fileURLToPath } from "url";
-
 // server/app.ts
 import express from "express";
 import dotenv3 from "dotenv";
@@ -2863,31 +2858,7 @@ app.use((req, _res, next) => {
 });
 app.use("/api", apiRouter);
 var app_default = app;
-
-// server/index.ts
-import fs from "fs";
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = path.dirname(__filename);
-var PORT = process.env.PORT || 3e3;
-var distPath = fs.existsSync(path.resolve(process.cwd(), "dist")) ? path.resolve(process.cwd(), "dist") : path.resolve(__dirname, "../dist");
-app_default.use(express2.static(distPath));
-app_default.get("*", (req, res, next) => {
-  if (req.path.startsWith("/api")) {
-    return next();
-  }
-  const indexPath = path.join(distPath, "index.html");
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.sendFile(path.resolve(process.cwd(), "index.html"));
-  }
-});
-if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
-  app_default.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`Server listening on port ${PORT}`);
-  });
-}
-var index_default = app_default;
 export {
-  index_default as default
+  app,
+  app_default as default
 };
