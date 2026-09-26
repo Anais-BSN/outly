@@ -410,7 +410,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               />
 
               {/* Current Selected Banner Preview */}
-              <div className="relative h-28 rounded-2xl overflow-hidden border border-[#C7B7A3] shadow-xs bg-zinc-950">
+              <div className="relative w-full aspect-[2/1] rounded-2xl overflow-hidden border border-[#C7B7A3] shadow-xs bg-zinc-950">
                 <img src={bannerImage} alt="Bannière sélectionnée" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end justify-between p-2.5">
                   <span className="text-[11px] font-bold text-white flex items-center gap-1">

@@ -638,7 +638,7 @@ apiRouter.post("/auth/forgot-password", async (req, res) => {
     }
     res.json({
       success: true,
-      message: "Si un compte est associ\xE9 \xE0 cette adresse, un e-mail avec les instructions de r\xE9initialisation a \xE9t\xE9 envoy\xE9."
+      message: "Si un compte est associ\xE9 \xE0 cette adresse, un e-mail de r\xE9initialisation de mot de passe a \xE9t\xE9 envoy\xE9."
     });
   } catch (err) {
     console.error("Error in POST /auth/forgot-password:", err);

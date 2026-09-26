@@ -283,7 +283,7 @@ apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
     // Toujours renvoyer success: true pour des raisons de sécurité
     res.json({
       success: true,
-      message: 'Si un compte est associé à cette adresse, un e-mail avec les instructions de réinitialisation a été envoyé.'
+      message: 'Si un compte est associé à cette adresse, un e-mail de réinitialisation de mot de passe a été envoyé.'
     });
   } catch (err: any) {
     console.error('Error in POST /auth/forgot-password:', err);

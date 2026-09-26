@@ -173,7 +173,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               </div>
 
               {/* Current Active Banner Preview */}
-              <div className="mb-2 relative h-28 rounded-2xl overflow-hidden border-2 border-[#5D0D18] shadow-sm bg-black/5">
+              <div className="mb-2 relative w-full aspect-[3/1] rounded-2xl overflow-hidden border-2 border-[#5D0D18] shadow-sm bg-black/5">
                 <img src={coverImage} alt="Aperçu de la bannière" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end justify-between p-2.5">
                   <span className="text-[11px] font-bold text-white flex items-center gap-1">

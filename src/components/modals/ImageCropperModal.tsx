@@ -34,23 +34,35 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const cropBoxRef = useRef<HTMLDivElement>(null);
 
   // Ratio definitions:
-  // Banner: Stretched rectangle ~3:1 (exact header banner ratio)
-  // Event: 2:1 / 16:9 (event visual ratio)
+  // Banner: Exact wide panoramic format (3:1)
+  // Event: Wide card format (2:1)
   const isBanner = aspectRatioType === 'banner';
   const targetAspect = isBanner ? 3.0 : 2.0;
   const canvasWidth = 1200;
   const canvasHeight = Math.round(canvasWidth / targetAspect); // 400 for banner, 600 for event
 
+  // Load natural image size on source change
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && imageSrc) {
       setZoom(1);
       setPan({ x: 0, y: 0 });
       setIsDragging(false);
+
+      const img = new Image();
+      img.onload = () => {
+        setImgNaturalSize({
+          width: img.naturalWidth || img.width || 800,
+          height: img.naturalHeight || img.height || 600,
+        });
+      };
+      img.src = imageSrc;
     }
   }, [isOpen, imageSrc]);
 
@@ -100,8 +112,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   // Wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomDelta = e.deltaY * -0.002;
-    setZoom((prev) => Math.min(Math.max(1, prev + zoomDelta), 4));
+    const zoomDelta = e.deltaY * -0.0015;
+    setZoom((prev) => Math.min(Math.max(0.6, prev + zoomDelta), 4));
   };
 
   const handleApply = () => {
@@ -120,32 +132,45 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       ctx.fillStyle = '#18181B';
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      // We calibrate scale according to the preview box
-      const previewBox = containerRef.current?.getBoundingClientRect();
-      const viewportW = previewBox?.width || 400;
-      const scaleFactor = canvasWidth / viewportW;
+      // Measure exact crop box in DOM
+      const boxRect = cropBoxRef.current?.getBoundingClientRect();
+      const domBoxW = boxRect?.width || 450;
+      const domBoxH = boxRect?.height || (domBoxW / targetAspect);
 
-      ctx.save();
-      ctx.translate(canvasWidth / 2, canvasHeight / 2);
-      ctx.scale(zoom, zoom);
-      ctx.translate(pan.x * scaleFactor, pan.y * scaleFactor);
+      // Scale factor from DOM crop box to target high-res Canvas
+      const scaleToCanvas = canvasWidth / domBoxW;
 
-      const imgAspect = img.width / img.height;
-      let drawW = canvasWidth;
-      let drawH = canvasHeight;
+      // Calculate the base displayed dimensions of the image in the DOM viewport
+      const natW = img.naturalWidth || img.width;
+      const natH = img.naturalHeight || img.height;
+      const natAspect = natW / natH;
 
-      if (imgAspect > targetAspect) {
-        drawH = canvasHeight;
-        drawW = canvasHeight * imgAspect;
+      // Image size at zoom=1 in DOM: fits without distortion
+      let baseW = domBoxW;
+      let baseH = domBoxH;
+      if (natAspect > targetAspect) {
+        // Image is wider than crop box
+        baseW = domBoxW;
+        baseH = domBoxW / natAspect;
       } else {
-        drawW = canvasWidth;
-        drawH = canvasWidth / imgAspect;
+        // Image is taller than crop box
+        baseH = domBoxH;
+        baseW = domBoxH * natAspect;
       }
 
-      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+      // Draw onto canvas with identical transform
+      ctx.save();
+      ctx.translate(canvasWidth / 2, canvasHeight / 2);
+      ctx.translate(pan.x * scaleToCanvas, pan.y * scaleToCanvas);
+      ctx.scale(zoom, zoom);
+
+      const renderW = baseW * scaleToCanvas;
+      const renderH = baseH * scaleToCanvas;
+
+      ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
       ctx.restore();
 
-      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
       onApplyCrop(croppedDataUrl);
       onClose();
     };
@@ -158,7 +183,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       <div
         id="image-cropper-backdrop"
         onClick={onClose}
-        className="fixed inset-0 bg-black/75 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-fade-in"
       />
 
       {/* Modal Card */}
@@ -177,7 +202,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 {title}
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
-                {subtitle || (isBanner ? 'Format rectangulaire étiré exact de la bannière' : 'Format visuel 2:1 adapté aux événements')}
+                {subtitle || (isBanner ? 'Format panoramique étiré exact de la bannière' : 'Format adapté aux événements')}
               </p>
             </div>
           </div>
@@ -193,21 +218,21 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         {/* Interactive Cropping Viewport */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-[#27272A]/70 dark:text-zinc-400">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 font-medium">
               <Move className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
-              Glissez pour déplacer • Molette ou curseur pour zoomer
+              Déplacez l'image librement pour cadrer la portion voulue
             </span>
             <span className="font-semibold text-[#5D0D18] dark:text-amber-200">
               {Math.round(zoom * 100)}%
             </span>
           </div>
 
+          {/* Canvas Viewport Container */}
           <div
-            ref={containerRef}
             onWheel={handleWheel}
             className="relative w-full h-64 sm:h-72 bg-zinc-950 rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none flex items-center justify-center border border-zinc-800"
           >
-            {/* Pannable & Zoomable Image */}
+            {/* Movable & Scalable Image Layer */}
             <div
               className="absolute inset-0 flex items-center justify-center touch-none"
               onMouseDown={handleMouseDown}
@@ -220,12 +245,12 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             >
               <img
                 src={imageSrc}
-                alt="Image à recadrer"
+                alt="Image source"
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                   transformOrigin: 'center center',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
+                  maxWidth: isBanner ? '90%' : '85%',
+                  maxHeight: '85%',
                   objectFit: 'contain',
                   pointerEvents: 'none',
                   userSelect: 'none',
@@ -234,15 +259,16 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               />
             </div>
 
-            {/* Rectangular Crop Overlay Box */}
+            {/* Exact Crop Mask Box Overlay */}
             <div
-              className={`absolute inset-0 pointer-events-none border-2 border-[#FFF9EB] rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ring-2 ring-[#5D0D18]/70 m-auto ${
+              ref={cropBoxRef}
+              className={`absolute pointer-events-none border-2 border-[#FFF9EB] rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ring-2 ring-[#5D0D18]/80 m-auto ${
                 isBanner
-                  ? 'w-[94%] max-w-[480px] aspect-[3/1]'
-                  : 'w-[90%] max-w-[420px] aspect-[2/1]'
+                  ? 'w-[92%] max-w-[480px] aspect-[3/1]'
+                  : 'w-[88%] max-w-[420px] aspect-[2/1]'
               }`}
             >
-              {/* Rule of Thirds Grid Lines */}
+              {/* Rule of Thirds Grid */}
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30 pointer-events-none">
                 <div className="border-r border-b border-white" />
                 <div className="border-r border-b border-white" />
@@ -263,7 +289,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           <div className="flex items-center gap-2 flex-1">
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.max(1, prev - 0.2))}
+              onClick={() => setZoom((prev) => Math.max(0.6, prev - 0.15))}
               className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 cursor-pointer"
               title="Dézoomer"
             >
@@ -271,7 +297,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             </button>
             <input
               type="range"
-              min="1"
+              min="0.6"
               max="3.5"
               step="0.05"
               value={zoom}
@@ -280,7 +306,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             />
             <button
               type="button"
-              onClick={() => setZoom((prev) => Math.min(3.5, prev + 0.2))}
+              onClick={() => setZoom((prev) => Math.min(3.5, prev + 0.15))}
               className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 cursor-pointer"
               title="Zoomer"
             >
@@ -295,10 +321,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               setPan({ x: 0, y: 0 });
             }}
             className="px-2.5 py-1.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 flex items-center gap-1.5 cursor-pointer border border-[#C7B7A3]/50 dark:border-zinc-700 transition-colors"
-            title="Recentrer l'image"
+            title="Recentrer et afficher sans zoom forcé"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Recentrer</span>
+            <span>Réinitialiser</span>
           </button>
         </div>
 

@@ -88,13 +88,14 @@ export function calculateExpensesAndDebts(
   // 2. Calcul des dépenses et répartition des parts
   safeExpenses.forEach(exp => {
     if (!exp) return;
-    totalSpent += exp.amount || 0;
+    const expAmount = typeof exp.amount === 'string' ? parseFloat(exp.amount) : (Number(exp.amount) || 0);
+    totalSpent += expAmount;
 
     // Créditer celui qui a avancé les fonds (créancier initial)
     const payerBal = getOrCreateBalance(exp.paidById, exp.paidByName, exp.paidByAvatar);
     if (payerBal) {
-      payerBal.paidExpenses += exp.amount || 0;
-      payerBal.paid += exp.amount || 0;
+      payerBal.paidExpenses += expAmount;
+      payerBal.paid += expAmount;
     }
 
     // Déterminer les participants
@@ -110,7 +111,7 @@ export function calculateExpensesAndDebts(
       if (!p) return sum;
       const pid = p.userId || p.id || '';
       const shares = sharesSnapshot[pid] ?? sharesSnapshot[p.id] ?? p.shares ?? 1;
-      return sum + shares;
+      return sum + (Number(shares) || 1);
     }, 0);
 
     if (totalShares > 0) {
@@ -118,7 +119,7 @@ export function calculateExpensesAndDebts(
         if (!p) return;
         const pid = p.userId || p.id || '';
         const shares = sharesSnapshot[pid] ?? sharesSnapshot[p.id] ?? p.shares ?? 1;
-        const participantCost = ((exp.amount || 0) * shares) / totalShares;
+        const participantCost = (expAmount * (Number(shares) || 1)) / totalShares;
         const partBal = getOrCreateBalance(pid, p.firstName || p.name, p.avatar);
         if (partBal) {
           partBal.share += participantCost;
@@ -131,15 +132,16 @@ export function calculateExpensesAndDebts(
   // Débiteur (fromUserId) a remboursé -> reimbursedPaid augmente (+)
   // Créancier (toUserId) a perçu son dû -> reimbursedReceived augmente (-)
   safeSettlements.forEach(s => {
-    if (s && s.status === 'settled' && s.amount > 0) {
+    const numAmount = typeof s?.amount === 'string' ? parseFloat(s.amount) : (Number(s?.amount) || 0);
+    if (s && s.status === 'settled' && numAmount > 0) {
       const debtorBal = getOrCreateBalance(s.fromUserId, s.fromUserFirstName || s.fromUserName, s.fromUserAvatar);
       const creditorBal = getOrCreateBalance(s.toUserId, s.toUserFirstName || s.toUserName, s.toUserAvatar);
 
       if (debtorBal) {
-        debtorBal.reimbursedPaid += s.amount;
+        debtorBal.reimbursedPaid += numAmount;
       }
       if (creditorBal) {
-        creditorBal.reimbursedReceived += s.amount;
+        creditorBal.reimbursedReceived += numAmount;
       }
     }
   });

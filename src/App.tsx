@@ -531,13 +531,20 @@ export default function App() {
           setExpenses((prev) => prev.filter((exp) => exp.id !== event.data?.id));
           break;
         case 'settlement:updated':
-          setSettlements((prev) => {
-            const exists = prev.some((s) => s.id === event.data?.id);
-            if (exists) {
-              return prev.map((s) => (s.id === event.data?.id ? event.data : s));
-            }
-            return [event.data, ...prev];
-          });
+          if (event.data) {
+            setSettlements((prev) => {
+              const filtered = prev.filter(
+                (s) =>
+                  s.id !== event.data.id &&
+                  !(
+                    (!s.groupId || s.groupId === event.data.groupId) &&
+                    s.fromUserId === event.data.fromUserId &&
+                    s.toUserId === event.data.toUserId
+                  )
+              );
+              return [event.data, ...filtered];
+            });
+          }
           break;
         case 'friend:requested':
         case 'friend:updated':
@@ -1214,47 +1221,60 @@ export default function App() {
   const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
     const isNowSettled = settlement.status !== 'settled';
     const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
-    const targetGroupId = (settlement.groupId && settlement.groupId !== 'group-current') ? settlement.groupId : activeGroupId;
+    const targetGroupId = activeGroupId || (settlement.groupId && settlement.groupId !== 'group-current' ? settlement.groupId : 'group-current');
+    const numericAmount = typeof settlement.amount === 'string' ? parseFloat(settlement.amount) : (Number(settlement.amount) || 0);
+
+    const settlementId = settlement.id && !settlement.id.startsWith('settle-user-') && !settlement.id.startsWith('settle-')
+      ? settlement.id
+      : `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     const optimisticSettlement: DebtSettlement = {
       ...settlement,
+      id: settlementId,
       groupId: targetGroupId,
+      amount: numericAmount,
       status: newStatus,
       settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
     };
 
-    // Optimistic state update
+    // Instantaneous synchronous optimistic update in React state
     setSettlements((prev) => {
-      const existing = prev.find(
+      const filtered = prev.filter(
         (s) =>
-          s.id === settlement.id ||
-          ((!s.groupId || s.groupId === targetGroupId) &&
+          s.id !== settlement.id &&
+          s.id !== settlementId &&
+          !(
+            (!s.groupId || s.groupId === targetGroupId) &&
             s.fromUserId === settlement.fromUserId &&
-            s.toUserId === settlement.toUserId)
+            s.toUserId === settlement.toUserId
+          )
       );
-      if (existing) {
-        return prev.map((s) =>
-          s.id === existing.id ? { ...s, ...optimisticSettlement } : s
-        );
-      }
-      return [optimisticSettlement, ...prev];
+      return [optimisticSettlement, ...filtered];
     });
 
     try {
       const saved = await api.toggleSettlement({
+        id: settlementId,
         groupId: targetGroupId,
         fromUserId: settlement.fromUserId,
         toUserId: settlement.toUserId,
-        amount: settlement.amount,
+        amount: numericAmount,
         status: newStatus,
       });
       if (saved) {
         setSettlements((prev) => {
-          const exists = prev.some((s) => s.id === saved.id);
-          if (exists) {
-            return prev.map((s) => (s.id === saved.id ? saved : s));
-          }
-          return [saved, ...prev];
+          const filtered = prev.filter(
+            (s) =>
+              s.id !== settlement.id &&
+              s.id !== settlementId &&
+              s.id !== saved.id &&
+              !(
+                (!s.groupId || s.groupId === targetGroupId) &&
+                s.fromUserId === saved.fromUserId &&
+                s.toUserId === saved.toUserId
+              )
+          );
+          return [saved, ...filtered];
         });
       }
     } catch (err) {

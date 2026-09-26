@@ -457,6 +457,7 @@ export const api = {
   },
 
   async toggleSettlement(data: {
+    id?: string;
     groupId: string;
     fromUserId: string;
     toUserId: string;

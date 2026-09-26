@@ -65,7 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setForgotEmail(raw);
       setAuthMode('forgot-password');
       setLoading(true);
-      setForgotSuccess(`Le lien de réinitialisation sécurisé a été transmis à ${raw}. Vérifiez votre boîte de réception.`);
+      setForgotSuccess('Si un compte est associé à cette adresse, un e-mail de réinitialisation de mot de passe a été envoyé.');
 
       try {
         const res = await api.forgotPassword(raw);
@@ -97,7 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       const res = await api.forgotPassword(forgotEmail.trim());
-      setForgotSuccess(res.message || `Le lien de réinitialisation sécurisé a été transmis à ${forgotEmail.trim()}. Vérifiez votre boîte de réception.`);
+      setForgotSuccess(res.message || 'Si un compte est associé à cette adresse, un e-mail de réinitialisation de mot de passe a été envoyé.');
     } catch (err: any) {
       setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
     } finally {
@@ -248,38 +248,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
         </div>
 
-        {/* Tab Switcher: Connexion / Inscription */}
-        <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50">
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('login');
-              setErrorMsg(null);
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              authMode === 'login'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                : 'text-[#27272A] dark:text-zinc-300'
-            }`}
-          >
-            Se connecter
-          </button>
+        {/* Tab Switcher: Connexion / Inscription (masqué en mode mot de passe oublié) */}
+        {authMode !== 'forgot-password' && (
+          <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                authMode === 'login'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300'
+              }`}
+            >
+              Se connecter
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('register');
-              setErrorMsg(null);
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              authMode === 'register'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                : 'text-[#27272A] dark:text-zinc-300'
-            }`}
-          >
-            Créer un compte
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('register');
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                authMode === 'register'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300'
+              }`}
+            >
+              Créer un compte
+            </button>
+          </div>
+        )}
 
         {/* Error Feedback */}
         {errorMsg && (
@@ -359,13 +361,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* FORM 3: FORGOT PASSWORD */}
         {authMode === 'forgot-password' && (
           <div className="space-y-3.5">
-            <div className="text-center space-y-1">
-              <h4 className="text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
+            <div className="text-center">
+              <h4 className="text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
                 Mot de passe oublié
               </h4>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
-                Saisissez votre e-mail pour recevoir un lien sécurisé de réinitialisation.
-              </p>
             </div>
 
             {forgotSuccess ? (
@@ -382,7 +381,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
                 >
-                  Retour à la connexion
+                  Retour à l'accueil
                 </button>
               </div>
             ) : (
@@ -422,7 +421,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     }}
                     className="text-xs text-[#27272A]/70 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] font-medium transition-colors cursor-pointer"
                   >
-                    ← Retour à la connexion
+                    ← Retour
                   </button>
                 </div>
               </form>
