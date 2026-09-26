@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import app from './app.ts';
+import app from './app';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
