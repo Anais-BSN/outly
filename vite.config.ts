@@ -11,7 +11,7 @@ export default defineConfig(() => {
       {
         name: 'api-server',
         async configureServer(server) {
-          const { app } = await import('./server/app');
+          const { app } = await import('./server/app.ts');
           server.middlewares.use((req, res, next) => {
             if (req.url && (req.url === '/api' || req.url.startsWith('/api/') || req.url.startsWith('/api?'))) {
               app(req as any, res as any, next);

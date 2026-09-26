@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { query } from './db';
-import { emailService, getCleanAppUrl, buildAbsoluteEmailUrl } from './resend';
-import { realtimeBroadcaster } from './events';
+import { query } from './db.ts';
+import { emailService, getCleanAppUrl, buildAbsoluteEmailUrl } from './resend.ts';
+import { realtimeBroadcaster } from './events.ts';
 
 export const apiRouter = Router();
 

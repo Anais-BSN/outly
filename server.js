@@ -2863,6 +2863,7 @@ app.use((req, _res, next) => {
   next();
 });
 app.use("/api", apiRouter);
+var app_default = app;
 
 // server/index.ts
 import fs from "fs";
@@ -2870,8 +2871,8 @@ var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
 var PORT = process.env.PORT || 3e3;
 var distPath = fs.existsSync(path.resolve(process.cwd(), "dist")) ? path.resolve(process.cwd(), "dist") : path.resolve(__dirname, "../dist");
-app.use(express2.static(distPath));
-app.get("*", (req, res, next) => {
+app_default.use(express2.static(distPath));
+app_default.get("*", (req, res, next) => {
   if (req.path.startsWith("/api")) {
     return next();
   }
@@ -2882,12 +2883,12 @@ app.get("*", (req, res, next) => {
     res.sendFile(path.resolve(process.cwd(), "index.html"));
   }
 });
-if (process.env.NODE_ENV !== "test") {
-  app.listen(Number(PORT), "0.0.0.0", () => {
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
+  app_default.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server listening on port ${PORT}`);
   });
 }
-var index_default = app;
+var index_default = app_default;
 export {
   index_default as default
 };

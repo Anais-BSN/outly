@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { apiRouter } from './api';
+import { apiRouter } from './api.ts';
 
 dotenv.config();
 
@@ -19,3 +19,6 @@ app.use((req, _res, next) => {
 
 // API Routes mounted on /api
 app.use('/api', apiRouter);
+
+export default app;
+

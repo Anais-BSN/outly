@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { app } from './app';
+import app from './app.ts';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,7 +29,7 @@ app.get('*', (req, res, next) => {
   }
 });
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
   });
