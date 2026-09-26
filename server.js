@@ -142,7 +142,7 @@ var emailService = {
 
                 <!-- Bouton d'action pilule bordeaux fonc\xE9 standard HTML table cell -->
                 <tr>
-                  <td align="center" style="padding-bottom: 24px;">
+                  <td align="center" style="padding-bottom: 28px;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; border-collapse: separate;">
                       <tr>
                         <td align="center" style="background-color: #5D0D18; border-radius: 50px; padding: 0;">
@@ -152,14 +152,6 @@ var emailService = {
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-
-                <!-- Lien de secours complet en texte brut cliquable -->
-                <tr>
-                  <td align="center" style="padding-bottom: 28px; font-size: 12px; line-height: 1.5; color: #71717A; word-break: break-all;">
-                    Si le bouton ne s'ouvre pas, cliquez sur ce lien ou copiez-le dans votre navigateur :<br/>
-                    <a href="${finalInviteLink}" target="_blank" rel="noopener noreferrer" style="color: #5D0D18; text-decoration: underline; font-weight: 500;">${finalInviteLink}</a>
                   </td>
                 </tr>
 
@@ -340,7 +332,7 @@ var emailService = {
                 </tr>
 
                 <tr>
-                  <td align="center" style="padding-bottom: 24px;">
+                  <td align="center" style="padding-bottom: 28px;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; border-collapse: separate;">
                       <tr>
                         <td align="center" style="background-color: #5D0D18; border-radius: 50px; padding: 0;">
@@ -350,13 +342,6 @@ var emailService = {
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td align="center" style="padding-bottom: 28px; font-size: 12px; line-height: 1.5; color: #71717A; word-break: break-all;">
-                    Si le bouton ne s'ouvre pas, copiez-collez ce lien direct :<br/>
-                    <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="color: #5D0D18; text-decoration: underline;">${resetUrl}</a>
                   </td>
                 </tr>
 
@@ -487,16 +472,19 @@ apiRouter.get("/sse", handleSseConnection);
     await query(`
       CREATE TABLE IF NOT EXISTS debt_settlements (
         id VARCHAR(100) PRIMARY KEY,
-        group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
-        from_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        to_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        group_id VARCHAR(50),
+        from_user_id VARCHAR(50),
+        to_user_id VARCHAR(50),
         amount NUMERIC(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'pending',
-        settled_at TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(50) DEFAULT 'settled',
+        settled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_from_user_id_fkey;`);
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_to_user_id_fkey;`);
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_group_id_fkey;`);
   } catch (e) {
     console.error("Migration error (can be ignored if table locked):", e);
   }
@@ -2573,7 +2561,7 @@ apiRouter.get("/settlements", async (req, res) => {
     const groupId = req.query.groupId;
     let sql = `
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
-             s.amount::float as amount, status, s.settled_at as "settledAt",
+             s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
              COALESCE(u1.last_name, '') as "fromUserLastName",
@@ -2600,19 +2588,21 @@ apiRouter.get("/settlements", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-apiRouter.post("/settlements/toggle", async (req, res) => {
+var handleSettlementToggle = async (req, res) => {
   try {
     const {
+      id,
       groupId,
       fromUserId,
       toUserId,
       amount,
       status = "settled"
     } = req.body;
-    if (!groupId || !fromUserId || !toUserId) {
-      return res.status(400).json({ error: "groupId, fromUserId and toUserId are required" });
+    if (!fromUserId || !toUserId) {
+      return res.status(400).json({ error: "fromUserId and toUserId are required" });
     }
-    const settlementId = `settle-${groupId}-${fromUserId}-${toUserId}`;
+    const cleanGroupId = groupId || "group-current";
+    const settlementId = id || `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newStatus = status;
     const settledAt = newStatus === "settled" ? (/* @__PURE__ */ new Date()).toISOString() : null;
     await query(
@@ -2623,7 +2613,7 @@ apiRouter.post("/settlements/toggle", async (req, res) => {
          settled_at = EXCLUDED.settled_at,
          amount = EXCLUDED.amount,
          updated_at = NOW()`,
-      [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
+      [settlementId, cleanGroupId, fromUserId, toUserId, amount, newStatus, settledAt]
     );
     const fullResult = await query(
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
@@ -2646,7 +2636,7 @@ apiRouter.post("/settlements/toggle", async (req, res) => {
     const settlement = fullResult.rows[0];
     realtimeBroadcaster.broadcast({
       type: "settlement:updated",
-      groupId,
+      groupId: cleanGroupId,
       data: settlement
     });
     res.json(settlement);
@@ -2654,7 +2644,10 @@ apiRouter.post("/settlements/toggle", async (req, res) => {
     console.error("Error in POST /settlements/toggle:", err);
     res.status(500).json({ error: err.message });
   }
-});
+};
+apiRouter.post("/settlements/toggle", handleSettlementToggle);
+apiRouter.post("/settlements/settle", handleSettlementToggle);
+apiRouter.post("/settlements", handleSettlementToggle);
 apiRouter.get("/notifications", async (req, res) => {
   try {
     const userId = req.query.userId || "user-me";

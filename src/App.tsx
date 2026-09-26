@@ -182,10 +182,13 @@ export default function App() {
     try {
       const activeUserId = userId || localStorage.getItem('outly_user_id');
 
-      // If not logged in, prompt authentication immediately
+      // If not logged in, prompt authentication immediately (unless user is arriving via reset-password deep link)
       if (!activeUserId) {
         setCurrentUser(null);
-        setIsAuthOpen(true);
+        const isResetRoute = window.location.pathname.startsWith('/reset-password') || window.location.search.includes('token=');
+        if (!isResetRoute) {
+          setIsAuthOpen(true);
+        }
         setIsLoading(false);
         setGroups([]);
         setEvents([]);
@@ -561,14 +564,15 @@ export default function App() {
       const pathname = window.location.pathname;
       const tokenParam = url.searchParams.get('token');
 
-      // 1. Password reset route
-      if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) {
-        const token = tokenParam || pathname.replace('/reset-password', '').replace(/^\//, '');
+      // 1. Password reset route (supports /reset-password, /reset-password?token=..., /reset-password/:token, or ?token=...)
+      if (pathname === '/reset-password' || pathname.startsWith('/reset-password/') || (tokenParam && !pathname.startsWith('/invite') && !pathname.startsWith('/join'))) {
+        const token = tokenParam || (pathname.startsWith('/reset-password') ? pathname.replace('/reset-password', '').replace(/^\//, '') : null);
         if (token) {
           setResetPasswordToken(token);
           setIsResetPasswordOpen(true);
+          setIsAuthOpen(false);
+          return;
         }
-        return;
       }
 
       // 2. Invitation route (/invite/:token, /join/:token, /invite?token=..., /join?token=...)
@@ -1992,7 +1996,7 @@ export default function App() {
 
       {/* Auth Modal (Inscription & Connexion & Google OAuth & Mot de passe oublié) */}
       <AuthModal
-        isOpen={isAuthOpen || !currentUser}
+        isOpen={!isResetPasswordOpen && (isAuthOpen || !currentUser)}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
         canClose={Boolean(currentUser)}

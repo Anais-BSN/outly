@@ -58,16 +58,20 @@ apiRouter.get('/sse', handleSseConnection);
     await query(`
       CREATE TABLE IF NOT EXISTS debt_settlements (
         id VARCHAR(100) PRIMARY KEY,
-        group_id VARCHAR(50) REFERENCES groups(id) ON DELETE CASCADE,
-        from_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        to_user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        group_id VARCHAR(50),
+        from_user_id VARCHAR(50),
+        to_user_id VARCHAR(50),
         amount NUMERIC(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'pending',
-        settled_at TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(50) DEFAULT 'settled',
+        settled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
+    // Assurer la rétrocompatibilité des colonnes et supprimer les contraintes rigides sur utilisateurs virtuels
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_from_user_id_fkey;`);
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_to_user_id_fkey;`);
+    await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_group_id_fkey;`);
   } catch (e) {
     console.error('Migration error (can be ignored if table locked):', e);
   }
@@ -2591,13 +2595,13 @@ apiRouter.delete('/expenses/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Gestion des règlements de dettes (Debt Settlements)
+// Gestion des règlements de dettes (Debt Settlements & Remboursements)
 apiRouter.get('/settlements', async (req: Request, res: Response) => {
   try {
     const groupId = req.query.groupId as string | undefined;
     let sql = `
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
-             s.amount::float as amount, status, s.settled_at as "settledAt",
+             s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
              COALESCE(u1.last_name, '') as "fromUserLastName",
@@ -2626,9 +2630,10 @@ apiRouter.get('/settlements', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
+const handleSettlementToggle = async (req: Request, res: Response) => {
   try {
     const {
+      id,
       groupId,
       fromUserId,
       toUserId,
@@ -2636,11 +2641,12 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
       status = 'settled',
     } = req.body;
 
-    if (!groupId || !fromUserId || !toUserId) {
-      return res.status(400).json({ error: 'groupId, fromUserId and toUserId are required' });
+    if (!fromUserId || !toUserId) {
+      return res.status(400).json({ error: 'fromUserId and toUserId are required' });
     }
 
-    const settlementId = `settle-${groupId}-${fromUserId}-${toUserId}`;
+    const cleanGroupId = groupId || 'group-current';
+    const settlementId = id || `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newStatus = status;
     const settledAt = newStatus === 'settled' ? new Date().toISOString() : null;
 
@@ -2652,7 +2658,7 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
          settled_at = EXCLUDED.settled_at,
          amount = EXCLUDED.amount,
          updated_at = NOW()`,
-      [settlementId, groupId, fromUserId, toUserId, amount, newStatus, settledAt]
+      [settlementId, cleanGroupId, fromUserId, toUserId, amount, newStatus, settledAt]
     );
 
     const fullResult = await query(
@@ -2678,7 +2684,7 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
 
     realtimeBroadcaster.broadcast({
       type: 'settlement:updated',
-      groupId,
+      groupId: cleanGroupId,
       data: settlement,
     });
 
@@ -2687,7 +2693,11 @@ apiRouter.post('/settlements/toggle', async (req: Request, res: Response) => {
     console.error('Error in POST /settlements/toggle:', err);
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+apiRouter.post('/settlements/toggle', handleSettlementToggle);
+apiRouter.post('/settlements/settle', handleSettlementToggle);
+apiRouter.post('/settlements', handleSettlementToggle);
 
 // ==========================================
 // 11. NOTIFICATIONS & ENVOI D'EMAILS RESEND

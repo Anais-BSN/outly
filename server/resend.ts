@@ -178,7 +178,7 @@ export const emailService = {
 
                 <!-- Bouton d'action pilule bordeaux foncé standard HTML table cell -->
                 <tr>
-                  <td align="center" style="padding-bottom: 24px;">
+                  <td align="center" style="padding-bottom: 28px;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; border-collapse: separate;">
                       <tr>
                         <td align="center" style="background-color: #5D0D18; border-radius: 50px; padding: 0;">
@@ -188,14 +188,6 @@ export const emailService = {
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-
-                <!-- Lien de secours complet en texte brut cliquable -->
-                <tr>
-                  <td align="center" style="padding-bottom: 28px; font-size: 12px; line-height: 1.5; color: #71717A; word-break: break-all;">
-                    Si le bouton ne s'ouvre pas, cliquez sur ce lien ou copiez-le dans votre navigateur :<br/>
-                    <a href="${finalInviteLink}" target="_blank" rel="noopener noreferrer" style="color: #5D0D18; text-decoration: underline; font-weight: 500;">${finalInviteLink}</a>
                   </td>
                 </tr>
 
@@ -392,7 +384,7 @@ export const emailService = {
                 </tr>
 
                 <tr>
-                  <td align="center" style="padding-bottom: 24px;">
+                  <td align="center" style="padding-bottom: 28px;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; border-collapse: separate;">
                       <tr>
                         <td align="center" style="background-color: #5D0D18; border-radius: 50px; padding: 0;">
@@ -402,13 +394,6 @@ export const emailService = {
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td align="center" style="padding-bottom: 28px; font-size: 12px; line-height: 1.5; color: #71717A; word-break: break-all;">
-                    Si le bouton ne s'ouvre pas, copiez-collez ce lien direct :<br/>
-                    <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="color: #5D0D18; text-decoration: underline;">${resetUrl}</a>
                   </td>
                 </tr>
 

@@ -55,6 +55,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const handleForgotPasswordInstant = async (providedInput?: string) => {
+    const raw = (providedInput !== undefined ? providedInput : emailOrHandle).trim();
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) || (raw.includes('@') && raw.includes('.'));
+
+    setErrorMsg(null);
+
+    if (isEmail) {
+      setForgotEmail(raw);
+      setAuthMode('forgot-password');
+      setLoading(true);
+      setForgotSuccess(`Le lien de réinitialisation sécurisé a été transmis à ${raw}. Vérifiez votre boîte de réception.`);
+
+      try {
+        const res = await api.forgotPassword(raw);
+        if (res.message) {
+          setForgotSuccess(res.message);
+        }
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setForgotEmail(raw.includes('@') ? raw : '');
+      setForgotSuccess(null);
+      setAuthMode('forgot-password');
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail || !forgotEmail.trim()) {
@@ -68,7 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       const res = await api.forgotPassword(forgotEmail.trim());
-      setForgotSuccess(res.message || 'Si un compte est associé à cette adresse, un e-mail a été envoyé.');
+      setForgotSuccess(res.message || `Le lien de réinitialisation sécurisé a été transmis à ${forgotEmail.trim()}. Vérifiez votre boîte de réception.`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
     } finally {
@@ -308,12 +337,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  setAuthMode('forgot-password');
-                  setErrorMsg(null);
-                  setForgotSuccess(null);
-                  setForgotEmail(emailOrHandle.includes('@') ? emailOrHandle : '');
-                }}
+                id="login-btn-forgot-password"
+                onClick={() => handleForgotPasswordInstant()}
                 className="text-[11px] text-[#5D0D18] dark:text-amber-300 hover:underline font-semibold cursor-pointer"
               >
                 Mot de passe oublié ?

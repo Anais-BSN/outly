@@ -12,9 +12,6 @@ import {
   Trash2,
   Check,
   Crop,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw
 } from 'lucide-react';
 import { EventItem, UserProfile } from '../../types';
 import { compressImage } from '../../utils/imageCompressor';
@@ -23,6 +20,7 @@ import {
   getLocalDateString,
   createIsoFromLocalDateAndTime,
 } from '../../utils/formatters';
+import { ImageCropperModal } from './ImageCropperModal';
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -84,12 +82,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [isCompressing, setIsCompressing] = useState(false);
 
   // Interactive Image Cropping State for Events
-  const [croppingImage, setCroppingImage] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -110,15 +104,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       setDescription(initialEvent.description || '');
       setBannerImage(initialEvent.bannerImage || PRESET_EVENT_BANNERS[0]);
       setReminder24h(initialEvent.reminder24h ?? true);
-      setCroppingImage(null);
+      setIsCropperOpen(false);
+      setImageToCrop(null);
     } else if (initialDate) {
       setStartDate(initialDate);
       setEndDate(initialDate);
       setLocation('');
-      setCroppingImage(null);
+      setIsCropperOpen(false);
+      setImageToCrop(null);
     } else {
       setLocation('');
-      setCroppingImage(null);
+      setIsCropperOpen(false);
+      setImageToCrop(null);
     }
   }, [initialEvent, initialDate]);
 
@@ -161,98 +158,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setCroppingImage(reader.result);
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
+        setImageToCrop(reader.result);
+        setIsCropperOpen(true);
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    panStartRef.current = { ...pan };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    setPan({
-      x: panStartRef.current.x + dx,
-      y: panStartRef.current.y + dy,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      panStartRef.current = { ...pan };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - dragStartRef.current.x;
-    const dy = e.touches[0].clientY - dragStartRef.current.y;
-    setPan({
-      x: panStartRef.current.x + dx,
-      y: panStartRef.current.y + dy,
-    });
-  };
-
-  const handleApplyCrop = () => {
-    if (!croppingImage) return;
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const canvasW = 1200;
-      const canvasH = 600; // Ratio 2:1 pour visuel événementiel
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.fillStyle = '#18181B';
-      ctx.fillRect(0, 0, canvasW, canvasH);
-
-      const viewportW = 380;
-      const scaleFactor = canvasW / viewportW;
-
-      ctx.save();
-      ctx.translate(canvasW / 2, canvasH / 2);
-      ctx.scale(zoom, zoom);
-      ctx.translate(pan.x * scaleFactor, pan.y * scaleFactor);
-
-      const aspect = img.width / img.height;
-      const targetAspect = canvasW / canvasH;
-
-      let drawW = canvasW;
-      let drawH = canvasH;
-      if (aspect > targetAspect) {
-        drawH = canvasH;
-        drawW = canvasH * aspect;
-      } else {
-        drawW = canvasW;
-        drawH = canvasW / aspect;
-      }
-
-      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
-      ctx.restore();
-
-      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
-      setBannerImage(croppedDataUrl);
-      setCroppingImage(null);
-    };
-    img.src = croppingImage;
+    e.target.value = '';
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -294,139 +205,37 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        id="create-event-modal-backdrop"
-        onClick={onClose}
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs animate-fade-in"
-      />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        {/* Backdrop */}
+        <div
+          id="create-event-modal-backdrop"
+          onClick={onClose}
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs animate-fade-in"
+        />
 
-      {/* Modal Card */}
-      <div
-        id="create-event-modal-card"
-        className="relative w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[90vh] overflow-y-auto custom-scrollbar animate-scale-in space-y-4"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
-              {isEditing ? 'Modifier l\'événement' : 'Nouvel événement'}
-            </h3>
+        {/* Modal Card */}
+        <div
+          id="create-event-modal-card"
+          className="relative w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[90vh] overflow-y-auto custom-scrollbar animate-scale-in space-y-4"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+              <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
+                {isEditing ? 'Modifier l\'événement' : 'Nouvel événement'}
+              </h3>
+            </div>
+            <button
+              id="create-event-close-btn"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            id="create-event-close-btn"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Interactive Image Cropper Overlay if an image is selected/repositioned */}
-        {croppingImage ? (
-          <div className="p-4 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3] dark:border-zinc-700 space-y-3 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#5D0D18] dark:text-amber-200">
-                <Crop className="w-4 h-4" />
-                <span>Ajuster & Recadrer l'image de l'événement</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCroppingImage(null)}
-                className="text-xs text-[#27272A]/70 dark:text-zinc-400 hover:underline cursor-pointer"
-              >
-                Annuler
-              </button>
-            </div>
-
-            <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-              Déplacez librement l'image à la souris ou au doigt et ajustez le zoom pour choisir la zone exacte à conserver.
-            </p>
-
-            {/* Interactive Crop Viewport with Rectangular Panoramic Guide Mask */}
-            <div className="relative w-full h-56 sm:h-64 bg-zinc-950 rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none flex items-center justify-center">
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleMouseUp}
-              >
-                <img
-                  src={croppingImage}
-                  alt="Ajustement de l'image"
-                  style={{
-                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                    transformOrigin: 'center center',
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}
-                  draggable={false}
-                />
-              </div>
-
-              {/* Viewport Rectangular Guide Mask (2:1 Ratio) */}
-              <div className="absolute inset-0 pointer-events-none border-2 border-[#FFF9EB] rounded-2xl w-[92%] max-w-[420px] aspect-[2/1] m-auto shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ring-2 ring-[#5D0D18]/60" />
-            </div>
-
-            {/* Zoom Slider & Centering Reset */}
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="flex items-center gap-2 flex-1">
-                <ZoomOut className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.05"
-                  value={zoom}
-                  onChange={(e) => setZoom(parseFloat(e.target.value))}
-                  className="flex-1 accent-[#5D0D18]"
-                />
-                <ZoomIn className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setZoom(1);
-                  setPan({ x: 0, y: 0 });
-                }}
-                className="p-1.5 rounded-lg bg-[#FFF9EB] dark:bg-zinc-700 text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-white flex items-center gap-1 cursor-pointer"
-                title="Réinitialiser le centrage"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Centrer</span>
-              </button>
-            </div>
-
-            {/* Crop Action Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#C7B7A3]/40">
-              <button
-                type="button"
-                onClick={() => setCroppingImage(null)}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3] cursor-pointer"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyCrop}
-                className="px-5 py-1.5 rounded-xl text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
-              >
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Valider le cadrage</span>
-              </button>
-            </div>
-          </div>
-        ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Title */}
             <div>
@@ -526,15 +335,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             {/* Description */}
             <div>
               <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Description
+                Description / Programme
               </label>
               <textarea
-                id="event-description-input"
-                rows={2}
+                id="event-desc-input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Prévoir chaussures de marche, gourde 1.5L et pique-nique..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] resize-none"
+                placeholder="Détails du point de rendez-vous, équipement à prévoir..."
+                rows={2}
+                className="w-full px-3.5 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
               />
             </div>
 
@@ -571,9 +380,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setCroppingImage(bannerImage);
-                        setZoom(1);
-                        setPan({ x: 0, y: 0 });
+                        setImageToCrop(bannerImage);
+                        setIsCropperOpen(true);
                       }}
                       className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
                     >
@@ -611,9 +419,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setCroppingImage(bannerImage);
-                      setZoom(1);
-                      setPan({ x: 0, y: 0 });
+                      setImageToCrop(bannerImage);
+                      setIsCropperOpen(true);
                     }}
                     className="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold hover:bg-black/80 flex items-center gap-1 cursor-pointer"
                   >
@@ -675,8 +482,26 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
             </div>
           </form>
-        )}
+        </div>
       </div>
-    </div>
+
+      {/* Interactive Crop Modal for Events (2:1 Ratio) */}
+      <ImageCropperModal
+        isOpen={isCropperOpen}
+        imageSrc={imageToCrop}
+        aspectRatioType="event"
+        title={isEditing ? 'Recadrer l\'image de l\'événement' : 'Ajuster l\'image de l\'événement'}
+        subtitle="Format visuel 2:1 adapté aux événements"
+        onClose={() => {
+          setIsCropperOpen(false);
+          setImageToCrop(null);
+        }}
+        onApplyCrop={(croppedDataUrl) => {
+          setBannerImage(croppedDataUrl);
+          setIsCropperOpen(false);
+          setImageToCrop(null);
+        }}
+      />
+    </>
   );
 };

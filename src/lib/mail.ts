@@ -50,17 +50,13 @@ export async function sendGroupInviteEmail(to: string, groupName: string, invite
           <div style="text-align: center; margin: 28px 0;">
             <table border="0" cellpadding="0" cellspacing="0" style="margin: 25px auto; border-collapse: collapse;">
               <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                <td align="center" bgcolor="#5D0D18" style="border-radius: 50px; background-color: #5D0D18;">
+                  <a href="${invitationUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 50px; background-color: #5D0D18; text-align: center;">
                     Rejoindre sur Outlys
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="margin-top: 15px; font-size: 13px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
-              Si le bouton ci-dessus ne réagit pas, copiez et collez ce lien dans votre navigateur :<br/>
-              <a href="${invitationUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${invitationUrl}</a>
-            </p>
           </div>
           <p style="font-size: 12px; color: #71717A; text-align: center; margin-bottom: 0; margin-top: 24px;">
             Cet e-mail a été envoyé automatiquement par Outlys.
@@ -98,17 +94,13 @@ export async function sendEventReminderEmail(to: string, eventTitle: string, eve
           <div style="text-align: center; margin: 28px 0;">
             <table border="0" cellpadding="0" cellspacing="0" style="margin: 20px auto; border-collapse: collapse;">
               <tr>
-                <td align="center" bgcolor="#2563eb" style="border-radius: 8px; background-color: #2563eb;">
-                  <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; background-color: #2563eb; text-align: center;">
+                <td align="center" bgcolor="#5D0D18" style="border-radius: 50px; background-color: #5D0D18;">
+                  <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 50px; background-color: #5D0D18; text-align: center;">
                     Voir les détails sur Outlys
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 15px; text-align: center; margin-bottom: 0;">
-              Accéder à l'application :<br/>
-              <a href="${appUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all; word-wrap: break-word;">${appUrl}</a>
-            </p>
           </div>
           <p style="font-size: 12px; color: #71717A; text-align: center; margin-bottom: 0; margin-top: 24px;">
             Cet e-mail a été envoyé automatiquement par Outlys.
