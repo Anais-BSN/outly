@@ -1250,7 +1250,7 @@ export default function App() {
 
     const settlementId = settlement.id && !settlement.id.startsWith('settle-user-') && !settlement.id.startsWith('settle-')
       ? settlement.id
-      : `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      : `settle_${targetGroupId}_${settlement.fromUserId}_${settlement.toUserId}`;
 
     const optimisticSettlement: DebtSettlement = {
       ...settlement,

@@ -2791,7 +2791,7 @@ var handleSettlementToggle = async (req, res) => {
       return res.status(400).json({ error: "fromUserId and toUserId are required" });
     }
     const cleanGroupId = groupId || "group-current";
-    const settlementId = id || `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const settlementId = id || `settle_${cleanGroupId}_${fromUserId}_${toUserId}`;
     const newStatus = status;
     const settledAt = newStatus === "settled" ? (/* @__PURE__ */ new Date()).toISOString() : null;
     await query(

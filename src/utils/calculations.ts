@@ -224,10 +224,32 @@ export function calculateExpensesAndDebts(
   });
 
   // 3. Application stricte des remboursements déjà soldés en centimes entiers
+  // Déduplication stricte par identifiant et par paire (groupId, fromUserId, toUserId)
+  // pour éviter tout double-comptage intermédiaire lors des mises à jour optimistes
+  const uniqueSettledMap = new Map<string, DebtSettlement>();
   safeSettlements.forEach((s) => {
-    const numAmount = typeof s?.amount === 'string' ? parseFloat(s.amount) : (Number(s?.amount) || 0);
+    if (!s || s.status !== 'settled') return;
+    const numAmount = typeof s.amount === 'string' ? parseFloat(s.amount) : (Number(s.amount) || 0);
+    if (numAmount <= 0) return;
+
+    const gId = s.groupId || groupId || 'group-current';
+    const pairKey = `${gId}_${s.fromUserId}_${s.toUserId}`;
+    const existing = uniqueSettledMap.get(pairKey);
+    if (!existing) {
+      uniqueSettledMap.set(pairKey, s);
+    } else {
+      const existingTime = new Date(existing.settledAt || existing.updatedAt || existing.createdAt || 0).getTime();
+      const sTime = new Date(s.settledAt || s.updatedAt || s.createdAt || 0).getTime();
+      if (sTime >= existingTime) {
+        uniqueSettledMap.set(pairKey, s);
+      }
+    }
+  });
+
+  uniqueSettledMap.forEach((s) => {
+    const numAmount = typeof s.amount === 'string' ? parseFloat(s.amount) : (Number(s.amount) || 0);
     const settlementCents = Math.round(numAmount * 100);
-    if (s && s.status === 'settled' && settlementCents > 0) {
+    if (settlementCents > 0) {
       const debtorBal = getOrCreateInternalBalance(s.fromUserId, s.fromUserFirstName || s.fromUserName, s.fromUserAvatar);
       const creditorBal = getOrCreateInternalBalance(s.toUserId, s.toUserFirstName || s.toUserName, s.toUserAvatar);
 

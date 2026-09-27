@@ -44,10 +44,21 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
+  const [hiddenDebtKeys, setHiddenDebtKeys] = useState<Set<string>>(new Set());
 
   // Synchronize local state with props when parent or backend updates
   useEffect(() => {
     setLocalSettlements(settlements || []);
+    setHiddenDebtKeys((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set(prev);
+      (settlements || []).forEach((s) => {
+        if (s.status === 'settled') {
+          next.delete(`${s.fromUserId}_${s.toUserId}`);
+        }
+      });
+      return next;
+    });
   }, [settlements]);
 
   const safeExpenses = expenses || [];
@@ -87,10 +98,22 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
     const targetGroupId = groupId || settle.groupId || 'group-current';
     const numericAmount = typeof settle.amount === 'string' ? parseFloat(settle.amount) : (Number(settle.amount) || 0);
+    const pairKey = `${settle.fromUserId}_${settle.toUserId}`;
+
+    // Immediately remove from active display without any intermediate glitch or re-render
+    if (newStatus === 'settled') {
+      setHiddenDebtKeys((prev) => new Set(prev).add(pairKey));
+    } else {
+      setHiddenDebtKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(pairKey);
+        return next;
+      });
+    }
 
     const settlementId = settle.id && !settle.id.startsWith('settle-user-') && !settle.id.startsWith('settle-')
       ? settle.id
-      : `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      : `settle_${targetGroupId}_${settle.fromUserId}_${settle.toUserId}`;
 
     const optimisticSettlement: DebtSettlement = {
       ...settle,
@@ -111,7 +134,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           s.id !== settle.id &&
           s.id !== settlementId &&
           !(
-            (!s.groupId || s.groupId === targetGroupId) &&
+            (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
             s.fromUserId === settle.fromUserId &&
             s.toUserId === settle.toUserId
           )
@@ -120,7 +143,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     });
 
     // 2. Concurrently notify parent handler to persist in PostgreSQL database & broadcast via WebSockets
-    onToggleSettlementStatus(settle);
+    onToggleSettlementStatus(optimisticSettlement);
   };
 
   return (
@@ -231,7 +254,9 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         </div>
 
         {(() => {
-          const activeSettlements = calculatedSettlements.filter((s) => s.status !== 'settled');
+          const activeSettlements = calculatedSettlements.filter(
+            (s) => s.status !== 'settled' && !hiddenDebtKeys.has(`${s.fromUserId}_${s.toUserId}`)
+          );
           if (activeSettlements.length === 0) {
             return (
               <div className="p-4 text-center bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-800 text-xs font-semibold text-[#27272A]/80 dark:text-zinc-300">

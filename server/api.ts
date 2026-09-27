@@ -2887,7 +2887,7 @@ const handleSettlementToggle = async (req: Request, res: Response) => {
     }
 
     const cleanGroupId = groupId || 'group-current';
-    const settlementId = id || `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const settlementId = id || `settle_${cleanGroupId}_${fromUserId}_${toUserId}`;
     const newStatus = status;
     const settledAt = newStatus === 'settled' ? new Date().toISOString() : null;
 
