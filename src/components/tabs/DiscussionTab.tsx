@@ -25,7 +25,7 @@ interface DiscussionTabProps {
   messages?: ChatMessage[];
   currentUser: UserProfile;
   members?: GroupMember[];
-  onSendMessage: (text: string, imageUrl?: string) => void;
+  onSendMessage: (text: string, imageUrl?: string, imageUrls?: string[]) => void;
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
@@ -368,44 +368,184 @@ const MessageItem = React.memo<MessageItemProps>(({
                 }`
           }`}
         >
-          {/* Fichier / Image joint */}
-          {message.imageUrl && (
-            message.imageUrl.startsWith('data:image/') ||
-            message.imageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) ||
-            (!message.imageUrl.startsWith('data:application/') && !message.imageUrl.startsWith('data:text/') && !message.imageUrl.startsWith('data:')) ? (
-              <div className="mb-2 rounded-xl overflow-hidden max-h-60">
-                <img
-                  src={message.imageUrl}
-                  alt="Attachment"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                  onClick={() => {
-                    if (onViewAvatar && message.imageUrl) {
-                      onViewAvatar(message.imageUrl, 'Image partagée');
-                    } else {
-                      window.open(message.imageUrl, '_blank');
-                    }
-                  }}
-                  loading="lazy"
-                />
-              </div>
-            ) : (
-              <div className="mb-2 p-2.5 rounded-xl bg-black/10 dark:bg-white/10 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="w-5 h-5 text-amber-500 shrink-0" />
-                  <span className="text-xs font-semibold truncate">Document joint</span>
+          {/* Fichier / Image(s) joint(s) sous forme de mosaïque Teams / WhatsApp */}
+          {(() => {
+            const allImages: string[] = (() => {
+              if (message.imageUrls && Array.isArray(message.imageUrls) && message.imageUrls.length > 0) {
+                return message.imageUrls;
+              }
+              if (message.imageUrl) {
+                if (typeof message.imageUrl === 'string' && message.imageUrl.startsWith('[') && message.imageUrl.endsWith(']')) {
+                  try {
+                    const parsed = JSON.parse(message.imageUrl);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                  } catch (_) {}
+                }
+                const isImg =
+                  message.imageUrl.startsWith('data:image/') ||
+                  message.imageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) ||
+                  (!message.imageUrl.startsWith('data:application/') &&
+                    !message.imageUrl.startsWith('data:text/') &&
+                    !message.imageUrl.startsWith('data:'));
+                if (isImg) return [message.imageUrl];
+              }
+              return [];
+            })();
+
+            if (allImages.length === 1) {
+              return (
+                <div className="mb-2 rounded-2xl overflow-hidden max-h-72 shadow-xs">
+                  <img
+                    src={allImages[0]}
+                    alt="Image partagée"
+                    className="w-full h-full max-h-72 object-cover hover:scale-[1.02] transition-transform cursor-pointer"
+                    onClick={() => {
+                      if (onViewAvatar) {
+                        onViewAvatar(allImages[0], 'Photo partagée');
+                      } else {
+                        window.open(allImages[0], '_blank');
+                      }
+                    }}
+                    loading="lazy"
+                  />
                 </div>
-                <a
-                  href={message.imageUrl}
-                  download="document"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-bold underline px-2.5 py-1 rounded bg-[#FFF9EB] text-[#6D2932] dark:bg-zinc-800 dark:text-zinc-200 hover:opacity-90 transition-opacity shrink-0"
-                >
-                  Télécharger
-                </a>
-              </div>
-            )
-          )}
+              );
+            }
+
+            if (allImages.length === 2) {
+              return (
+                <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden max-w-sm shadow-xs">
+                  {allImages.map((imgUrl, idx) => (
+                    <div key={idx} className="relative aspect-square sm:aspect-[4/3] bg-black/10 overflow-hidden group/img">
+                      <img
+                        src={imgUrl}
+                        alt={`Photo ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200 cursor-pointer"
+                        onClick={() => {
+                          if (onViewAvatar) {
+                            onViewAvatar(imgUrl, `Photo ${idx + 1} sur ${allImages.length}`);
+                          } else {
+                            window.open(imgUrl, '_blank');
+                          }
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            if (allImages.length === 3) {
+              return (
+                <div className="mb-2 grid grid-cols-2 grid-rows-2 gap-1.5 h-48 sm:h-56 rounded-2xl overflow-hidden max-w-sm shadow-xs">
+                  <div className="relative row-span-2 bg-black/10 overflow-hidden group/img">
+                    <img
+                      src={allImages[0]}
+                      alt="Photo 1"
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200 cursor-pointer"
+                      onClick={() => {
+                        if (onViewAvatar) {
+                          onViewAvatar(allImages[0], 'Photo 1 sur 3');
+                        } else {
+                          window.open(allImages[0], '_blank');
+                        }
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="relative bg-black/10 overflow-hidden group/img">
+                    <img
+                      src={allImages[1]}
+                      alt="Photo 2"
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200 cursor-pointer"
+                      onClick={() => {
+                        if (onViewAvatar) {
+                          onViewAvatar(allImages[1], 'Photo 2 sur 3');
+                        } else {
+                          window.open(allImages[1], '_blank');
+                        }
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="relative bg-black/10 overflow-hidden group/img">
+                    <img
+                      src={allImages[2]}
+                      alt="Photo 3"
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200 cursor-pointer"
+                      onClick={() => {
+                        if (onViewAvatar) {
+                          onViewAvatar(allImages[2], 'Photo 3 sur 3');
+                        } else {
+                          window.open(allImages[2], '_blank');
+                        }
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              );
+            }
+
+            if (allImages.length >= 4) {
+              const extra = allImages.length - 4;
+              return (
+                <div className="mb-2 grid grid-cols-2 grid-rows-2 gap-1.5 h-48 sm:h-56 rounded-2xl overflow-hidden max-w-sm shadow-xs">
+                  {allImages.slice(0, 4).map((imgUrl, idx) => {
+                    const isFourth = idx === 3;
+                    return (
+                      <div
+                        key={idx}
+                        className="relative bg-black/10 overflow-hidden group/img cursor-pointer"
+                        onClick={() => {
+                          if (onViewAvatar) {
+                            onViewAvatar(imgUrl, `Photo ${idx + 1} sur ${allImages.length}`);
+                          } else {
+                            window.open(imgUrl, '_blank');
+                          }
+                        }}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                          loading="lazy"
+                        />
+                        {isFourth && extra > 0 && (
+                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center text-white font-extrabold text-base sm:text-lg group-hover/img:bg-black/70 transition-colors">
+                            +{extra + 1}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            if (message.imageUrl) {
+              return (
+                <div className="mb-2 p-2.5 rounded-xl bg-black/10 dark:bg-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-5 h-5 text-amber-500 shrink-0" />
+                    <span className="text-xs font-semibold truncate">Document joint</span>
+                  </div>
+                  <a
+                    href={message.imageUrl}
+                    download="document"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold underline px-2.5 py-1 rounded bg-[#FFF9EB] text-[#6D2932] dark:bg-zinc-800 dark:text-zinc-200 hover:opacity-90 transition-opacity shrink-0"
+                  >
+                    Télécharger
+                  </a>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
 
           {/* Mode édition inline ou affichage texte */}
           {isEditing ? (
@@ -602,8 +742,8 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const fileList = Array.from(files);
-    const newItems: Promise<PendingAttachment>[] = fileList.map((file) => {
+    const fileList: File[] = Array.from(files);
+    const newItems: Promise<PendingAttachment>[] = fileList.map((file: File) => {
       return new Promise((resolve) => {
         const isImage = file.type.startsWith('image/');
         const reader = new FileReader();
@@ -639,18 +779,21 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
 
     const trimmedText = inputText.trim();
 
-    if (selectedFiles.length === 0) {
-      onSendMessage(trimmedText);
-    } else {
-      // Envoyer l'ensemble des fichiers sélectionnés
-      selectedFiles.forEach((file, index) => {
-        const messageText = index === 0
-          ? (trimmedText || (file.isImage ? '' : `📄 ${file.name}`))
-          : (file.isImage ? '' : `📄 ${file.name}`);
+    const imageAttachments = selectedFiles.filter((f) => f.isImage);
+    const docAttachments = selectedFiles.filter((f) => !f.isImage);
 
-        onSendMessage(messageText, file.dataUrl);
-      });
+    if (imageAttachments.length > 0) {
+      // Regrouper toutes les images dans un seul message (Style Teams / WhatsApp)
+      const imgUrls = imageAttachments.map((f) => f.dataUrl);
+      onSendMessage(trimmedText, imgUrls[0], imgUrls);
+    } else if (trimmedText) {
+      onSendMessage(trimmedText);
     }
+
+    // Documents joints éventuels
+    docAttachments.forEach((doc) => {
+      onSendMessage(`📄 ${doc.name}`, doc.dataUrl);
+    });
 
     setInputText('');
     setSelectedFiles([]);

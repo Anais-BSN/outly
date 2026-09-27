@@ -377,8 +377,9 @@ export default function App() {
               prev.map((g) => {
                 if (g.id === event.groupId) {
                   const members = g.members || [];
+                  const targetUid = event.data?.member?.userId || event.data?.member?.id;
                   const exists = members.some(
-                    (m) => m.id === event.data?.member?.id || m.userId === event.data?.member?.userId
+                    (m) => (m.userId || m.id) === targetUid || m.id === event.data?.member?.id || m.userId === event.data?.member?.userId
                   );
                   if (exists) return g;
                   return { ...g, members: [...members, event.data.member] };
@@ -387,6 +388,7 @@ export default function App() {
               })
             );
           }
+          break;
         case 'group:member_merged':
           if (event.data?.groupId) {
             const { groupId, virtualUserId, targetUserId, member, expenses: updatedExpenses, settlements: updatedSettlements } = event.data;
@@ -786,9 +788,12 @@ export default function App() {
   };
 
   // Handlers: Chat Message & Emoji Reactions
-  const handleSendMessage = async (text: string, imageUrl?: string) => {
+  const handleSendMessage = async (text: string, imageUrl?: string, imageUrls?: string[]) => {
     if (!currentUser || !activeGroupId) return;
     const tempId = `msg-${Date.now()}`;
+    const allImages = imageUrls && imageUrls.length > 0 ? imageUrls : imageUrl ? [imageUrl] : undefined;
+    const primaryImageUrl = imageUrl || (imageUrls && imageUrls[0]) || undefined;
+
     const newMsg: ChatMessage = {
       id: tempId,
       groupId: activeGroupId,
@@ -797,30 +802,29 @@ export default function App() {
       senderAvatar: currentUser.avatar,
       timestamp: new Date().toISOString(),
       text,
-      imageUrl,
+      imageUrl: primaryImageUrl,
+      imageUrls: allImages,
       readBy: [currentUser.id],
       reactions: [],
     };
 
     setMessages((prev) => [...prev, newMsg]);
 
-    if (imageUrl) {
+    if (allImages && allImages.length > 0) {
       setGalleryItems((prev) => {
-        const exists = prev.some((item) => item.imageUrl === imageUrl);
-        if (exists) return prev;
-        return [
-          {
-            id: `gal-${Date.now()}`,
+        const newGalleryItems = allImages
+          .filter((img) => !prev.some((item) => item.imageUrl === img))
+          .map((img, idx) => ({
+            id: `gal-${Date.now()}-${idx}`,
             groupId: activeGroupId,
-            imageUrl,
+            imageUrl: img,
             uploaderId: currentUser.id,
             uploaderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
             uploaderAvatar: currentUser.avatar,
             timestamp: new Date().toISOString(),
             caption: text || 'Photo partagée dans le fil',
-          },
-          ...prev,
-        ];
+          }));
+        return [...newGalleryItems, ...prev];
       });
     }
 
@@ -830,7 +834,8 @@ export default function App() {
         groupId: activeGroupId,
         senderId: currentUser.id,
         text,
-        imageUrl,
+        imageUrl: primaryImageUrl,
+        imageUrls: allImages,
         timestamp: newMsg.timestamp,
         readBy: [currentUser.id],
         reactions: [],
@@ -1392,8 +1397,9 @@ export default function App() {
         prev.map((g) => {
           if (g.id === groupId) {
             const currentMembers = g.members || [];
+            const targetUid = newMember.userId || newMember.id;
             const exists = currentMembers.some(
-              (m) => m.id === newMember.id || m.userId === newMember.userId
+              (m) => (m.userId || m.id) === targetUid || m.id === newMember.id || m.userId === newMember.userId
             );
             if (exists) return g;
             return {

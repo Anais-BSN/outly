@@ -77,6 +77,7 @@ export interface ChatMessage {
   timestamp: string; // ISO string
   text?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   readBy: string[]; // userIds
   reactions: EmojiReaction[];
   isSystem?: boolean;

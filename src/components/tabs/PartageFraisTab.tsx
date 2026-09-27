@@ -11,12 +11,14 @@ import {
   Users,
   Wallet,
   Sparkles,
-  History
+  History,
+  ChevronRight
 } from 'lucide-react';
 import { Expense, UserProfile, GroupMember, DebtSettlement } from '../../types';
 import { calculateExpensesAndDebts } from '../../utils/calculations';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
 import { DebtHistoryModal } from '../modals/DebtHistoryModal';
+import { ExpenseDetailModal } from '../modals/ExpenseDetailModal';
 
 interface PartageFraisTabProps {
   expenses?: Expense[];
@@ -40,6 +42,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   onViewAvatar,
 }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
 
   // Synchronize local state with props when parent or backend updates
@@ -48,7 +51,19 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   }, [settlements]);
 
   const safeExpenses = expenses || [];
-  const safeMembers = members || [];
+
+  // Deduplicate members list
+  const safeMembers = React.useMemo(() => {
+    const map = new Map<string, GroupMember>();
+    (members || []).forEach((m) => {
+      const uid = m.userId || m.id;
+      if (uid && !map.has(uid)) {
+        map.set(uid, m);
+      }
+    });
+    return Array.from(map.values());
+  }, [members]);
+
   const safeSettlements = (localSettlements || []).filter(
     (s) => !groupId || !s.groupId || s.groupId === groupId || s.groupId === 'group-current'
   );
@@ -322,14 +337,17 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 <div
                   key={expense.id}
                   id={`expense-card-${expense.id}`}
-                  className="p-4 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs flex items-center justify-between gap-3"
+                  onClick={() => setSelectedExpenseForDetail(expense)}
+                  className="p-4 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs hover:shadow-md hover:border-[#6D2932]/60 dark:hover:border-amber-400/60 active:scale-[0.99] transition-all cursor-pointer group/card flex items-center justify-between gap-3"
+                  title="Cliquer pour voir le détail et la répartition de cette dépense"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={expense.paidByAvatar}
+                      src={expense.paidByAvatar || '/Avatar_Herisson.jpg'}
                       alt={expense.paidByName}
                       title={`${expense.paidByName} (cliquer pour agrandir)`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (onViewAvatar && expense.paidByAvatar) {
                           onViewAvatar(expense.paidByAvatar, expense.paidByName);
                         }
@@ -339,7 +357,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     />
 
                     <div className="min-w-0">
-                      <h5 className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
+                      <h5 className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate group-hover/card:text-[#450912] dark:group-hover/card:text-amber-200 transition-colors">
                         {expense.title}
                       </h5>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#27272A]/70 dark:text-zinc-400 flex-wrap">
@@ -355,15 +373,18 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <div className="text-base sm:text-lg font-extrabold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
-                      {formatCurrency(expense.amount)}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <div className="text-right">
+                      <div className="text-base sm:text-lg font-extrabold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
+                        {formatCurrency(expense.amount)}
+                      </div>
+                      <div className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
+                        {expense.splitMode === 'all'
+                          ? 'Tout le groupe'
+                          : `${expense.participantIds.length} personnes`}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
-                      {expense.splitMode === 'all'
-                        ? 'Tout le groupe'
-                        : `${expense.participantIds.length} personnes`}
-                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#6D2932]/40 dark:text-zinc-500 group-hover/card:text-[#6D2932] dark:group-hover/card:text-amber-300 group-hover/card:translate-x-0.5 transition-all" />
                   </div>
                 </div>
               );
@@ -377,6 +398,16 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         settlements={safeSettlements}
+        members={safeMembers}
+        currentUser={currentUser}
+        onViewAvatar={onViewAvatar}
+      />
+
+      {/* Modal Détail interactif d'une dépense */}
+      <ExpenseDetailModal
+        isOpen={Boolean(selectedExpenseForDetail)}
+        onClose={() => setSelectedExpenseForDetail(null)}
+        expense={selectedExpenseForDetail}
         members={safeMembers}
         currentUser={currentUser}
         onViewAvatar={onViewAvatar}

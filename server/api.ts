@@ -1798,6 +1798,32 @@ apiRouter.get('/messages', async (req: Request, res: Response) => {
       baseSql += ` WHERE ` + conditions.join(' AND ');
     }
 
+    const processRows = (rows: any[]) => {
+      return rows.map((row: any) => {
+        let imageUrls: string[] | undefined = undefined;
+        let primaryImageUrl = row.imageUrl;
+        if (
+          row.imageUrl &&
+          typeof row.imageUrl === 'string' &&
+          row.imageUrl.startsWith('[') &&
+          row.imageUrl.endsWith(']')
+        ) {
+          try {
+            const parsed = JSON.parse(row.imageUrl);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              imageUrls = parsed;
+              primaryImageUrl = parsed[0];
+            }
+          } catch (_) {}
+        }
+        return {
+          ...row,
+          imageUrl: primaryImageUrl,
+          imageUrls: imageUrls || (row.imageUrl ? [row.imageUrl] : undefined),
+        };
+      });
+    };
+
     if (limit && limit > 0) {
       params.push(limit);
       const sql = `
@@ -1809,11 +1835,11 @@ apiRouter.get('/messages', async (req: Request, res: Response) => {
         ORDER BY sub.timestamp ASC
       `;
       const result = await query(sql, params);
-      return res.json(result.rows);
+      return res.json(processRows(result.rows));
     } else {
       baseSql += ` ORDER BY m.timestamp ASC`;
       const result = await query(baseSql, params);
-      return res.json(result.rows);
+      return res.json(processRows(result.rows));
     }
   } catch (err: any) {
     console.error('Error in GET /messages:', err);
@@ -1829,12 +1855,27 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
       senderId = 'user-me',
       text = '',
       imageUrl = null,
+      imageUrls = null,
       isSystem = false,
       systemType = null,
       readBy = ['user-me'],
       reactions = [],
       timestamp = new Date().toISOString(),
     } = req.body;
+
+    const allImages: string[] =
+      Array.isArray(imageUrls) && imageUrls.length > 0
+        ? imageUrls
+        : imageUrl
+        ? [imageUrl]
+        : [];
+
+    const storedImageUrl =
+      allImages.length > 1
+        ? JSON.stringify(allImages)
+        : allImages.length === 1
+        ? allImages[0]
+        : null;
 
     await query(
       `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, image_url, is_system, system_type, read_by, reactions)
@@ -1845,7 +1886,7 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
         senderId,
         timestamp,
         text,
-        imageUrl,
+        storedImageUrl,
         isSystem,
         systemType,
         JSON.stringify(readBy),
@@ -1853,19 +1894,19 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
       ]
     );
 
-    // Si une image est jointe au message, on l'ajoute automatiquement à la galerie si elle n'y figure pas déjà
-    if (imageUrl) {
+    // Si une ou plusieurs images sont jointes, on les ajoute automatiquement à la galerie
+    for (const img of allImages) {
       const existingGal = await query(
         `SELECT id FROM gallery_items WHERE group_id = $1 AND image_url = $2`,
-        [groupId, imageUrl]
+        [groupId, img]
       );
       if (existingGal.rows.length === 0) {
-        const galId = `gal-${Date.now()}`;
+        const galId = `gal-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         await query(
           `INSERT INTO gallery_items (id, group_id, image_url, uploader_id, caption, timestamp)
            VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT DO NOTHING`,
-          [galId, groupId, imageUrl, senderId, text || 'Photo partagée dans le fil', timestamp]
+          [galId, groupId, img, senderId, text || 'Photo partagée dans le fil', timestamp]
         );
         realtimeBroadcaster.broadcast({
           type: 'gallery:uploaded',
@@ -1873,7 +1914,7 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
           data: {
             id: galId,
             groupId,
-            imageUrl,
+            imageUrl: img,
             uploaderId: senderId,
             caption: text || 'Photo partagée dans le fil',
             timestamp,
@@ -1899,7 +1940,8 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
       senderAvatar,
       timestamp,
       text,
-      imageUrl,
+      imageUrl: allImages.length > 0 ? allImages[0] : null,
+      imageUrls: allImages.length > 0 ? allImages : undefined,
       isSystem,
       systemType,
       readBy,

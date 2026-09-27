@@ -1880,6 +1880,27 @@ apiRouter.get("/messages", async (req, res) => {
     if (conditions.length > 0) {
       baseSql += ` WHERE ` + conditions.join(" AND ");
     }
+    const processRows = (rows) => {
+      return rows.map((row) => {
+        let imageUrls = void 0;
+        let primaryImageUrl = row.imageUrl;
+        if (row.imageUrl && typeof row.imageUrl === "string" && row.imageUrl.startsWith("[") && row.imageUrl.endsWith("]")) {
+          try {
+            const parsed = JSON.parse(row.imageUrl);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              imageUrls = parsed;
+              primaryImageUrl = parsed[0];
+            }
+          } catch (_) {
+          }
+        }
+        return {
+          ...row,
+          imageUrl: primaryImageUrl,
+          imageUrls: imageUrls || (row.imageUrl ? [row.imageUrl] : void 0)
+        };
+      });
+    };
     if (limit && limit > 0) {
       params.push(limit);
       const sql = `
@@ -1891,11 +1912,11 @@ apiRouter.get("/messages", async (req, res) => {
         ORDER BY sub.timestamp ASC
       `;
       const result = await query(sql, params);
-      return res.json(result.rows);
+      return res.json(processRows(result.rows));
     } else {
       baseSql += ` ORDER BY m.timestamp ASC`;
       const result = await query(baseSql, params);
-      return res.json(result.rows);
+      return res.json(processRows(result.rows));
     }
   } catch (err) {
     console.error("Error in GET /messages:", err);
@@ -1910,12 +1931,15 @@ apiRouter.post("/messages", async (req, res) => {
       senderId = "user-me",
       text = "",
       imageUrl = null,
+      imageUrls = null,
       isSystem = false,
       systemType = null,
       readBy = ["user-me"],
       reactions = [],
       timestamp = (/* @__PURE__ */ new Date()).toISOString()
     } = req.body;
+    const allImages = Array.isArray(imageUrls) && imageUrls.length > 0 ? imageUrls : imageUrl ? [imageUrl] : [];
+    const storedImageUrl = allImages.length > 1 ? JSON.stringify(allImages) : allImages.length === 1 ? allImages[0] : null;
     await query(
       `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, image_url, is_system, system_type, read_by, reactions)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -1925,25 +1949,25 @@ apiRouter.post("/messages", async (req, res) => {
         senderId,
         timestamp,
         text,
-        imageUrl,
+        storedImageUrl,
         isSystem,
         systemType,
         JSON.stringify(readBy),
         JSON.stringify(reactions)
       ]
     );
-    if (imageUrl) {
+    for (const img of allImages) {
       const existingGal = await query(
         `SELECT id FROM gallery_items WHERE group_id = $1 AND image_url = $2`,
-        [groupId, imageUrl]
+        [groupId, img]
       );
       if (existingGal.rows.length === 0) {
-        const galId = `gal-${Date.now()}`;
+        const galId = `gal-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         await query(
           `INSERT INTO gallery_items (id, group_id, image_url, uploader_id, caption, timestamp)
            VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT DO NOTHING`,
-          [galId, groupId, imageUrl, senderId, text || "Photo partag\xE9e dans le fil", timestamp]
+          [galId, groupId, img, senderId, text || "Photo partag\xE9e dans le fil", timestamp]
         );
         realtimeBroadcaster.broadcast({
           type: "gallery:uploaded",
@@ -1951,7 +1975,7 @@ apiRouter.post("/messages", async (req, res) => {
           data: {
             id: galId,
             groupId,
-            imageUrl,
+            imageUrl: img,
             uploaderId: senderId,
             caption: text || "Photo partag\xE9e dans le fil",
             timestamp
@@ -1971,7 +1995,8 @@ apiRouter.post("/messages", async (req, res) => {
       senderAvatar,
       timestamp,
       text,
-      imageUrl,
+      imageUrl: allImages.length > 0 ? allImages[0] : null,
+      imageUrls: allImages.length > 0 ? allImages : void 0,
       isSystem,
       systemType,
       readBy,

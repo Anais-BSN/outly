@@ -45,12 +45,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Deduplicate members list to avoid any duplicated row
+  const uniqueMembers = React.useMemo(() => {
+    const map = new Map<string, GroupMember>();
+    (members || []).forEach((m) => {
+      const uid = m.userId || m.id;
+      if (uid && !map.has(uid)) {
+        map.set(uid, m);
+      }
+    });
+    return Array.from(map.values());
+  }, [members]);
+
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('Courses');
   const [paidById, setPaidById] = useState<string>(currentUser.id);
   const [participantIds, setParticipantIds] = useState<string[]>(
-    members.map((m) => m.userId || m.id)
+    uniqueMembers.map((m) => m.userId || m.id)
   );
 
   // Virtual member inline creation state
@@ -69,7 +81,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         if (newMember) {
           const newUserId = newMember.userId || newMember.id;
           if (newUserId) {
-            setParticipantIds((prev) => [...prev, newUserId]);
+            setParticipantIds((prev) => (prev.includes(newUserId) ? prev : [...prev, newUserId]));
           }
         }
       }
@@ -95,14 +107,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   };
 
   // Compute live breakdown preview with individual shares
-  const activeParticipants = members.filter((m) => participantIds.includes(m.userId));
+  const activeParticipants = uniqueMembers.filter((m) => participantIds.includes(m.userId || m.id));
   const totalShares = activeParticipants.reduce((acc, m) => acc + (m.shares || 1), 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || parsedAmount <= 0 || participantIds.length === 0) return;
 
-    const payer = members.find((m) => m.userId === paidById);
+    const payer = uniqueMembers.find((m) => (m.userId || m.id) === paidById);
 
     onAddExpense({
       groupId,
@@ -111,12 +123,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       date: new Date().toISOString().split('T')[0],
       category,
       paidById,
-      paidByName: payer?.name || currentUser.firstName,
+      paidByName: payer?.name || payer?.firstName || currentUser.firstName,
       paidByAvatar: payer?.avatar || currentUser.avatar,
       splitMode: 'custom',
       participantIds,
       sharesSnapshot: activeParticipants.reduce((acc, m) => {
-        acc[m.userId] = m.shares || 1;
+        const uid = m.userId || m.id;
+        acc[uid] = m.shares || 1;
         return acc;
       }, {} as { [userId: string]: number }),
     });
@@ -229,7 +242,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               onChange={(e) => setPaidById(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB]"
             >
-              {members.map((m) => {
+              {uniqueMembers.map((m) => {
                 const uid = m.userId || m.id;
                 return (
                   <option key={uid} value={uid}>
@@ -244,7 +257,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Participants concernés ({participantIds.length}/{members.length})
+                Participants concernés ({participantIds.length}/{uniqueMembers.length})
               </label>
               <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 font-medium">
                 Cochez ou décochez individuellement
@@ -253,7 +266,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
             {/* Individual Checkbox List */}
             <div className="p-3 bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-700 max-h-44 overflow-y-auto space-y-1.5 custom-scrollbar">
-              {members.map((member) => {
+              {uniqueMembers.map((member) => {
                 const memberUid = member.userId || member.id;
                 const isSelected = participantIds.includes(memberUid);
                 const memberShare =
