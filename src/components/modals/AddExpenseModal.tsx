@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Expense, ExpenseCategory, GroupMember, UserProfile } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { allocateExpenseSharesInCents } from '../../utils/calculations';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -106,9 +107,20 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     }
   };
 
-  // Compute live breakdown preview with individual shares
+  // Compute live breakdown preview with individual shares in integer cents
   const activeParticipants = uniqueMembers.filter((m) => participantIds.includes(m.userId || m.id));
   const totalShares = activeParticipants.reduce((acc, m) => acc + (m.shares || 1), 0);
+
+  const liveAllocatedMap = React.useMemo(() => {
+    const participantDefs = activeParticipants.map((m) => {
+      const uid = m.userId || m.id;
+      return {
+        userId: uid,
+        shares: m.shares || 1,
+      };
+    });
+    return allocateExpenseSharesInCents(parsedAmount, participantDefs);
+  }, [parsedAmount, activeParticipants]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,10 +281,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               {uniqueMembers.map((member) => {
                 const memberUid = member.userId || member.id;
                 const isSelected = participantIds.includes(memberUid);
-                const memberShare =
-                  parsedAmount > 0 && totalShares > 0 && isSelected
-                    ? (parsedAmount * (member.shares || 1)) / totalShares
-                    : 0;
+                const memberShareCents = isSelected ? (liveAllocatedMap.get(memberUid) || 0) : 0;
+                const memberShare = memberShareCents / 100;
 
                 return (
                   <div

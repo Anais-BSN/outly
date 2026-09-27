@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Expense, GroupMember, UserProfile } from '../../types';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
+import { allocateExpenseSharesInCents } from '../../utils/calculations';
 
 interface ExpenseDetailModalProps {
   isOpen: boolean;
@@ -42,19 +43,26 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     }
   });
 
-  // Calculate participant shares breakdown
+  // Calculate participant shares breakdown with exact integer cents
   const participantIds = expense.participantIds || [];
   const sharesSnapshot = expense.sharesSnapshot || {};
 
-  const totalShares = participantIds.reduce((acc, uid) => {
-    const userShares = expense.splitMode === 'custom' && sharesSnapshot[uid] ? sharesSnapshot[uid] : 1;
-    return acc + userShares;
-  }, 0);
+  const participantDefs = participantIds.map((uid) => {
+    const shares = expense.splitMode === 'custom' && sharesSnapshot[uid] ? sharesSnapshot[uid] : 1;
+    return {
+      userId: uid,
+      shares: Number(shares) || 1,
+    };
+  });
+
+  const totalShares = participantDefs.reduce((acc, p) => acc + p.shares, 0);
+  const allocatedCentsMap = allocateExpenseSharesInCents(expense.amount, participantDefs);
 
   const breakdownList = participantIds.map((uid) => {
     const member = memberMap.get(uid);
     const shares = expense.splitMode === 'custom' && sharesSnapshot[uid] ? sharesSnapshot[uid] : 1;
-    const shareAmount = totalShares > 0 ? (expense.amount * shares) / totalShares : expense.amount / Math.max(1, participantIds.length);
+    const shareCents = allocatedCentsMap.get(uid) || 0;
+    const shareAmount = shareCents / 100;
     const isMe = uid === currentUser.id;
     const isVirtual = member?.isVirtual || uid.startsWith('user-virt-');
 
