@@ -201,6 +201,18 @@ export const api = {
     });
   },
 
+  async mergeGroupMember(
+    groupId: string,
+    virtualUserId: string,
+    targetUserId: string,
+    role: string = 'member'
+  ): Promise<any> {
+    return request<any>(`/groups/${groupId}/merge-member`, {
+      method: 'POST',
+      body: JSON.stringify({ virtualUserId, targetUserId, role }),
+    });
+  },
+
   async updateGroup(groupId: string, data: Partial<Group>): Promise<Group> {
     return request<Group>(`/groups/${groupId}`, {
       method: 'PUT',

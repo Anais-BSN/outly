@@ -143,26 +143,13 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   Bannière du groupe
                 </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageToCrop(coverImage);
-                      setIsCropperOpen(true);
-                    }}
-                    className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                    <span>Recadrer</span>
-                  </button>
-                  <label
-                    htmlFor="create-group-file-upload"
-                    className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Importer & recadrer</span>
-                  </label>
-                </div>
+                <label
+                  htmlFor="create-group-file-upload"
+                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Importer une photo</span>
+                </label>
                 <input
                   type="file"
                   id="create-group-file-upload"
@@ -179,17 +166,6 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                   <span className="text-[11px] font-bold text-white flex items-center gap-1">
                     <Check className="w-3.5 h-3.5 text-emerald-400" /> Bannière sélectionnée
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageToCrop(coverImage);
-                      setIsCropperOpen(true);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[11px] font-bold hover:bg-black/80 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                    <span>Ajuster</span>
-                  </button>
                 </div>
               </div>
 

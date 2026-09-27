@@ -308,13 +308,13 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       {/* Top Header with Bold Typography and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#5D0D18] dark:text-[#FFF9EB]">
+          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
             Galerie
           </h3>
-          <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
+          <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
             {isSelectionMode
               ? 'Sélectionnez les photos à télécharger simultanément.'
-              : 'Cliquez longuement sur une photo pour activer la sélection multiple.'}
+              : 'Photos et souvenirs partagés par le groupe.'}
           </p>
         </div>
 

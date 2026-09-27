@@ -27,9 +27,8 @@ export function formatDateOnly(isoString: string): string {
   if (isNaN(date.getTime())) return isoString;
 
   return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   }).format(date);
 }

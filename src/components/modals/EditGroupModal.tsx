@@ -35,7 +35,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   if (!isOpen || !group) return null;
 
   const [name, setName] = useState(group.name || '');
-  const [description, setDescription] = useState(group.description || '');
   const [coverImage, setCoverImage] = useState(group.coverImage || PRESET_COVERS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,7 +46,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setName(group.name || '');
-      setDescription(group.description || '');
       setCoverImage(group.coverImage || PRESET_COVERS[0]);
       setIsCropperOpen(false);
       setImageToCrop(null);
@@ -77,7 +75,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
       setIsSubmitting(true);
       await onUpdateGroup({
         name: name.trim(),
-        description: description.trim(),
         coverImage,
       });
       onClose();
@@ -135,47 +132,19 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
               />
             </div>
 
-            {/* Description */}
-            <div>
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Description
-              </label>
-              <textarea
-                id="edit-group-desc-input"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description ou thème du groupe..."
-                rows={2}
-                className="w-full px-3.5 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-              />
-            </div>
-
             {/* Cover Photo Preset Choice or Upload */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   Bannière du groupe
                 </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageToCrop(coverImage);
-                      setIsCropperOpen(true);
-                    }}
-                    className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                    <span>Recadrer</span>
-                  </button>
-                  <label
-                    htmlFor="edit-group-file-upload"
-                    className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Importer & recadrer</span>
-                  </label>
-                </div>
+                <label
+                  htmlFor="edit-group-file-upload"
+                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Importer une photo</span>
+                </label>
                 <input
                   type="file"
                   id="edit-group-file-upload"
@@ -193,17 +162,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
                   <span className="text-[11px] font-bold text-white flex items-center gap-1">
                     <Check className="w-3.5 h-3.5 text-emerald-400" /> Bannière active
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageToCrop(coverImage);
-                      setIsCropperOpen(true);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[11px] font-bold hover:bg-black/80 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                    <span>Ajuster</span>
-                  </button>
                 </div>
               </div>
 

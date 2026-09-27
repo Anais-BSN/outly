@@ -157,10 +157,10 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       {/* Top Header with Serifs and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-serif font-bold italic mb-1 text-[#5D0D18] dark:text-[#FFF9EB]">
+          <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
             Agenda du groupe
           </h3>
-          <p className="text-sm opacity-70 text-[#27272A] dark:text-zinc-300">
+          <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
             Organisez vos prochaines aventures et trouvez le créneau idéal pour tous.
           </p>
         </div>

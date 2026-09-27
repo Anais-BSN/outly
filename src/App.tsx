@@ -387,6 +387,25 @@ export default function App() {
               })
             );
           }
+        case 'group:member_merged':
+          if (event.data?.groupId) {
+            const { groupId, virtualUserId, targetUserId, member, expenses: updatedExpenses, settlements: updatedSettlements } = event.data;
+            setGroups((prev) =>
+              prev.map((g) => {
+                if (g.id !== groupId) return g;
+                const members = (g.members || []).filter(
+                  (m) => (m.userId || m.id) !== virtualUserId && (m.userId || m.id) !== targetUserId
+                );
+                return { ...g, members: [...members, member] };
+              })
+            );
+            if (updatedExpenses) {
+              setExpenses(updatedExpenses);
+            }
+            if (updatedSettlements) {
+              setSettlements(updatedSettlements);
+            }
+          }
           break;
         case 'group:member_removed':
           setGroups((prev) =>
@@ -1392,6 +1411,82 @@ export default function App() {
     }
   };
 
+  const handleMergeGroupMember = async (
+    groupId: string,
+    virtualUserId: string,
+    targetUserId: string
+  ) => {
+    try {
+      const res = await api.mergeGroupMember(groupId, virtualUserId, targetUserId);
+      if (res.member) {
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id !== groupId) return g;
+            const filtered = (g.members || []).filter(
+              (m) => (m.userId || m.id) !== virtualUserId && (m.userId || m.id) !== targetUserId
+            );
+            return {
+              ...g,
+              members: [...filtered, res.member],
+            };
+          })
+        );
+      }
+      if (res.expenses) {
+        setExpenses(res.expenses);
+      } else {
+        setExpenses((prev) =>
+          prev.map((exp) => {
+            if (exp.groupId !== groupId) return exp;
+            let changed = false;
+            let newPaidById = exp.paidById;
+            let newPaidByName = exp.paidByName;
+            let newPaidByAvatar = exp.paidByAvatar;
+            if (exp.paidById === virtualUserId) {
+              newPaidById = targetUserId;
+              newPaidByName = res.member?.name || exp.paidByName;
+              newPaidByAvatar = res.member?.avatar || exp.paidByAvatar;
+              changed = true;
+            }
+            let newParticipants = exp.participantIds;
+            if (exp.participantIds.includes(virtualUserId)) {
+              newParticipants = exp.participantIds.map((id) => (id === virtualUserId ? targetUserId : id));
+              newParticipants = [...new Set(newParticipants)];
+              changed = true;
+            }
+            let newShares = { ...exp.sharesSnapshot };
+            if (newShares[virtualUserId] !== undefined) {
+              const vShare = newShares[virtualUserId];
+              delete newShares[virtualUserId];
+              if (newShares[targetUserId] === undefined) {
+                newShares[targetUserId] = vShare;
+              }
+              changed = true;
+            }
+            if (changed) {
+              return {
+                ...exp,
+                paidById: newPaidById,
+                paidByName: newPaidByName,
+                paidByAvatar: newPaidByAvatar,
+                participantIds: newParticipants,
+                sharesSnapshot: newShares,
+              };
+            }
+            return exp;
+          })
+        );
+      }
+      if (res.settlements) {
+        setSettlements(res.settlements);
+      }
+      return res;
+    } catch (err) {
+      console.error('Error merging virtual member in PostgreSQL:', err);
+      throw err;
+    }
+  };
+
   const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
     try {
       await api.removeGroupMember(groupId, memberIdOrUserId);
@@ -2107,6 +2202,7 @@ export default function App() {
               )
             );
           }}
+          onMergeMember={handleMergeGroupMember}
         />
       )}
 

@@ -15,7 +15,8 @@ import {
   Pencil,
   Trash2,
   ChevronUp,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { ChatMessage, UserProfile, GroupMember } from '../../types';
 import { formatDateTime, formatTimeOnly } from '../../utils/formatters';
@@ -367,23 +368,43 @@ const MessageItem = React.memo<MessageItemProps>(({
                 }`
           }`}
         >
-          {/* Image jointe */}
+          {/* Fichier / Image joint */}
           {message.imageUrl && (
-            <div className="mb-2 rounded-xl overflow-hidden max-h-60">
-              <img
-                src={message.imageUrl}
-                alt="Attachment"
-                className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                onClick={() => {
-                  if (onViewAvatar && message.imageUrl) {
-                    onViewAvatar(message.imageUrl, 'Image partagée');
-                  } else {
-                    window.open(message.imageUrl, '_blank');
-                  }
-                }}
-                loading="lazy"
-              />
-            </div>
+            message.imageUrl.startsWith('data:image/') ||
+            message.imageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) ||
+            (!message.imageUrl.startsWith('data:application/') && !message.imageUrl.startsWith('data:text/') && !message.imageUrl.startsWith('data:')) ? (
+              <div className="mb-2 rounded-xl overflow-hidden max-h-60">
+                <img
+                  src={message.imageUrl}
+                  alt="Attachment"
+                  className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                  onClick={() => {
+                    if (onViewAvatar && message.imageUrl) {
+                      onViewAvatar(message.imageUrl, 'Image partagée');
+                    } else {
+                      window.open(message.imageUrl, '_blank');
+                    }
+                  }}
+                  loading="lazy"
+                />
+              </div>
+            ) : (
+              <div className="mb-2 p-2.5 rounded-xl bg-black/10 dark:bg-white/10 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-5 h-5 text-amber-500 shrink-0" />
+                  <span className="text-xs font-semibold truncate">Document joint</span>
+                </div>
+                <a
+                  href={message.imageUrl}
+                  download="document"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-bold underline px-2.5 py-1 rounded bg-[#FFF9EB] text-[#6D2932] dark:bg-zinc-800 dark:text-zinc-200 hover:opacity-90 transition-opacity shrink-0"
+                >
+                  Télécharger
+                </a>
+              </div>
+            )
           )}
 
           {/* Mode édition inline ou affichage texte */}
@@ -487,7 +508,16 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   onViewAvatar,
 }) => {
   const [inputText, setInputText] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  interface PendingAttachment {
+    id: string;
+    name: string;
+    size: number;
+    type: string;
+    dataUrl: string;
+    isImage: boolean;
+  }
+
+  const [selectedFiles, setSelectedFiles] = useState<PendingAttachment[]>([]);
 
   // Pagination des messages : 15 messages par défaut
   const [displayedLimit, setDisplayedLimit] = useState(15);
@@ -568,24 +598,62 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleFilesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files);
+    const newItems: Promise<PendingAttachment>[] = fileList.map((file) => {
+      return new Promise((resolve) => {
+        const isImage = file.type.startsWith('image/');
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve({
+            id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: reader.result as string,
+            isImage,
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(newItems).then((loaded) => {
+      setSelectedFiles((prev) => [...prev, ...loaded]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    });
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() && !selectedImage) return;
+    if (!inputText.trim() && selectedFiles.length === 0) return;
 
-    onSendMessage(inputText.trim(), selectedImage || undefined);
+    const trimmedText = inputText.trim();
+
+    if (selectedFiles.length === 0) {
+      onSendMessage(trimmedText);
+    } else {
+      // Envoyer l'ensemble des fichiers sélectionnés
+      selectedFiles.forEach((file, index) => {
+        const messageText = index === 0
+          ? (trimmedText || (file.isImage ? '' : `📄 ${file.name}`))
+          : (file.isImage ? '' : `📄 ${file.name}`);
+
+        onSendMessage(messageText, file.dataUrl);
+      });
+    }
+
     setInputText('');
-    setSelectedImage(null);
+    setSelectedFiles([]);
     setTimeout(() => scrollToBottom('smooth'), 50);
   };
 
@@ -657,26 +725,61 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Prévisualisation d'image avant envoi */}
-      {selectedImage && (
-        <div className="px-4 py-2 bg-[#E8D8C4]/60 dark:bg-zinc-800 border-t border-[#C7B7A3]/50 flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-2">
-            <img
-              src={selectedImage}
-              alt="Prévisualisation"
-              className="w-12 h-12 object-cover rounded-2xl ring-1 ring-[#6D2932]"
-            />
-            <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB]">
-              Image prête à être envoyée
+      {/* Prévisualisation des fichiers et médias sélectionnés avant envoi */}
+      {selectedFiles.length > 0 && (
+        <div className="px-3 sm:px-4 py-2.5 bg-[#E8D8C4]/70 dark:bg-zinc-800/90 border-t border-[#C7B7A3]/50 dark:border-zinc-700 animate-fade-in">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] flex items-center gap-1.5">
+              <span>Fichiers prêts à être envoyés ({selectedFiles.length})</span>
             </span>
+            <button
+              type="button"
+              onClick={() => setSelectedFiles([])}
+              className="text-[11px] text-red-600 dark:text-red-400 hover:underline font-semibold cursor-pointer"
+            >
+              Tout effacer
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setSelectedImage(null)}
-            className="p-1.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar py-1">
+            {selectedFiles.map((item) => (
+              <div
+                key={item.id}
+                className="relative group shrink-0 rounded-xl overflow-hidden border border-[#C7B7A3] dark:border-zinc-700 bg-[#FFF9EB] dark:bg-zinc-900 shadow-xs flex items-center"
+              >
+                {item.isImage ? (
+                  <div className="relative w-16 h-16 sm:w-18 sm:h-18">
+                    <img
+                      src={item.dataUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                ) : (
+                  <div className="w-32 h-16 sm:h-18 p-2 flex flex-col justify-center bg-amber-50 dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB]">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-[#6D2932] dark:text-amber-300 shrink-0" />
+                      <span className="text-[11px] font-bold truncate">{item.name}</span>
+                    </div>
+                    <span className="text-[9px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+                      {(item.size / 1024).toFixed(0)} Ko
+                    </span>
+                  </div>
+                )}
+
+                {/* Bouton pour retirer la miniature */}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile(item.id)}
+                  title="Retirer ce fichier"
+                  className="absolute top-1 right-1 p-1 rounded-full bg-red-600/90 text-white hover:bg-red-700 shadow-md cursor-pointer transition-transform hover:scale-110 active:scale-95 z-10"
+                >
+                  <X className="w-3 h-3 stroke-[2.5]" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -686,8 +789,9 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleImageUpload}
-            accept="image/*"
+            onChange={handleFilesUpload}
+            multiple
+            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
             className="hidden"
             id="chat-file-input"
           />
@@ -696,7 +800,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
             type="button"
             id="chat-upload-img-btn"
             onClick={() => fileInputRef.current?.click()}
-            title="Ajouter une photo"
+            title="Joindre photos ou documents (sélection multiple)"
             className="p-2.5 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#C7B7A3]/60 transition-colors shrink-0 cursor-pointer"
           >
             <ImageIcon className="w-5 h-5" />
@@ -714,7 +818,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           <button
             type="submit"
             id="chat-send-btn"
-            disabled={!inputText.trim() && !selectedImage}
+            disabled={!inputText.trim() && selectedFiles.length === 0}
             className="p-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer"
           >
             <Send className="w-5 h-5 stroke-[2.2]" />

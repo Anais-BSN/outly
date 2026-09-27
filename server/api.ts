@@ -815,6 +815,7 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
           avatar: m.avatar,
           shares: m.shares,
           role: m.role,
+          isVirtual: Boolean((m.id || '').startsWith('user-virt-') || (m.userId || '').startsWith('user-virt-')),
         });
       }
     }
@@ -985,6 +986,204 @@ apiRouter.post('/groups/:id/virtual-member', async (req: Request, res: Response)
     res.json(memberData);
   } catch (err: any) {
     console.error('Error in POST /groups/:id/virtual-member:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rapprochement et fusion d'un participant sans compte vers un compte réel (Système Tricount)
+apiRouter.post('/groups/:id/merge-member', async (req: Request, res: Response) => {
+  try {
+    const { id: groupId } = req.params;
+    const { virtualUserId, targetUserId, role = 'member' } = req.body;
+
+    if (!virtualUserId || !targetUserId) {
+      return res.status(400).json({ error: 'virtualUserId et targetUserId sont requis' });
+    }
+
+    // 1. Vérifier que l'utilisateur cible existe
+    const targetUserRes = await query(
+      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares FROM users WHERE id = $1`,
+      [targetUserId]
+    );
+    if (targetUserRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur cible introuvable' });
+    }
+    const targetUser = targetUserRes.rows[0];
+
+    // 2. Insérer/assurer la présence du membre réel dans group_members
+    await query(
+      `INSERT INTO group_members (group_id, user_id, role, joined_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+      [groupId, targetUserId, role]
+    );
+
+    // 3. Réattribuer les dépenses payées par le participant virtuel vers le membre réel
+    await query(
+      `UPDATE expenses
+       SET paid_by_id = $1
+       WHERE group_id = $2 AND paid_by_id = $3`,
+      [targetUserId, groupId, virtualUserId]
+    );
+
+    // 4. Réattribuer les parts de dépenses (participant_ids et shares_snapshot)
+    const expensesRes = await query(
+      `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
+       FROM expenses
+       WHERE group_id = $1`,
+      [groupId]
+    );
+
+    for (const exp of expensesRes.rows) {
+      let partIds: string[] = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+      let sharesSnap: Record<string, number> = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
+      let changed = false;
+
+      if (partIds.includes(virtualUserId)) {
+        partIds = partIds.map((id) => (id === virtualUserId ? targetUserId : id));
+        partIds = [...new Set(partIds)];
+        changed = true;
+      }
+
+      if (sharesSnap[virtualUserId] !== undefined) {
+        const virtualShare = sharesSnap[virtualUserId];
+        delete sharesSnap[virtualUserId];
+        if (sharesSnap[targetUserId] === undefined) {
+          sharesSnap[targetUserId] = virtualShare;
+        }
+        changed = true;
+      }
+
+      if (changed) {
+        await query(
+          `UPDATE expenses
+           SET participant_ids = $1, shares_snapshot = $2
+           WHERE id = $3`,
+          [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
+        );
+      }
+    }
+
+    // 5. Réattribuer les dettes et remboursements (debt_settlements)
+    await query(
+      `UPDATE debt_settlements
+       SET from_user_id = $1
+       WHERE group_id = $2 AND from_user_id = $3`,
+      [targetUserId, groupId, virtualUserId]
+    );
+
+    await query(
+      `UPDATE debt_settlements
+       SET to_user_id = $1
+       WHERE group_id = $2 AND to_user_id = $3`,
+      [targetUserId, groupId, virtualUserId]
+    );
+
+    // 6. Réattribuer les tâches logistiques
+    await query(
+      `UPDATE logistics_tasks
+       SET assigned_to_id = $1
+       WHERE group_id = $2 AND assigned_to_id = $3`,
+      [targetUserId, groupId, virtualUserId]
+    );
+
+    // 7. Réattribuer les RSVPs aux événements
+    await query(
+      `UPDATE event_rsvps
+       SET user_id = $1
+       WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
+      [targetUserId, virtualUserId, groupId]
+    );
+
+    // 8. Supprimer le membre virtuel du groupe
+    await query(
+      `DELETE FROM group_members
+       WHERE group_id = $1 AND user_id = $2`,
+      [groupId, virtualUserId]
+    );
+
+    // 9. Supprimer le compte temporaire de la table users s'il s'agit d'un user-virt-*
+    if (virtualUserId.startsWith('user-virt-')) {
+      await query(`DELETE FROM users WHERE id = $1`, [virtualUserId]);
+    }
+
+    // 10. Profil complet du membre réel ajouté
+    const memberData = {
+      id: targetUser.id,
+      userId: targetUser.id,
+      firstName: targetUser.firstName,
+      lastName: targetUser.lastName || '',
+      name: `${targetUser.firstName} ${targetUser.lastName || ''}`.trim(),
+      handle: targetUser.handle,
+      avatar: targetUser.avatar,
+      shares: targetUser.shares || 1,
+      role,
+      isVirtual: false,
+    };
+
+    // 11. Récupérer les dépenses et règlements mis à jour pour diffusion temps réel
+    const updatedExpensesRes = await query(
+      `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
+              e.paid_by_id as "paidById",
+              COALESCE(u.first_name, 'Membre') as "paidByName",
+              COALESCE(u.avatar, '') as "paidByAvatar",
+              e.category, e.date::text as date,
+              e.split_mode as "splitMode",
+              COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
+              COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
+              e.created_at as "createdAt"
+       FROM expenses e
+       LEFT JOIN users u ON e.paid_by_id = u.id
+       WHERE e.group_id = $1
+       ORDER BY e.date DESC, e.created_at DESC`,
+      [groupId]
+    );
+
+    const updatedSettlementsRes = await query(
+      `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+              s.amount::float as amount, s.status, s.settled_at as "settledAt",
+              s.created_at as "createdAt", s.updated_at as "updatedAt",
+              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, '') as "fromUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(u1.avatar, '') as "fromUserAvatar",
+              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, '') as "toUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(u2.avatar, '') as "toUserAvatar"
+       FROM debt_settlements s
+       LEFT JOIN users u1 ON s.from_user_id = u1.id
+       LEFT JOIN users u2 ON s.to_user_id = u2.id
+       WHERE s.group_id = $1
+       ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
+      [groupId]
+    );
+
+    // 12. Diffusion WebSocket
+    realtimeBroadcaster.broadcast({
+      type: 'group:member_merged',
+      groupId,
+      data: {
+        groupId,
+        virtualUserId,
+        targetUserId,
+        member: memberData,
+        expenses: updatedExpensesRes.rows,
+        settlements: updatedSettlementsRes.rows,
+      },
+    });
+
+    res.json({
+      success: true,
+      groupId,
+      virtualUserId,
+      targetUserId,
+      member: memberData,
+      expenses: updatedExpensesRes.rows,
+      settlements: updatedSettlementsRes.rows,
+    });
+  } catch (err: any) {
+    console.error('Error in POST /groups/:id/merge-member:', err);
     res.status(500).json({ error: err.message });
   }
 });

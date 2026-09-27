@@ -23,6 +23,7 @@ interface AddGroupMemberModalProps {
   currentUser: UserProfile;
   friends: Friend[];
   onMemberAdded: (newMember: any) => void;
+  onMergeMember?: (groupId: string, virtualUserId: string, targetUserId: string) => Promise<any>;
 }
 
 interface EligibleFriendRowProps {
@@ -78,12 +79,15 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   currentUser,
   friends = [],
   onMemberAdded,
+  onMergeMember,
 }) => {
   if (!isOpen || !group) return null;
 
   const [activeTab, setActiveTab] = useState<'friends' | 'invite'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
+  const [reconcileCandidate, setReconcileCandidate] = useState<Friend | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
   const [emails, setEmails] = useState<string[]>([]);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -92,6 +96,11 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
 
   const existingMemberIds = new Set(
     (group.members || []).map((m) => m.userId || m.id)
+  );
+
+  // Participants sans compte existant dans ce groupe
+  const virtualMembers = (group.members || []).filter(
+    (m) => m.isVirtual || (m.id && m.id.startsWith('user-virt-')) || (m.userId && m.userId.startsWith('user-virt-'))
   );
 
   const acceptedFriends = (friends || []).filter(
@@ -126,6 +135,16 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     }
   };
 
+  const handleInitiateAddFriend = (friend: Friend) => {
+    // Si des participants sans compte existent, proposer le rapprochement Tricount
+    if (virtualMembers.length > 0 && onMergeMember) {
+      setReconcileCandidate(friend);
+      setFeedbackMsg(null);
+    } else {
+      handleAddFriend(friend);
+    }
+  };
+
   const handleAddFriend = async (friend: Friend) => {
     setAddingFriendId(friend.id);
     setFeedbackMsg(null);
@@ -141,6 +160,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
         avatar: friend.avatar,
         shares: friend.shares || 1,
         role: 'member',
+        isVirtual: false,
       });
       setFeedbackMsg({
         type: 'success',
@@ -154,6 +174,35 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     } finally {
       setAddingFriendId(null);
     }
+  };
+
+  const handleConfirmMerge = async (virtualMember: any) => {
+    if (!reconcileCandidate || !onMergeMember) return;
+    const vUserId = virtualMember.userId || virtualMember.id;
+    setIsMerging(true);
+    setFeedbackMsg(null);
+    try {
+      await onMergeMember(group.id, vUserId, reconcileCandidate.id);
+      setFeedbackMsg({
+        type: 'success',
+        text: `${reconcileCandidate.firstName} a été lié(e) à "${virtualMember.name || virtualMember.firstName}". Toutes les dépenses et dettes ont été fusionnées ! 🎉`,
+      });
+      setReconcileCandidate(null);
+    } catch (err: any) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || "Erreur lors de la fusion du participant sans compte",
+      });
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const handleConfirmNewMember = async () => {
+    if (!reconcileCandidate) return;
+    const friend = reconcileCandidate;
+    setReconcileCandidate(null);
+    await handleAddFriend(friend);
   };
 
   const handleSendEmailInvite = async (e: React.FormEvent) => {
@@ -239,168 +288,293 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher: Sélectionner des amis vs Lien & E-mail */}
-        <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50 gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('friends');
-              setFeedbackMsg(null);
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-              activeTab === 'friends'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                : 'text-[#27272A] dark:text-zinc-300'
-            }`}
-          >
-            <span>Mes amis ({eligibleFriends.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('invite');
-              setFeedbackMsg(null);
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-              activeTab === 'invite'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                : 'text-[#27272A] dark:text-zinc-300'
-            }`}
-          >
-            <span>Lien & E-mail</span>
-          </button>
-        </div>
-
-        {/* Feedback Alert */}
-        {feedbackMsg && (
-          <div
-            className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 animate-fade-in ${
-              feedbackMsg.type === 'success'
-                ? 'bg-[#9FB2AC]/30 border-[#9FB2AC] text-[#18181B] dark:text-emerald-300'
-                : 'bg-red-100 border-red-300 text-red-700 dark:bg-red-950/50 dark:border-red-900 dark:text-red-300'
-            }`}
-          >
-            {feedbackMsg.type === 'success' ? (
-              <Check className="w-4 h-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-            ) : (
-              <AlertCircle className="w-4 h-4 shrink-0" />
-            )}
-            <span>{feedbackMsg.text}</span>
-          </div>
-        )}
-
-        {/* TAB 1: FRIENDS SELECTION */}
-        {activeTab === 'friends' && (
-          <div className="space-y-3">
-            {eligibleFriends.length > 0 && (
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher parmi mes amis..."
-                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
-                />
-                <Search className="w-3.5 h-3.5 text-[#27272A]/60 absolute left-2.5 top-2.5" />
-              </div>
-            )}
-
-            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-              {eligibleFriends.length === 0 ? (
-                <div className="text-center py-6 px-4 bg-[#E8D8C4]/30 dark:bg-zinc-800/30 rounded-2xl border border-dashed border-[#C7B7A3]/60">
-                  <Users className="w-8 h-8 text-[#6D2932]/40 dark:text-zinc-500 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB]">
-                    {acceptedFriends.length === 0
-                      ? "Vous n'avez pas encore d'amis dans votre répertoire."
-                      : "Tous vos amis font déjà partie de ce groupe !"}
-                  </p>
-                  <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 mt-1">
-                    Utilisez l'onglet « Lien & E-mail » pour inviter de nouvelles personnes.
-                  </p>
-                </div>
-              ) : filteredFriends.length === 0 ? (
-                <p className="text-center py-4 text-xs text-[#27272A]/60 dark:text-zinc-400">
-                  Aucun ami correspondant à votre recherche.
-                </p>
-              ) : (
-                filteredFriends.map((friend) => (
-                  <EligibleFriendRow
-                    key={friend.id}
-                    friend={friend}
-                    isAdding={addingFriendId === friend.id}
-                    onAdd={handleAddFriend}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: LINK & EMAIL INVITATION */}
-        {activeTab === 'invite' && (
-          <div className="space-y-4">
-            {/* Copy Link Section */}
-            <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-2">
-              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Lien d'invitation direct
-              </label>
+        {/* TAB SWITCHER & CONTENT OR RECONCILIATION VIEW */}
+        {reconcileCandidate ? (
+          <div className="space-y-4 animate-fade-in">
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 text-xs space-y-2">
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={inviteLink}
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] select-all font-mono"
+                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="font-bold text-[#6D2932] dark:text-amber-300">
+                  Rapprochement de compte (Système Tricount)
+                </span>
+              </div>
+              <p className="text-xs text-[#27272A] dark:text-zinc-200 leading-relaxed">
+                Ce membre correspond-il à un participant sans compte déjà présent dans le groupe ?
+              </p>
+
+              {/* Carte du nouvel utilisateur réel */}
+              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-amber-500/20">
+                <img
+                  src={reconcileCandidate.avatar || '/Avatar_Herisson.jpg'}
+                  alt={reconcileCandidate.firstName}
+                  className="w-8 h-8 rounded-full object-cover ring-1 ring-[#6D2932]"
                 />
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="px-3.5 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
-                >
-                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copié !' : 'Copier'}</span>
-                </button>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                    {reconcileCandidate.firstName} {reconcileCandidate.lastName}
+                  </div>
+                  <div className="text-[10px] text-[#6D2932] dark:text-amber-300 truncate">
+                    {reconcileCandidate.handle} (Nouveau membre réel)
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Resend Email Invitation Section Multi-Destinataires */}
-            <form onSubmit={handleSendEmailInvite} className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  Inviter par e-mail (via Resend)
-                </label>
-                {emails.length > 0 && (
-                  <span className="text-[11px] font-bold text-[#6D2932] dark:text-amber-300">
-                    {emails.length} destinataire{emails.length > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
+            {/* Choix 1 : Liste des participants sans compte existants */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-bold text-[#6D2932] dark:text-zinc-300 uppercase tracking-wider">
+                Associer à un participant sans compte existant :
+              </label>
 
-              <MultiEmailInput
-                id="group-invite-emails-input"
-                values={emails}
-                onChange={setEmails}
-                error={emailError}
-                onErrorChange={setEmailError}
-                disabled={sendingEmail}
-                placeholder="ami1@exemple.com, ami2@exemple.com..."
-              />
+              {virtualMembers.map((vMember) => {
+                const vName = vMember.name || vMember.firstName || 'Invité';
+                return (
+                  <button
+                    key={vMember.userId || vMember.id}
+                    type="button"
+                    disabled={isMerging}
+                    onClick={() => handleConfirmMerge(vMember)}
+                    className="w-full p-3 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-amber-400/80 dark:border-amber-600/70 hover:border-[#6D2932] dark:hover:border-amber-400 flex items-center justify-between gap-3 text-left transition-all hover:shadow-md cursor-pointer group active:scale-98 disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={vMember.avatar || '/Avatar_Lapin.jpg'}
+                        alt={vName}
+                        className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-400 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                            {vName}
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300">
+                            Sans compte
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#27272A]/70 dark:text-zinc-400 truncate mt-0.5">
+                          Fusionner toutes les dépenses, dettes et parts de <strong>{vName}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-bold group-hover:bg-[#6D2932] group-hover:text-white transition-colors shrink-0">
+                      {isMerging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Lier & Fusionner'}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Choix 2 : Option Nouveau membre (aucun lien préalable) */}
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-[11px] font-bold text-[#6D2932] dark:text-zinc-300 uppercase tracking-wider">
+                Ou ajouter sans lier :
+              </label>
 
               <button
-                type="submit"
-                id="send-group-invites-btn"
-                disabled={sendingEmail || emails.length === 0}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+                type="button"
+                disabled={isMerging}
+                onClick={handleConfirmNewMember}
+                className="w-full p-3 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/70 border border-[#C7B7A3] dark:border-zinc-700 hover:border-[#6D2932] flex items-center justify-between gap-3 text-left transition-all hover:shadow-xs cursor-pointer group active:scale-98 disabled:opacity-50"
               >
-                {sendingEmail ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Mail className="w-4 h-4" />
-                )}
-                <span>{getInviteButtonText()}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-[#6D2932] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                      Nouveau membre (aucun lien préalable)
+                    </div>
+                    <p className="text-[10px] text-[#27272A]/70 dark:text-zinc-400 truncate mt-0.5">
+                      Ajouter normalement sans modifier les participants sans compte existants
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-3 py-1.5 rounded-xl bg-black/10 dark:bg-white/10 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] group-hover:bg-[#6D2932] group-hover:text-white transition-colors shrink-0">
+                  Ajouter
+                </div>
               </button>
-            </form>
+            </div>
+
+            {/* Bouton Annuler le rapprochement */}
+            <div className="pt-2">
+              <button
+                type="button"
+                disabled={isMerging}
+                onClick={() => setReconcileCandidate(null)}
+                className="w-full py-2 rounded-xl text-xs font-semibold text-[#27272A]/70 dark:text-zinc-400 hover:bg-[#E8D8C4]/50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                ← Annuler et revenir à la liste
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            {/* Tab Switcher: Sélectionner des amis vs Lien & E-mail */}
+            <div className="flex items-center bg-[#E8D8C4]/60 dark:bg-zinc-800 p-1 rounded-2xl border border-[#C7B7A3]/50 gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('friends');
+                  setFeedbackMsg(null);
+                }}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                  activeTab === 'friends'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300'
+                }`}
+              >
+                <span>Mes amis ({eligibleFriends.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('invite');
+                  setFeedbackMsg(null);
+                }}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                  activeTab === 'invite'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300'
+                }`}
+              >
+                <span>Lien & E-mail</span>
+              </button>
+            </div>
+
+            {/* Feedback Alert */}
+            {feedbackMsg && (
+              <div
+                className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 animate-fade-in ${
+                  feedbackMsg.type === 'success'
+                    ? 'bg-[#9FB2AC]/30 border-[#9FB2AC] text-[#18181B] dark:text-emerald-300'
+                    : 'bg-red-100 border-red-300 text-red-700 dark:bg-red-950/50 dark:border-red-900 dark:text-red-300'
+                }`}
+              >
+                {feedbackMsg.type === 'success' ? (
+                  <Check className="w-4 h-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                )}
+                <span>{feedbackMsg.text}</span>
+              </div>
+            )}
+
+            {/* TAB 1: FRIENDS SELECTION */}
+            {activeTab === 'friends' && (
+              <div className="space-y-3">
+                {eligibleFriends.length > 0 && (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Rechercher parmi mes amis..."
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
+                    />
+                    <Search className="w-3.5 h-3.5 text-[#27272A]/60 absolute left-2.5 top-2.5" />
+                  </div>
+                )}
+
+                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                  {eligibleFriends.length === 0 ? (
+                    <div className="text-center py-6 px-4 bg-[#E8D8C4]/30 dark:bg-zinc-800/30 rounded-2xl border border-dashed border-[#C7B7A3]/60">
+                      <Users className="w-8 h-8 text-[#6D2932]/40 dark:text-zinc-500 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB]">
+                        {acceptedFriends.length === 0
+                          ? "Vous n'avez pas encore d'amis dans votre répertoire."
+                          : "Tous vos amis font déjà partie de ce groupe !"}
+                      </p>
+                      <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 mt-1">
+                        Utilisez l'onglet « Lien & E-mail » pour inviter de nouvelles personnes.
+                      </p>
+                    </div>
+                  ) : filteredFriends.length === 0 ? (
+                    <p className="text-center py-4 text-xs text-[#27272A]/60 dark:text-zinc-400">
+                      Aucun ami correspondant à votre recherche.
+                    </p>
+                  ) : (
+                    filteredFriends.map((friend) => (
+                      <EligibleFriendRow
+                        key={friend.id}
+                        friend={friend}
+                        isAdding={addingFriendId === friend.id}
+                        onAdd={handleInitiateAddFriend}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: LINK & EMAIL INVITATION */}
+            {activeTab === 'invite' && (
+              <div className="space-y-4">
+                {/* Copy Link Section */}
+                <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-2">
+                  <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                    Lien d'invitation direct
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteLink}
+                      className="flex-1 px-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] select-all font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="px-3.5 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedLink ? 'Copié !' : 'Copier'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Resend Email Invitation Section Multi-Destinataires */}
+                <form onSubmit={handleSendEmailInvite} className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                      Inviter par e-mail (via Resend)
+                    </label>
+                    {emails.length > 0 && (
+                      <span className="text-[11px] font-bold text-[#6D2932] dark:text-amber-300">
+                        {emails.length} destinataire{emails.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <MultiEmailInput
+                    id="group-invite-emails-input"
+                    values={emails}
+                    onChange={setEmails}
+                    error={emailError}
+                    onErrorChange={setEmailError}
+                    disabled={sendingEmail}
+                    placeholder="ami1@exemple.com, ami2@exemple.com..."
+                  />
+
+                  <button
+                    type="submit"
+                    id="send-group-invites-btn"
+                    disabled={sendingEmail || emails.length === 0}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+                  >
+                    {sendingEmail ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
+                    <span>{getInviteButtonText()}</span>
+                  </button>
+                </form>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
