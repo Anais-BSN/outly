@@ -1221,7 +1221,7 @@ export default function App() {
   const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
     const isNowSettled = settlement.status !== 'settled';
     const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
-    const targetGroupId = activeGroupId || (settlement.groupId && settlement.groupId !== 'group-current' ? settlement.groupId : 'group-current');
+    const targetGroupId = activeGroupId || activeGroup?.id || (settlement.groupId && settlement.groupId !== 'group-current' ? settlement.groupId : 'group-current');
     const numericAmount = typeof settlement.amount === 'string' ? parseFloat(settlement.amount) : (Number(settlement.amount) || 0);
 
     const settlementId = settlement.id && !settlement.id.startsWith('settle-user-') && !settlement.id.startsWith('settle-')
@@ -1244,7 +1244,7 @@ export default function App() {
           s.id !== settlement.id &&
           s.id !== settlementId &&
           !(
-            (!s.groupId || s.groupId === targetGroupId) &&
+            (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
             s.fromUserId === settlement.fromUserId &&
             s.toUserId === settlement.toUserId
           )
@@ -1269,13 +1269,26 @@ export default function App() {
               s.id !== settlementId &&
               s.id !== saved.id &&
               !(
-                (!s.groupId || s.groupId === targetGroupId) &&
+                (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
                 s.fromUserId === saved.fromUserId &&
                 s.toUserId === saved.toUserId
               )
           );
           return [saved, ...filtered];
         });
+
+        // Background synchronization to guarantee strict consistency
+        api.getSettlements(targetGroupId).then((freshSettlements) => {
+          if (Array.isArray(freshSettlements) && freshSettlements.length > 0) {
+            setSettlements((prev) => {
+              const freshIds = new Set(freshSettlements.map((s) => s.id));
+              const otherGroupSettlements = prev.filter(
+                (s) => s.groupId && s.groupId !== targetGroupId && !freshIds.has(s.id)
+              );
+              return [...freshSettlements, ...otherGroupSettlements];
+            });
+          }
+        }).catch(() => {});
       }
     } catch (err) {
       console.error('Error toggling settlement in PostgreSQL:', err);
@@ -1976,7 +1989,7 @@ export default function App() {
                   expenses={groupExpenses}
                   currentUser={currentUser}
                   members={activeGroup.members}
-                  settlements={settlements.filter((s) => !s.groupId || s.groupId === activeGroupId)}
+                  settlements={settlements.filter((s) => !s.groupId || !activeGroupId || s.groupId === activeGroupId || (s.groupId === 'group-current' && !activeGroupId))}
                   groupId={activeGroupId}
                   onOpenAddExpense={() => setIsAddExpenseOpen(true)}
                   onToggleSettlementStatus={handleToggleSettlementStatus}

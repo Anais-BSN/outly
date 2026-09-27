@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Receipt,
   Plus,
@@ -40,12 +40,20 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   onViewAvatar,
 }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
+
+  // Synchronize local state with props when parent or backend updates
+  useEffect(() => {
+    setLocalSettlements(settlements || []);
+  }, [settlements]);
+
   const safeExpenses = expenses || [];
   const safeMembers = members || [];
-  const safeSettlements = (settlements || []).filter(
-    (s) => !groupId || !s.groupId || s.groupId === groupId
+  const safeSettlements = (localSettlements || []).filter(
+    (s) => !groupId || !s.groupId || s.groupId === groupId || s.groupId === 'group-current'
   );
 
+  // Instant calculation of balances and simplified debts matrix
   const { totalSpent, userBalances, calculatedSettlements } = calculateExpensesAndDebts(
     safeExpenses,
     safeMembers,
@@ -57,6 +65,48 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const myBalance = myBalObj?.net || 0;
   const isPositive = myBalance >= 0.01;
   const isNeutral = Math.abs(myBalance) < 0.01;
+
+  // Immediate optimistic toggle on "Marquer comme soldé"
+  const handleSettleClick = (settle: DebtSettlement) => {
+    const isNowSettled = settle.status !== 'settled';
+    const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
+    const targetGroupId = groupId || settle.groupId || 'group-current';
+    const numericAmount = typeof settle.amount === 'string' ? parseFloat(settle.amount) : (Number(settle.amount) || 0);
+
+    const settlementId = settle.id && !settle.id.startsWith('settle-user-') && !settle.id.startsWith('settle-')
+      ? settle.id
+      : `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const optimisticSettlement: DebtSettlement = {
+      ...settle,
+      id: settlementId,
+      groupId: targetGroupId,
+      amount: numericAmount,
+      status: newStatus,
+      settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
+    };
+
+    // 1. Instantaneous synchronous update in local React state:
+    // - Removes debt from active list
+    // - Adds to history settlements
+    // - Recalculates "Mon équilibre" immediately
+    setLocalSettlements((prev) => {
+      const filtered = prev.filter(
+        (s) =>
+          s.id !== settle.id &&
+          s.id !== settlementId &&
+          !(
+            (!s.groupId || s.groupId === targetGroupId) &&
+            s.fromUserId === settle.fromUserId &&
+            s.toUserId === settle.toUserId
+          )
+      );
+      return [optimisticSettlement, ...filtered];
+    });
+
+    // 2. Concurrently notify parent handler to persist in PostgreSQL database & broadcast via WebSockets
+    onToggleSettlementStatus(settle);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
@@ -228,7 +278,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     {/* Status Toggle Button */}
                     <button
                       id={`toggle-settle-btn-${settle.id}`}
-                      onClick={() => onToggleSettlementStatus(settle)}
+                      onClick={() => handleSettleClick(settle)}
                       className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3] active:scale-95"
                     >
                       <Clock className="w-4 h-4" />
