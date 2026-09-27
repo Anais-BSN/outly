@@ -1243,40 +1243,39 @@ export default function App() {
   };
 
   const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
-    const isNowSettled = settlement.status !== 'settled';
-    const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
-    const targetGroupId = activeGroupId || activeGroup?.id || (settlement.groupId && settlement.groupId !== 'group-current' ? settlement.groupId : 'group-current');
-    const numericAmount = typeof settlement.amount === 'string' ? parseFloat(settlement.amount) : (Number(settlement.amount) || 0);
-
-    const settlementId = settlement.id && !settlement.id.startsWith('settle-user-') && !settlement.id.startsWith('settle-')
-      ? settlement.id
-      : `settle_${targetGroupId}_${settlement.fromUserId}_${settlement.toUserId}`;
-
-    const optimisticSettlement: DebtSettlement = {
-      ...settlement,
-      id: settlementId,
-      groupId: targetGroupId,
-      amount: numericAmount,
-      status: newStatus,
-      settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
-    };
-
-    // Instantaneous synchronous optimistic update in React state
-    setSettlements((prev) => {
-      const filtered = prev.filter(
-        (s) =>
-          s.id !== settlement.id &&
-          s.id !== settlementId &&
-          !(
-            (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
-            s.fromUserId === settlement.fromUserId &&
-            s.toUserId === settlement.toUserId
-          )
-      );
-      return [optimisticSettlement, ...filtered];
-    });
-
     try {
+      const newStatus: 'settled' | 'pending' = settlement.status || 'settled';
+      const targetGroupId = activeGroupId || activeGroup?.id || (settlement.groupId && settlement.groupId !== 'group-current' ? settlement.groupId : 'group-current');
+      const numericAmount = typeof settlement.amount === 'string' ? parseFloat(settlement.amount) : (Number(settlement.amount) || 0);
+
+      const settlementId = settlement.id && !settlement.id.startsWith('settle-user-') && !settlement.id.startsWith('settle-')
+        ? settlement.id
+        : `settle_${targetGroupId}_${settlement.fromUserId}_${settlement.toUserId}`;
+
+      const optimisticSettlement: DebtSettlement = {
+        ...settlement,
+        id: settlementId,
+        groupId: targetGroupId,
+        amount: numericAmount,
+        status: newStatus,
+        settledAt: newStatus === 'settled' ? (settlement.settledAt || new Date().toISOString()) : undefined,
+      };
+
+      // Instantaneous synchronous optimistic update in React state
+      setSettlements((prev) => {
+        const filtered = prev.filter(
+          (s) =>
+            s.id !== settlement.id &&
+            s.id !== settlementId &&
+            !(
+              (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
+              s.fromUserId === settlement.fromUserId &&
+              s.toUserId === settlement.toUserId
+            )
+        );
+        return [optimisticSettlement, ...filtered];
+      });
+
       const saved = await api.toggleSettlement({
         id: settlementId,
         groupId: targetGroupId,
@@ -1285,6 +1284,7 @@ export default function App() {
         amount: numericAmount,
         status: newStatus,
       });
+
       if (saved) {
         setSettlements((prev) => {
           const filtered = prev.filter(
@@ -1315,7 +1315,9 @@ export default function App() {
         }).catch(() => {});
       }
     } catch (err) {
-      console.error('Error toggling settlement in PostgreSQL:', err);
+      console.error('Erreur lors du règlement de la dette en base:', err);
+      setInviteToast({ text: 'Impossible de synchroniser le règlement avec le serveur.', success: false });
+      setTimeout(() => setInviteToast(null), 4000);
     }
   };
 
@@ -2090,8 +2092,8 @@ export default function App() {
                   expenses={groupExpenses}
                   currentUser={currentUser}
                   members={activeGroup.members}
-                  settlements={settlements.filter((s) => !s.groupId || !activeGroupId || s.groupId === activeGroupId || (s.groupId === 'group-current' && !activeGroupId))}
-                  groupId={activeGroupId}
+                  settlements={settlements.filter((s) => !s.groupId || !activeGroupId || s.groupId === activeGroupId || s.groupId === 'group-current')}
+                  groupId={activeGroupId || activeGroup?.id || 'group-current'}
                   onOpenAddExpense={() => setIsAddExpenseOpen(true)}
                   onToggleSettlementStatus={handleToggleSettlementStatus}
                   onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}

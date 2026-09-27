@@ -116,7 +116,7 @@ export function calculateExpensesAndDebts(
   const safeMembers = members || [];
   const safeExpenses = expenses || [];
   const safeSettlements = (settlementsOverride || []).filter(
-    (s) => !groupId || !s.groupId || s.groupId === groupId
+    (s) => !groupId || !s.groupId || s.groupId === groupId || s.groupId === 'group-current' || groupId === 'group-current'
   );
 
   // Helper pour trouver ou créer une balance utilisateur de manière robuste
@@ -224,23 +224,23 @@ export function calculateExpensesAndDebts(
   });
 
   // 3. Application stricte des remboursements déjà soldés en centimes entiers
-  // Déduplication stricte par identifiant et par paire (groupId, fromUserId, toUserId)
-  // pour éviter tout double-comptage intermédiaire lors des mises à jour optimistes
+  // Déduplication stricte par paire (fromUserId, toUserId) pour éviter tout double-comptage intermédiaire
   const uniqueSettledMap = new Map<string, DebtSettlement>();
   safeSettlements.forEach((s) => {
     if (!s || s.status !== 'settled') return;
     const numAmount = typeof s.amount === 'string' ? parseFloat(s.amount) : (Number(s.amount) || 0);
     if (numAmount <= 0) return;
 
-    const gId = s.groupId || groupId || 'group-current';
-    const pairKey = `${gId}_${s.fromUserId}_${s.toUserId}`;
+    const pairKey = `${s.fromUserId}_${s.toUserId}`;
     const existing = uniqueSettledMap.get(pairKey);
     if (!existing) {
       uniqueSettledMap.set(pairKey, s);
     } else {
       const existingTime = new Date(existing.settledAt || existing.updatedAt || existing.createdAt || 0).getTime();
       const sTime = new Date(s.settledAt || s.updatedAt || s.createdAt || 0).getTime();
-      if (sTime >= existingTime) {
+      const safeExistingTime = isNaN(existingTime) ? 0 : existingTime;
+      const safeSTime = isNaN(sTime) ? 0 : sTime;
+      if (safeSTime >= safeExistingTime) {
         uniqueSettledMap.set(pairKey, s);
       }
     }

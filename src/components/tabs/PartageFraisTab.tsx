@@ -94,56 +94,68 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
   // Immediate optimistic toggle on "Marquer comme soldé"
   const handleSettleClick = (settle: DebtSettlement) => {
-    const isNowSettled = settle.status !== 'settled';
-    const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
-    const targetGroupId = groupId || settle.groupId || 'group-current';
-    const numericAmount = typeof settle.amount === 'string' ? parseFloat(settle.amount) : (Number(settle.amount) || 0);
-    const pairKey = `${settle.fromUserId}_${settle.toUserId}`;
+    try {
+      const fromUserId = settle.fromUserId;
+      const toUserId = settle.toUserId;
+      if (!fromUserId || !toUserId) return;
 
-    // Immediately remove from active display without any intermediate glitch or re-render
-    if (newStatus === 'settled') {
-      setHiddenDebtKeys((prev) => new Set(prev).add(pairKey));
-    } else {
-      setHiddenDebtKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(pairKey);
-        return next;
+      const isNowSettled = settle.status !== 'settled';
+      const newStatus: 'settled' | 'pending' = isNowSettled ? 'settled' : 'pending';
+      const targetGroupId = groupId || settle.groupId || 'group-current';
+      const numericAmount = typeof settle.amount === 'string' ? parseFloat(settle.amount) : (Number(settle.amount) || 0);
+      const pairKey = `${fromUserId}_${toUserId}`;
+
+      // 1. Immediately remove from active display without any intermediate glitch or re-render
+      if (newStatus === 'settled') {
+        setHiddenDebtKeys((prev) => new Set(prev).add(pairKey));
+      } else {
+        setHiddenDebtKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(pairKey);
+          return next;
+        });
+      }
+
+      const settlementId = settle.id && !settle.id.startsWith('settle-user-') && !settle.id.startsWith('settle-')
+        ? settle.id
+        : `settle_${targetGroupId}_${fromUserId}_${toUserId}`;
+
+      const optimisticSettlement: DebtSettlement = {
+        ...settle,
+        id: settlementId,
+        groupId: targetGroupId,
+        fromUserId,
+        toUserId,
+        amount: numericAmount,
+        status: newStatus,
+        settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
+      };
+
+      // 2. Instantaneous synchronous update in local React state:
+      // - Removes debt from active list
+      // - Adds to history settlements
+      // - Recalculates "Mon équilibre" immediately
+      setLocalSettlements((prev) => {
+        const filtered = prev.filter(
+          (s) =>
+            s.id !== settle.id &&
+            s.id !== settlementId &&
+            !(
+              (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
+              s.fromUserId === fromUserId &&
+              s.toUserId === toUserId
+            )
+        );
+        return [optimisticSettlement, ...filtered];
       });
+
+      // 3. Concurrently notify parent handler to persist in PostgreSQL database & broadcast via WebSockets
+      if (onToggleSettlementStatus) {
+        onToggleSettlementStatus(optimisticSettlement);
+      }
+    } catch (err) {
+      console.error('Erreur lors du règlement de la dette:', err);
     }
-
-    const settlementId = settle.id && !settle.id.startsWith('settle-user-') && !settle.id.startsWith('settle-')
-      ? settle.id
-      : `settle_${targetGroupId}_${settle.fromUserId}_${settle.toUserId}`;
-
-    const optimisticSettlement: DebtSettlement = {
-      ...settle,
-      id: settlementId,
-      groupId: targetGroupId,
-      amount: numericAmount,
-      status: newStatus,
-      settledAt: newStatus === 'settled' ? new Date().toISOString() : undefined,
-    };
-
-    // 1. Instantaneous synchronous update in local React state:
-    // - Removes debt from active list
-    // - Adds to history settlements
-    // - Recalculates "Mon équilibre" immediately
-    setLocalSettlements((prev) => {
-      const filtered = prev.filter(
-        (s) =>
-          s.id !== settle.id &&
-          s.id !== settlementId &&
-          !(
-            (!s.groupId || s.groupId === targetGroupId || s.groupId === 'group-current') &&
-            s.fromUserId === settle.fromUserId &&
-            s.toUserId === settle.toUserId
-          )
-      );
-      return [optimisticSettlement, ...filtered];
-    });
-
-    // 2. Concurrently notify parent handler to persist in PostgreSQL database & broadcast via WebSockets
-    onToggleSettlementStatus(optimisticSettlement);
   };
 
   return (
