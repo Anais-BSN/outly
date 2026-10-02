@@ -55,9 +55,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [firstName, setFirstName] = useState(currentUser?.firstName || 'Thomas');
-  const [lastName, setLastName] = useState(currentUser?.lastName || 'Dubois');
-  const [email, setEmail] = useState(currentUser?.email || 'thomas.dubois@outlys.fr');
+  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
+  const [lastName, setLastName] = useState(currentUser?.lastName || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
   const [avatar, setAvatar] = useState(
     currentUser?.avatar || '/Avatar_Herisson.jpg'
   );
@@ -77,9 +77,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setFirstName(currentUser?.firstName || 'Thomas');
-      setLastName(currentUser?.lastName || 'Dubois');
-      setEmail(currentUser?.email || 'thomas.dubois@outlys.fr');
+      setFirstName(currentUser?.firstName || '');
+      setLastName(currentUser?.lastName || '');
+      setEmail(currentUser?.email || '');
       setAvatar(currentUser?.avatar || '/Avatar_Herisson.jpg');
       setShares(currentUser?.shares || 1);
       const savedTheme = localStorage.getItem('outly_theme') as 'light' | 'dark' | null;

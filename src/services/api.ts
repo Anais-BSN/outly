@@ -2,6 +2,7 @@ import {
   UserProfile,
   Friend,
   Group,
+  GroupMember,
   EventItem,
   ChatMessage,
   Poll,
@@ -165,6 +166,10 @@ export const api = {
     return request<Group[]>(`/groups${query}`);
   },
 
+  async getGroup(groupId: string): Promise<Group> {
+    return request<Group>(`/groups/${groupId}`);
+  },
+
   async createGroup(
     groupData: Partial<Group>,
     invitedFriendIds: string[],
@@ -232,8 +237,22 @@ export const api = {
     });
   },
 
-  async removeGroupMember(groupId: string, userId: string): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}`, {
+  async removeGroupMember(groupId: string, userId: string): Promise<{
+    success: boolean;
+    demotedToVirtual?: boolean;
+    virtualMember?: GroupMember;
+    group?: Group;
+    expenses?: Expense[];
+    settlements?: DebtSettlement[];
+  }> {
+    return request<{
+      success: boolean;
+      demotedToVirtual?: boolean;
+      virtualMember?: GroupMember;
+      group?: Group;
+      expenses?: Expense[];
+      settlements?: DebtSettlement[];
+    }>(`/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
     });
   },
@@ -556,6 +575,13 @@ export const api = {
     return request('/reminders/send-email', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  async registerPushToken(userId: string, token: string, platform?: string): Promise<any> {
+    return request('/push/register', {
+      method: 'POST',
+      body: JSON.stringify({ userId, token, platform }),
     });
   },
 };

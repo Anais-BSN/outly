@@ -27,15 +27,24 @@ import { AddTaskModal } from './components/modals/AddTaskModal';
 import { ImageViewerModal } from './components/modals/ImageViewerModal';
 import { AddGroupMemberModal } from './components/modals/AddGroupMemberModal';
 import { EditGroupModal } from './components/modals/EditGroupModal';
-import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { ConvertChoicePollModal } from './components/modals/ConvertChoicePollModal';
 import { ResetPasswordModal } from './components/modals/ResetPasswordModal';
 import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
+import { GroupMembersModal } from './components/modals/GroupMembersModal';
+import { InviteReconcileModal } from './components/modals/InviteReconcileModal';
+import { AppDownloadBanner } from './components/AppDownloadBanner';
 import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
 import { api } from './services/api';
 import { realtimeService } from './services/realtime';
+import {
+  saveNativeSession,
+  getNativeSession,
+  clearNativeSession,
+  initPushNotifications,
+  triggerHaptic,
+} from './services/nativeService';
 import {
   TabType,
   UserProfile,
@@ -167,8 +176,15 @@ export default function App() {
   // Deep-link & Reset Password states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [resetPasswordToken, setResetPasswordToken] = useState('');
-  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(() => {
+    return localStorage.getItem('outly_pending_invite') || null;
+  });
   const [inviteToast, setInviteToast] = useState<{ text: string; success: boolean } | null>(null);
+  const [inviteReconcileData, setInviteReconcileData] = useState<{
+    groupId: string;
+    groupName: string;
+    virtualMembers: GroupMember[];
+  } | null>(null);
 
   // Dark Mode (strict toggle via profile button, decoupled from prefers-color-scheme)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -180,7 +196,16 @@ export default function App() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const activeUserId = userId || localStorage.getItem('outly_user_id');
+      let activeUserId = userId || localStorage.getItem('outly_user_id');
+
+      // Récupération automatique de la session persistante native si non trouvée en localStorage
+      if (!activeUserId) {
+        const nativeSession = await getNativeSession();
+        if (nativeSession.userId) {
+          activeUserId = nativeSession.userId;
+          localStorage.setItem('outly_user_id', nativeSession.userId);
+        }
+      }
 
       // If not logged in, prompt authentication immediately (unless user is arriving via reset-password deep link)
       if (!activeUserId) {
@@ -232,6 +257,8 @@ export default function App() {
       setCurrentUser(userRes);
       localStorage.setItem('outly_user_id', userRes.id);
       saveLocalSession(userRes);
+      saveNativeSession(userRes);
+      initPushNotifications(userRes.id);
       
       const themeFromDb = userRes.themePreference || (localStorage.getItem('outly_theme') as any) || 'light';
       setIsDarkMode(themeFromDb === 'dark');
@@ -406,6 +433,32 @@ export default function App() {
             }
             if (updatedSettlements) {
               setSettlements(updatedSettlements);
+            }
+          }
+          break;
+        case 'group:member_demoted_to_virtual':
+          if (event.data?.groupId) {
+            const { groupId, oldUserId, virtualMember, expenses: updatedExpenses, settlements: updatedSettlements } = event.data;
+            setGroups((prev) =>
+              prev.map((g) => {
+                if (g.id !== groupId) return g;
+                const members = (g.members || []).filter(
+                  (m) => (m.userId || m.id) !== oldUserId
+                );
+                return { ...g, members: [...members, virtualMember] };
+              })
+            );
+            if (updatedExpenses) {
+              setExpenses((prev) => {
+                const others = prev.filter((e) => e.groupId !== groupId);
+                return [...others, ...updatedExpenses];
+              });
+            }
+            if (updatedSettlements) {
+              setSettlements((prev) => {
+                const others = prev.filter((s) => s.groupId !== groupId);
+                return [...others, ...updatedSettlements];
+              });
             }
           }
           break;
@@ -611,7 +664,7 @@ export default function App() {
         const segments = pathname.replace('/join/', '').split('/');
         if (tokenParam) {
           inviteToken = tokenParam;
-        } else if (segments[0] && segments[0].length > 10) {
+        } else if (segments[0] && segments[0].length > 5) {
           inviteToken = segments[0];
         }
       } else if (tokenParam && (pathname === '/invite' || pathname === '/join' || pathname === '/')) {
@@ -620,6 +673,7 @@ export default function App() {
 
       if (inviteToken) {
         setPendingInviteToken(inviteToken);
+        localStorage.setItem('outly_pending_invite', inviteToken);
       }
     } catch (err) {
       console.error('Error parsing deep-link route:', err);
@@ -636,6 +690,7 @@ export default function App() {
         if (inv) {
           await api.acceptInvitationByToken(pendingInviteToken, currentUser.id);
           setPendingInviteToken(null);
+          localStorage.removeItem('outly_pending_invite');
           window.history.replaceState({}, '', '/');
 
           await loadData(currentUser.id);
@@ -645,6 +700,25 @@ export default function App() {
               text: `Vous avez rejoint le groupe "${inv.groupName || 'd\'escapade'}" ! 🎉`,
               success: true,
             });
+
+            // Vérifier la présence de participants sans compte (virtuels) pour proposer le rapprochement
+            try {
+              const groupData = await api.getGroup(inv.groupId);
+              if (groupData && groupData.members) {
+                const virtuals = groupData.members.filter((m: GroupMember) =>
+                  Boolean(m.isVirtual || (m.userId && m.userId.startsWith('user-virt-')) || (m.id && m.id.startsWith('user-virt-')))
+                );
+                if (virtuals.length > 0) {
+                  setInviteReconcileData({
+                    groupId: inv.groupId,
+                    groupName: groupData.name || inv.groupName || 'Groupe',
+                    virtualMembers: virtuals,
+                  });
+                }
+              }
+            } catch (reconErr) {
+              console.error('Erreur vérification membres virtuels pour rapprochement:', reconErr);
+            }
           } else {
             setInviteToast({
               text: `Vous êtes maintenant connecté avec ${inv.inviterFirstName || 'votre ami'} ! 🎉`,
@@ -660,6 +734,7 @@ export default function App() {
           success: false,
         });
         setPendingInviteToken(null);
+        localStorage.removeItem('outly_pending_invite');
         setTimeout(() => setInviteToast(null), 6000);
       }
     };
@@ -733,13 +808,17 @@ export default function App() {
   const handleAuthSuccess = (user: UserProfile) => {
     localStorage.setItem('outly_user_id', user.id);
     saveLocalSession(user);
+    saveNativeSession(user);
+    initPushNotifications(user.id);
     setCurrentUser(user);
     setIsAuthOpen(false);
     loadData(user.id);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('outly_user_id');
+    localStorage.removeItem('outly_auth_token');
+    await clearNativeSession();
     setCurrentUser(null);
     setIsProfileOpen(false);
     setIsDrawerOpen(false);
@@ -757,6 +836,8 @@ export default function App() {
 
   const handleSwitchUser = (user: UserProfile) => {
     localStorage.setItem('outly_user_id', user.id);
+    saveNativeSession(user);
+    initPushNotifications(user.id);
     setCurrentUser(user);
     loadData(user.id);
   };
@@ -790,6 +871,7 @@ export default function App() {
   // Handlers: Chat Message & Emoji Reactions
   const handleSendMessage = async (text: string, imageUrl?: string, imageUrls?: string[]) => {
     if (!currentUser || !activeGroupId) return;
+    triggerHaptic('light');
     const tempId = `msg-${Date.now()}`;
     const allImages = imageUrls && imageUrls.length > 0 ? imageUrls : imageUrl ? [imageUrl] : undefined;
     const primaryImageUrl = imageUrl || (imageUrls && imageUrls[0]) || undefined;
@@ -1196,6 +1278,7 @@ export default function App() {
   // Handlers: Expenses & Settlements (Les transactions restent visibles uniquement dans l'onglet Partage des frais)
   const handleAddExpense = async (expenseData: Partial<Expense>) => {
     if (!currentUser || !activeGroupId) return;
+    triggerHaptic('medium');
     const tempId = `exp-${Date.now()}`;
     const optimisticExp: Expense = {
       id: tempId,
@@ -1495,23 +1578,78 @@ export default function App() {
     }
   };
 
+  const handleConfirmInviteMerge = async (virtualMember: GroupMember) => {
+    if (!inviteReconcileData || !currentUser) return;
+    const vUserId = virtualMember.userId || virtualMember.id;
+    try {
+      await handleMergeGroupMember(inviteReconcileData.groupId, vUserId, currentUser.id);
+      setInviteReconcileData(null);
+      setInviteToast({
+        text: `Votre compte a été synchronisé avec "${virtualMember.name || virtualMember.firstName}". Vos dépenses et dettes sont associées ! ✨`,
+        success: true,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
+    } catch (err: any) {
+      console.error('Error merging member on invite:', err);
+      setInviteToast({
+        text: err.message || 'Erreur lors de la synchronisation',
+        success: false,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
+    }
+  };
+
   const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
     try {
-      await api.removeGroupMember(groupId, memberIdOrUserId);
-      setGroups((prev) =>
-        prev.map((g) => {
-          if (g.id === groupId) {
-            return {
-              ...g,
-              members: (g.members || []).filter(
+      const res = await api.removeGroupMember(groupId, memberIdOrUserId);
+      if (res.demotedToVirtual && res.virtualMember) {
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id === groupId) {
+              const members = (g.members || []).filter(
                 (m) => m.id !== memberIdOrUserId && m.userId !== memberIdOrUserId
-              ),
-            };
-          }
-          return g;
-        })
-      );
-    } catch (err) {
+              );
+              return {
+                ...g,
+                members: [...members, res.virtualMember!],
+              };
+            }
+            return g;
+          })
+        );
+        if (res.expenses) {
+          setExpenses((prev) => {
+            const others = prev.filter((e) => e.groupId !== groupId);
+            return [...others, ...res.expenses!];
+          });
+        }
+        if (res.settlements) {
+          setSettlements((prev) => {
+            const others = prev.filter((s) => s.groupId !== groupId);
+            return [...others, ...res.settlements!];
+          });
+        }
+        setInviteToast({
+          text: `Le membre a été converti en participant sans compte. Ses dépenses et dettes sont intégralement préservées ! ⚖️`,
+          success: true,
+        });
+        setTimeout(() => setInviteToast(null), 6000);
+      } else {
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id === groupId) {
+              return {
+                ...g,
+                members: (g.members || []).filter(
+                  (m) => m.id !== memberIdOrUserId && m.userId !== memberIdOrUserId
+                ),
+              };
+            }
+            return g;
+          })
+        );
+      }
+    } catch (err: any) {
       console.error('Error removing group member in PostgreSQL:', err);
     }
   };
@@ -1711,6 +1849,7 @@ export default function App() {
       removeLocalSession(deletedId);
       localStorage.removeItem('outly_user_id');
       localStorage.removeItem('outly_auth_token');
+      await clearNativeSession();
       setCurrentUser(null);
       setGroups([]);
       setEvents([]);
@@ -1994,17 +2133,21 @@ export default function App() {
           <>
             {/* 3. Group Cover Banner (masqué sur l'onglet Discussion pour offrir une interface de messagerie plein écran et épurée) */}
             {activeTab !== 'discussion' && (
-              <GroupBanner
-                group={activeGroup}
-                currentUser={currentUser}
-                onInviteMember={() => setIsAddGroupMemberOpen(true)}
-                onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
-                onEditGroup={() => setIsEditGroupOpen(true)}
-                onOpenMembersList={() => setIsMembersListOpen(true)}
-                onLeaveGroup={handleLeaveGroup}
-                onDeleteGroup={handleDeleteGroup}
-                onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
-              />
+              <>
+                <GroupBanner
+                  group={activeGroup}
+                  currentUser={currentUser}
+                  onInviteMember={() => setIsAddGroupMemberOpen(true)}
+                  onOpenInviteModal={() => setIsAddGroupMemberOpen(true)}
+                  onEditGroup={() => setIsEditGroupOpen(true)}
+                  onOpenMembersList={() => setIsMembersListOpen(true)}
+                  onLeaveGroup={handleLeaveGroup}
+                  onDeleteGroup={handleDeleteGroup}
+                  onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
+                />
+                {/* Bannière promotionnelle Web : Téléchargez l'application Outlys (Exclusif web, masquée sur mobile natif) */}
+                <AppDownloadBanner />
+              </>
             )}
 
             {/* 4. Group Tabs */}
@@ -2381,6 +2524,18 @@ export default function App() {
         title={viewingAvatar?.title}
         subtitle={viewingAvatar?.subtitle}
       />
+
+      {/* Invite Reconcile Modal (Rapprochement lors de l'adhésion par lien d'invitation) */}
+      {inviteReconcileData && currentUser && (
+        <InviteReconcileModal
+          isOpen={Boolean(inviteReconcileData)}
+          onClose={() => setInviteReconcileData(null)}
+          groupName={inviteReconcileData.groupName}
+          virtualMembers={inviteReconcileData.virtualMembers}
+          currentUser={currentUser}
+          onConfirmMerge={handleConfirmInviteMerge}
+        />
+      )}
     </div>
   );
 }

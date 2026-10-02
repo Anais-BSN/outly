@@ -19,6 +19,7 @@ import { calculateExpensesAndDebts } from '../../utils/calculations';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
 import { DebtHistoryModal } from '../modals/DebtHistoryModal';
 import { ExpenseDetailModal } from '../modals/ExpenseDetailModal';
+import { triggerHapticNotification } from '../../services/nativeService';
 
 interface PartageFraisTabProps {
   expenses?: Expense[];
@@ -95,6 +96,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   // Immediate optimistic toggle on "Marquer comme soldé"
   const handleSettleClick = (settle: DebtSettlement) => {
     try {
+      triggerHapticNotification('success');
       const fromUserId = settle.fromUserId;
       const toUserId = settle.toUserId;
       if (!fromUserId || !toUserId) return;

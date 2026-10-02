@@ -3,18 +3,27 @@ import crypto from 'crypto';
 import { query } from './db';
 import { emailService, getCleanAppUrl, buildAbsoluteEmailUrl } from './resend';
 import { realtimeBroadcaster } from './events';
+import { isAllowedOrigin } from './cors';
 
 export const apiRouter = Router();
 
 // Gestionnaire de flux d'événements temps réel (Server-Sent Events)
 const handleSseConnection = (req: Request, res: Response) => {
-  res.writeHead(200, {
+  const origin = req.headers.origin;
+  const headers: Record<string, string> = {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
-    'Access-Control-Allow-Origin': '*',
-  });
+  };
+
+  if (origin && isAllowedOrigin(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+    headers['Vary'] = 'Origin';
+  }
+
+  res.writeHead(200, headers);
 
   const subId = `sub-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   const userId = req.query.userId as string | undefined;
@@ -66,6 +75,16 @@ apiRouter.get('/sse', handleSseConnection);
         settled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    await query(`
+      CREATE TABLE IF NOT EXISTS device_push_tokens (
+        id VARCHAR(100) PRIMARY KEY,
+        user_id VARCHAR(100) NOT NULL,
+        token TEXT NOT NULL,
+        platform VARCHAR(50) DEFAULT 'mobile',
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(user_id, token)
       );
     `);
     // Assurer la rétrocompatibilité des colonnes et supprimer les contraintes rigides sur utilisateurs virtuels
@@ -1349,50 +1368,276 @@ apiRouter.delete('/groups/:id', async (req: Request, res: Response) => {
 
 apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Response) => {
   try {
-    const { id, userId } = req.params;
+    const { id: groupId, userId } = req.params;
 
-    // Vérifier si le membre qui quitte était administrateur
+    // 1. Vérifier le rôle du membre dans le groupe
     const memberRoleRes = await query(
       `SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2`,
-      [id, userId]
+      [groupId, userId]
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === 'admin';
 
-    await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [id, userId]);
+    // 2. Vérifier si l'utilisateur possède des dépenses, dettes, tâches ou participations dans ce groupe
+    const isRealUser = !userId.startsWith('user-virt-');
+    let hasFinancialOrActivityFootprint = false;
 
-    // Règle de succession : si l'admin part et qu'il ne reste aucun autre admin, promouvoir le premier membre restant par ordre alphabétique
+    if (isRealUser) {
+      const expensesPaidRes = await query(
+        `SELECT COUNT(*) as count FROM expenses WHERE group_id = $1 AND paid_by_id = $2`,
+        [groupId, userId]
+      );
+      const settlementsRes = await query(
+        `SELECT COUNT(*) as count FROM debt_settlements WHERE group_id = $1 AND (from_user_id = $2 OR to_user_id = $2)`,
+        [groupId, userId]
+      );
+      const allExpensesRes = await query(
+        `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot" FROM expenses WHERE group_id = $1`,
+        [groupId]
+      );
+
+      const hasExpenseParticipation = allExpensesRes.rows.some((exp) => {
+        const partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+        const sharesSnap = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
+        return partIds.includes(userId) || sharesSnap[userId] !== undefined;
+      });
+
+      hasFinancialOrActivityFootprint =
+        Number(expensesPaidRes.rows[0]?.count || 0) > 0 ||
+        Number(settlementsRes.rows[0]?.count || 0) > 0 ||
+        hasExpenseParticipation;
+    }
+
+    let virtualMemberData: any = null;
+    let updatedExpenses: any[] = [];
+    let updatedSettlements: any[] = [];
+
+    // 3. Si l'utilisateur est un compte réel avec un historique financier, rétrograder en participant virtuel sans compte
+    if (isRealUser && hasFinancialOrActivityFootprint) {
+      const userRes = await query(
+        `SELECT id, first_name as "firstName", last_name as "lastName", handle, avatar, shares FROM users WHERE id = $1`,
+        [userId]
+      );
+      const user = userRes.rows[0] || {};
+      const frozenFirstName = user.firstName || (user.handle ? user.handle.replace('@', '') : 'Membre');
+      const frozenLastName = user.lastName || '';
+      const frozenFullName = `${frozenFirstName} ${frozenLastName}`.trim();
+      const frozenAvatar = user.avatar || '/Avatar_Herisson.jpg';
+      const frozenShares = user.shares || 1;
+
+      const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const randomHandle = `@${frozenFirstName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Math.random().toString(36).substring(2, 6)}`;
+      const dummyEmail = `${virtualUserId}@outlys.local`;
+
+      // Insérer le participant virtuel figé
+      await query(
+        `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [virtualUserId, frozenFirstName, frozenLastName, dummyEmail, randomHandle, frozenAvatar, frozenShares]
+      );
+
+      // Réattribuer les dépenses payées
+      await query(
+        `UPDATE expenses
+         SET paid_by_id = $1
+         WHERE group_id = $2 AND paid_by_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      // Réattribuer les parts de dépenses
+      const expensesRes = await query(
+        `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
+         FROM expenses
+         WHERE group_id = $1`,
+        [groupId]
+      );
+
+      for (const exp of expensesRes.rows) {
+        let partIds: string[] = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+        let sharesSnap: Record<string, number> = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
+        let changed = false;
+
+        if (partIds.includes(userId)) {
+          partIds = partIds.map((id) => (id === userId ? virtualUserId : id));
+          partIds = [...new Set(partIds)];
+          changed = true;
+        }
+
+        if (sharesSnap[userId] !== undefined) {
+          const userShare = sharesSnap[userId];
+          delete sharesSnap[userId];
+          if (sharesSnap[virtualUserId] === undefined) {
+            sharesSnap[virtualUserId] = userShare;
+          }
+          changed = true;
+        }
+
+        if (changed) {
+          await query(
+            `UPDATE expenses
+             SET participant_ids = $1, shares_snapshot = $2
+             WHERE id = $3`,
+            [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
+          );
+        }
+      }
+
+      // Réattribuer les dettes et remboursements
+      await query(
+        `UPDATE debt_settlements
+         SET from_user_id = $1
+         WHERE group_id = $2 AND from_user_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      await query(
+        `UPDATE debt_settlements
+         SET to_user_id = $1
+         WHERE group_id = $2 AND to_user_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      // Réattribuer les tâches logistiques
+      await query(
+        `UPDATE logistics_tasks
+         SET assigned_to_id = $1
+         WHERE group_id = $2 AND assigned_to_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      // Réattribuer les RSVPs
+      await query(
+        `UPDATE event_rsvps
+         SET user_id = $1
+         WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
+        [virtualUserId, userId, groupId]
+      );
+
+      // Ajouter le nouveau participant virtuel aux membres du groupe
+      await query(
+        `INSERT INTO group_members (group_id, user_id, role, joined_at)
+         VALUES ($1, $2, 'member', NOW())`,
+        [groupId, virtualUserId]
+      );
+
+      // Supprimer l'ancien compte utilisateur du groupe
+      await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
+
+      virtualMemberData = {
+        id: virtualUserId,
+        userId: virtualUserId,
+        firstName: frozenFirstName,
+        lastName: frozenLastName,
+        name: frozenFullName,
+        handle: randomHandle,
+        avatar: frozenAvatar,
+        shares: frozenShares,
+        role: 'member',
+        isVirtual: true,
+      };
+
+      // Récupérer les dépenses et règlements mis à jour
+      const expRes = await query(
+        `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
+                e.paid_by_id as "paidById",
+                COALESCE(u.first_name, 'Membre') as "paidByName",
+                COALESCE(u.avatar, '') as "paidByAvatar",
+                e.category, e.date::text as date,
+                e.split_mode as "splitMode",
+                COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
+                COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
+                e.created_at as "createdAt"
+         FROM expenses e
+         LEFT JOIN users u ON e.paid_by_id = u.id
+         WHERE e.group_id = $1
+         ORDER BY e.date DESC, e.created_at DESC`,
+        [groupId]
+      );
+      updatedExpenses = expRes.rows;
+
+      const settRes = await query(
+        `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+                s.amount::float as amount, s.status, s.settled_at as "settledAt",
+                s.created_at as "createdAt", s.updated_at as "updatedAt",
+                COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+                COALESCE(u1.last_name, '') as "fromUserLastName",
+                COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+                COALESCE(u1.avatar, '') as "fromUserAvatar",
+                COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+                COALESCE(u2.last_name, '') as "toUserLastName",
+                COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+                COALESCE(u2.avatar, '') as "toUserAvatar"
+         FROM debt_settlements s
+         LEFT JOIN users u1 ON s.from_user_id = u1.id
+         LEFT JOIN users u2 ON s.to_user_id = u2.id
+         WHERE s.group_id = $1
+         ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
+        [groupId]
+      );
+      updatedSettlements = settRes.rows;
+    } else {
+      // Suppression standard sans rétrogradation si aucun historique financier ou participant déjà virtuel
+      await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
+      if (userId.startsWith('user-virt-')) {
+        await query(`DELETE FROM users WHERE id = $1`, [userId]);
+      }
+    }
+
+    // 4. Règle de succession administrative : si l'admin part et qu'il ne reste aucun autre admin
     if (wasAdmin) {
       const remainingAdmins = await query(
         `SELECT user_id FROM group_members WHERE group_id = $1 AND role = 'admin'`,
-        [id]
+        [groupId]
       );
       if (remainingAdmins.rows.length === 0) {
         const nextAdminCandidate = await query(
           `SELECT gm.user_id 
            FROM group_members gm
            JOIN users u ON gm.user_id = u.id
-           WHERE gm.group_id = $1
+           WHERE gm.group_id = $1 AND NOT gm.user_id LIKE 'user-virt-%'
            ORDER BY u.first_name ASC, u.last_name ASC
            LIMIT 1`,
-          [id]
+          [groupId]
         );
         if (nextAdminCandidate.rows.length > 0) {
           const newAdminId = nextAdminCandidate.rows[0].user_id;
           await query(
             `UPDATE group_members SET role = 'admin' WHERE group_id = $1 AND user_id = $2`,
-            [id, newAdminId]
+            [groupId, newAdminId]
           );
         }
       }
     }
 
-    realtimeBroadcaster.broadcast({
-      type: 'group:member_removed',
-      groupId: id,
-      data: { groupId: id, userId },
-    });
+    // 5. Diffusion temps réel
+    if (virtualMemberData) {
+      realtimeBroadcaster.broadcast({
+        type: 'group:member_demoted_to_virtual',
+        groupId,
+        data: {
+          groupId,
+          oldUserId: userId,
+          virtualMember: virtualMemberData,
+          expenses: updatedExpenses,
+          settlements: updatedSettlements,
+        },
+      });
+    } else {
+      realtimeBroadcaster.broadcast({
+        type: 'group:member_removed',
+        groupId,
+        data: { groupId, userId },
+      });
+    }
 
-    res.json({ success: true, groupId: id, userId });
+    res.json({
+      success: true,
+      groupId,
+      userId,
+      demoted: Boolean(virtualMemberData),
+      virtualMember: virtualMemberData,
+      expenses: updatedExpenses,
+      settlements: updatedSettlements,
+    });
   } catch (err: any) {
     console.error('Error in DELETE /groups/:id/members/:userId:', err);
     res.status(500).json({ error: err.message });
@@ -3085,7 +3330,7 @@ apiRouter.post('/invitations/send-email', async (req: Request, res: Response) =>
   }
 });
 
-// Consultation d'une invitation par token
+// Consultation d'une invitation par token ou identifiant de groupe direct
 apiRouter.get('/invitations/:token', async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
@@ -3101,18 +3346,35 @@ apiRouter.get('/invitations/:token', async (req: Request, res: Response) => {
       [token]
     );
 
-    if (invRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Invitation introuvable ou expirée' });
+    if (invRes.rows.length > 0) {
+      return res.json(invRes.rows[0]);
     }
 
-    res.json(invRes.rows[0]);
+    // Si non trouvé dans la table invitations, vérifier si le token correspond directement à un groupe valide
+    const groupRes = await query(
+      `SELECT g.id as "groupId", g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
+              'group' as "type", 'active' as "status", g.created_at as "createdAt"
+       FROM groups g
+       WHERE g.id = $1`,
+      [token]
+    );
+
+    if (groupRes.rows.length > 0) {
+      return res.json({
+        id: `inv-${groupRes.rows[0].groupId}`,
+        token,
+        ...groupRes.rows[0],
+      });
+    }
+
+    return res.status(404).json({ error: 'Invitation introuvable ou expirée' });
   } catch (err: any) {
     console.error('Error in GET /invitations/:token:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Acceptation d'une invitation par token
+// Acceptation d'une invitation par token ou identifiant de groupe
 apiRouter.post('/invitations/:token/accept', async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
@@ -3125,11 +3387,22 @@ apiRouter.post('/invitations/:token/accept', async (req: Request, res: Response)
       [token]
     );
 
-    if (invRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Invitation introuvable' });
+    let invitation: any = null;
+    if (invRes.rows.length > 0) {
+      invitation = invRes.rows[0];
+    } else {
+      const groupRes = await query(
+        `SELECT id as "groupId", name as "groupName", 'group' as "type", 'active' as "status" FROM groups WHERE id = $1`,
+        [token]
+      );
+      if (groupRes.rows.length > 0) {
+        invitation = groupRes.rows[0];
+      }
     }
 
-    const invitation = invRes.rows[0];
+    if (!invitation) {
+      return res.status(404).json({ error: 'Invitation introuvable' });
+    }
 
     // Si c'est une invitation à un groupe, ajouter l'utilisateur
     if (invitation.groupId) {
@@ -3157,8 +3430,10 @@ apiRouter.post('/invitations/:token/accept', async (req: Request, res: Response)
       );
     }
 
-    // Marquer l'invitation comme acceptée
-    await query(`UPDATE invitations SET status = 'accepted' WHERE token = $1`, [token]);
+    // Marquer l'invitation comme acceptée si présente dans la table
+    if (invRes.rows.length > 0) {
+      await query(`UPDATE invitations SET status = 'accepted' WHERE token = $1`, [token]);
+    }
 
     res.json({
       success: true,
@@ -3167,6 +3442,30 @@ apiRouter.post('/invitations/:token/accept', async (req: Request, res: Response)
     });
   } catch (err: any) {
     console.error('Error in POST /invitations/:token/accept:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Enregistrement de jeton de notification push d'un appareil mobile
+apiRouter.post('/push/register', async (req: Request, res: Response) => {
+  try {
+    const { userId, token, platform = 'mobile' } = req.body;
+    if (!userId || !token) {
+      return res.status(400).json({ error: 'userId et token sont requis' });
+    }
+
+    const id = `push-${userId}-${crypto.createHash('md5').update(token).digest('hex').substring(0, 12)}`;
+
+    await query(
+      `INSERT INTO device_push_tokens (id, user_id, token, platform, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, token) DO UPDATE SET updated_at = NOW(), platform = EXCLUDED.platform`,
+      [id, userId, token, platform]
+    );
+
+    res.json({ success: true, id, userId, platform });
+  } catch (err: any) {
+    console.error('Error in POST /push/register:', err);
     res.status(500).json({ error: err.message });
   }
 });

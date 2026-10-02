@@ -10,11 +10,13 @@ import {
   Users,
   Sparkles,
   AlertCircle,
-  Loader2
+  Loader2,
+  Share2
 } from 'lucide-react';
 import { Group, Friend, UserProfile } from '../../types';
 import { api } from '../../services/api';
 import { MultiEmailInput } from '../ui/MultiEmailInput';
+import { shareGroupInvite, isNativePlatform } from '../../services/nativeService';
 
 interface AddGroupMemberModalProps {
   isOpen: boolean;
@@ -123,6 +125,20 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   });
 
   const inviteLink = `${window.location.origin}/join/${group.id}`;
+
+  const handleShareLink = async () => {
+    const result = await shareGroupInvite({
+      title: `Rejoins le groupe ${group.name} sur Outlys !`,
+      text: `Rejoins notre groupe "${group.name}" sur Outlys pour planifier nos sorties et partager nos dépenses !`,
+      url: inviteLink,
+      dialogTitle: 'Inviter des amis sur Outlys',
+    });
+
+    if (result.method === 'clipboard' || !isNativePlatform()) {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -508,21 +524,31 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                   <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
                     Lien d'invitation direct
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={inviteLink}
                       className="flex-1 px-3 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] select-all font-mono"
                     />
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className="px-3.5 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedLink ? 'Copié !' : 'Copier'}</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleShareLink}
+                        className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Partager</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="px-3 py-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] text-xs font-bold hover:bg-[#D9C4AC] dark:hover:bg-zinc-700 transition-all shadow-xs border border-[#C7B7A3]/60 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedLink ? 'Copié !' : 'Copier'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, UserProfile, GroupMember } from '../../types';
 import { formatDateTime, formatTimeOnly } from '../../utils/formatters';
+import { triggerHaptic } from '../../services/nativeService';
 
 interface DiscussionTabProps {
   messages?: ChatMessage[];
@@ -32,7 +33,13 @@ interface DiscussionTabProps {
   onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
 }
 
-const COMMON_EMOJIS = ['👍', '❤️', '🔥', '😂', '🎉', '🤤', '👏', '🙌'];
+const QUICK_EMOJIS = ['❤️', '😂', '👏', '🔥', '👍', '🎉'];
+const ALL_EMOJIS = [
+  '❤️', '😂', '👏', '🔥', '👍', '🎉',
+  '😍', '🙌', '😮', '😢', '🚀', '✨',
+  '🤩', '🍻', '🥳', '💪', '🤤', '💯',
+  '🤔', '🙏', '👀', '😎', '💃', '🥂'
+];
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -267,11 +274,12 @@ const MessageItem = React.memo<MessageItemProps>(({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Réactions émojis rapides */}
-          {COMMON_EMOJIS.slice(0, 4).map((emoji) => (
+          {QUICK_EMOJIS.map((emoji) => (
             <button
               key={emoji}
               type="button"
               onClick={() => {
+                triggerHaptic('light');
                 onAddReaction(message.id, emoji);
                 setIsMenuOpen(false);
                 setIsPickerOpen(false);
@@ -287,7 +295,10 @@ const MessageItem = React.memo<MessageItemProps>(({
           <div className="relative">
             <button
               type="button"
-              onClick={() => setIsPickerOpen((prev) => !prev)}
+              onClick={() => {
+                triggerHaptic('light');
+                setIsPickerOpen((prev) => !prev);
+              }}
               className="p-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Plus d'émojis"
             >
@@ -296,14 +307,15 @@ const MessageItem = React.memo<MessageItemProps>(({
 
             {isPickerOpen && (
               <div
-                className="absolute left-0 bottom-full mb-1.5 p-2 bg-[#FFF9EB] dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3] dark:border-zinc-700 shadow-xl grid grid-cols-4 gap-1 z-30 animate-fade-in w-36"
+                className="absolute left-0 bottom-full mb-1.5 p-2 bg-[#FFF9EB] dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3] dark:border-zinc-700 shadow-xl grid grid-cols-6 gap-1 z-30 animate-fade-in w-56 max-h-48 overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
-                {COMMON_EMOJIS.map((emoji) => (
+                {ALL_EMOJIS.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => {
+                      triggerHaptic('light');
                       onAddReaction(message.id, emoji);
                       setIsPickerOpen(false);
                       setIsMenuOpen(false);
