@@ -55,6 +55,14 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
   const safeMembers = rawMembers.filter((m) => {
     const uid = m?.userId || m?.id;
     if (!uid || seenMemberIds.has(uid)) return false;
+    if (
+      m?.isDeleted ||
+      m?.status === 'deleted' ||
+      m?.name?.toLowerCase().startsWith('utilisateur supprimé') ||
+      m?.firstName?.toLowerCase().startsWith('utilisateur supprimé')
+    ) {
+      return false;
+    }
     seenMemberIds.add(uid);
     return true;
   });

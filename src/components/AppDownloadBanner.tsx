@@ -37,16 +37,8 @@ export const AppDownloadBanner: React.FC = () => {
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-xs sm:text-sm font-bold tracking-tight text-[#FFF9EB] truncate">
-                  Téléchargez l'application Outlys
-                </p>
-                <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-300 text-[#5D0D18]">
-                  <Sparkles className="w-3 h-3" /> Gratuit
-                </span>
-              </div>
-              <p className="text-[11px] text-amber-100/80 truncate hidden sm:block">
-                Profitez des notifications instantanées, retours haptiques et accès hors-ligne sur iOS et Android.
+              <p className="text-xs sm:text-sm font-bold tracking-tight text-[#FFF9EB] truncate">
+                Téléchargez l'application Outlys
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Search, X, Smile, Sparkles } from 'lucide-react';
-import { EMOJI_CATEGORIES, ALL_EMOJIS_DATA, QUICK_REACTIONS, EmojiItem } from '../../data/emojis';
+import { Search, X, Smile } from 'lucide-react';
+import { EMOJI_CATEGORIES, ALL_EMOJIS_DATA, EmojiItem } from '../../data/emojis';
 import { triggerHaptic } from '../../services/nativeService';
 
 interface UniversalEmojiPickerProps {
@@ -342,26 +342,6 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
           {/* Affichage par catégories */}
           {!searchQuery && (
             <>
-              {/* Réactions rapides suggérées en haut */}
-              <div className="mb-2 p-2 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border border-[#C7B7A3]/30">
-                <div className="text-[10.5px] font-bold text-[#5D0D18] dark:text-amber-200 mb-1.5 px-1 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Réactions rapides populaires</span>
-                </div>
-                <div className="flex items-center justify-between gap-1">
-                  {QUICK_REACTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleEmojiClick(emoji)}
-                      className="w-9 h-9 flex items-center justify-center text-xl rounded-xl hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 hover:scale-125 transition-transform cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {EMOJI_CATEGORIES.map((cat) => {
                 const list = emojisByCategory[cat.id] || [];
                 if (list.length === 0) return null;

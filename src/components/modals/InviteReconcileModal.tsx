@@ -90,10 +90,10 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
         <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 text-xs space-y-2.5">
           <div className="flex items-center gap-1.5 font-bold text-[#5D0D18] dark:text-amber-300">
             <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
-            <span>Participants sans compte détectés</span>
+            <span>Ce groupe compte des participants ajoutés sans compte. Correspondiez-vous à l'un d'eux ?</span>
           </div>
           <p className="text-xs text-[#27272A] dark:text-zinc-200 leading-relaxed">
-            Ce groupe comporte des participants sans compte créés par vos amis. Si vous correspondiez à l'un d'eux, sélectionnez votre profil pour récupérer vos dépenses et dettes associées.
+            Si vous correspondiez à l'un des participants sans compte listés ci-dessous, sélectionnez votre profil pour récupérer vos dépenses, dettes et parts passées.
           </p>
 
           {/* Carte du compte utilisateur connecté */}

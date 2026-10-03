@@ -220,16 +220,12 @@ export const MultiEmailInput: React.FC<MultiEmailInputProps> = ({
         </div>
       </div>
 
-      {/* Message d'aide ou message d'erreur */}
-      {displayError ? (
+      {/* Message d'erreur éventuel */}
+      {displayError && (
         <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-red-600 dark:text-red-400 animate-fade-in">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{displayError}</span>
         </div>
-      ) : (
-        <p className="px-1 text-[10px] text-[#27272A]/60 dark:text-zinc-400">
-          Astuce : Séparez vos adresses par une virgule, un point-virgule, un espace ou la touche Entrée.
-        </p>
       )}
     </div>
   );

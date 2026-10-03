@@ -438,28 +438,16 @@ export default function App() {
             }
           }
           break;
-        case 'group:member_demoted_to_virtual':
-          if (event.data?.groupId) {
-            const { groupId, oldUserId, virtualMember, expenses: updatedExpenses, settlements: updatedSettlements } = event.data;
-            setGroups((prev) =>
-              prev.map((g) => {
-                if (g.id !== groupId) return g;
-                const members = (g.members || []).filter(
-                  (m) => (m.userId || m.id) !== oldUserId
-                );
-                return { ...g, members: [...members, virtualMember] };
-              })
-            );
-            if (updatedExpenses) {
-              setExpenses((prev) => {
-                const others = prev.filter((e) => e.groupId !== groupId);
-                return [...others, ...updatedExpenses];
-              });
-            }
-            if (updatedSettlements) {
-              setSettlements((prev) => {
-                const others = prev.filter((s) => s.groupId !== groupId);
-                return [...others, ...updatedSettlements];
+        case 'group:updated':
+          if (event.data) {
+            const updatedGroup = event.data.group || event.data;
+            if (updatedGroup?.id) {
+              setGroups((prev) => {
+                const exists = prev.some((g) => g.id === updatedGroup.id);
+                if (exists) {
+                  return prev.map((g) => (g.id === updatedGroup.id ? { ...g, ...updatedGroup } : g));
+                }
+                return [...prev, updatedGroup];
               });
             }
           }
@@ -476,6 +464,18 @@ export default function App() {
               return g;
             })
           );
+          if (event.data?.expenses) {
+            setExpenses((prev) => {
+              const others = prev.filter((e) => e.groupId !== event.groupId);
+              return [...others, ...event.data.expenses];
+            });
+          }
+          if (event.data?.settlements) {
+            setSettlements((prev) => {
+              const others = prev.filter((s) => s.groupId !== event.groupId);
+              return [...others, ...event.data.settlements];
+            });
+          }
           break;
         case 'group:deleted':
           setGroups((prev) => prev.filter((g) => g.id !== event.groupId));
@@ -732,10 +732,21 @@ export default function App() {
             return;
           }
 
-          // 2. Détecter la présence de participants sans compte
-          const virtuals = members.filter((m: GroupMember) =>
-            Boolean(m.isVirtual || (m.userId && m.userId.startsWith('user-virt-')) || (m.id && m.id.startsWith('user-virt-')))
-          );
+          // 2. Détecter la présence de participants sans compte (hors comptes supprimés)
+          const virtuals = members.filter((m: GroupMember) => {
+            const isVirt = Boolean(
+              m.isVirtual ||
+              (m.userId && m.userId.startsWith('user-virt-')) ||
+              (m.id && m.id.startsWith('user-virt-'))
+            );
+            const isDeleted = Boolean(
+              m.isDeleted ||
+              m.status === 'deleted' ||
+              m.name?.toLowerCase().startsWith('utilisateur supprimé') ||
+              m.firstName?.toLowerCase().startsWith('utilisateur supprimé')
+            );
+            return isVirt && !isDeleted;
+          });
 
           if (virtuals.length > 0) {
             // Ne pas ajouter aveuglément comme nouveau membre !
@@ -1684,36 +1695,19 @@ export default function App() {
   const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
     try {
       const res = await api.removeGroupMember(groupId, memberIdOrUserId);
-      if (res.demotedToVirtual && res.virtualMember) {
-        setGroups((prev) =>
-          prev.map((g) => {
-            if (g.id === groupId) {
-              const members = (g.members || []).filter(
+      setGroups((prev) =>
+        prev.map((g) => {
+          if (g.id === groupId) {
+            return {
+              ...g,
+              members: (g.members || []).filter(
                 (m) => m.id !== memberIdOrUserId && m.userId !== memberIdOrUserId
-              );
-              return {
-                ...g,
-                members: [...members, res.virtualMember!],
-              };
-            }
-            return g;
-          })
-        );
-      } else {
-        setGroups((prev) =>
-          prev.map((g) => {
-            if (g.id === groupId) {
-              return {
-                ...g,
-                members: (g.members || []).filter(
-                  (m) => m.id !== memberIdOrUserId && m.userId !== memberIdOrUserId
-                ),
-              };
-            }
-            return g;
-          })
-        );
-      }
+              ),
+            };
+          }
+          return g;
+        })
+      );
 
       if (res.expenses) {
         setExpenses((prev) => {
@@ -1727,14 +1721,13 @@ export default function App() {
           return [...others, ...res.settlements!];
         });
       }
-
       setInviteToast({
-        text: `Le membre a été retiré et toutes ses dettes ont été automatiquement soldées pour préserver l'équilibre des comptes ! ⚖️`,
+        text: `Le membre a été retiré et son historique comptable a été préservé sous 'Utilisateur supprimé' ! ⚖️`,
         success: true,
       });
       setTimeout(() => setInviteToast(null), 6000);
     } catch (err: any) {
-      console.error('Error removing group member in PostgreSQL:', err);
+      console.error('Error removing group member:', err);
       setInviteToast({
         text: err.message || 'Erreur lors du retrait du membre',
         success: false,

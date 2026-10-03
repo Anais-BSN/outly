@@ -49,6 +49,7 @@ apiRouter.get('/sse', handleSseConnection);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
     await query(`ALTER TABLE logistics_tasks ADD COLUMN IF NOT EXISTS event_id VARCHAR(50) REFERENCES events(id) ON DELETE CASCADE;`);
     await query(`
@@ -806,10 +807,13 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
     const groupIds = groupsRes.rows.map((g) => g.id);
     const membersRes = await query(
       `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+              COALESCE(u.is_deleted, false) as "isDeleted"
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = ANY($1::text[])
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
        ORDER BY gm.joined_at ASC`,
       [groupIds]
     );
@@ -944,6 +948,35 @@ apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
 
     const memberData = memberRes.rows[0] || { success: true, groupId: id, userId, role };
 
+    // Récupérer le groupe complet avec la liste des membres actifs pour diffusion temps réel
+    const updatedGroupRes = await query(
+      `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
+       FROM groups g WHERE g.id = $1`,
+      [id]
+    );
+    const allMembersRes = await query(
+      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
+       ORDER BY gm.joined_at ASC`,
+      [id]
+    );
+
+    const fullGroup = {
+      ...updatedGroupRes.rows[0],
+      members: allMembersRes.rows,
+    };
+
+    realtimeBroadcaster.broadcast({
+      type: 'group:updated',
+      groupId: id,
+      data: fullGroup,
+    });
+
     realtimeBroadcaster.broadcast({
       type: 'group:member_added',
       groupId: id,
@@ -995,6 +1028,34 @@ apiRouter.post('/groups/:id/virtual-member', async (req: Request, res: Response)
       role: 'member',
       isVirtual: true,
     };
+
+    const updatedGroupRes = await query(
+      `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
+       FROM groups g WHERE g.id = $1`,
+      [groupId]
+    );
+    const allMembersRes = await query(
+      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
+       ORDER BY gm.joined_at ASC`,
+      [groupId]
+    );
+
+    const fullGroup = {
+      ...updatedGroupRes.rows[0],
+      members: allMembersRes.rows,
+    };
+
+    realtimeBroadcaster.broadcast({
+      type: 'group:updated',
+      groupId,
+      data: fullGroup,
+    });
 
     realtimeBroadcaster.broadcast({
       type: 'group:member_added',
@@ -1377,160 +1438,134 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === 'admin';
 
-    // 2. Vérifier si l'utilisateur possède des dépenses, dettes, tâches ou participations dans ce groupe
+    // 2. Déterminer le prochain numéro d'incrémentation pour « Utilisateur supprimé N »
+    const existingDeletedRes = await query(
+      `SELECT first_name, last_name FROM users
+       WHERE (first_name ILIKE 'Utilisateur%' AND (last_name ILIKE 'supprimé%' OR first_name ILIKE 'Utilisateur supprimé%'))
+          OR is_deleted = TRUE`
+    );
+    let maxDeletedNum = 0;
+    for (const r of existingDeletedRes.rows) {
+      const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+      const match = fullName.match(/Utilisateur\s+supprimé(?:\s+(\d+))?/i);
+      if (match) {
+        const num = match[1] ? parseInt(match[1], 10) : 1;
+        if (num > maxDeletedNum) {
+          maxDeletedNum = num;
+        }
+      }
+    }
+    const nextDeletedNum = maxDeletedNum + 1;
+    const deletedFirstName = 'Utilisateur';
+    const deletedLastName = `supprimé ${nextDeletedNum}`;
+
     const isRealUser = !userId.startsWith('user-virt-');
-    let hasFinancialOrActivityFootprint = false;
 
-    const expensesPaidRes = await query(
-      `SELECT COUNT(*) as count FROM expenses WHERE group_id = $1 AND paid_by_id = $2`,
-      [groupId, userId]
-    );
-    const settlementsRes = await query(
-      `SELECT COUNT(*) as count FROM debt_settlements WHERE group_id = $1 AND (from_user_id = $2 OR to_user_id = $2)`,
-      [groupId, userId]
-    );
-    const allExpensesRes = await query(
-      `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot" FROM expenses WHERE group_id = $1`,
-      [groupId]
-    );
+    // 3. Préserver l'historique comptable : réattribuer à un compte fantôme nommé « Utilisateur supprimé N »
+    if (isRealUser) {
+      const userRes = await query(
+        `SELECT id, shares FROM users WHERE id = $1`,
+        [userId]
+      );
+      const user = userRes.rows[0] || {};
+      const frozenShares = user.shares || 1;
 
-    const hasExpenseParticipation = allExpensesRes.rows.some((exp) => {
-      const partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
-      const sharesSnap = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
-      return partIds.includes(userId) || sharesSnap[userId] !== undefined;
-    });
+      const virtualUserId = `user-virt-del-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const dummyEmail = `${virtualUserId}@outlys.local`;
 
-    hasFinancialOrActivityFootprint =
-      Number(expensesPaidRes.rows[0]?.count || 0) > 0 ||
-      Number(settlementsRes.rows[0]?.count || 0) > 0 ||
-      hasExpenseParticipation;
+      // Insérer le participant sous le libellé « Utilisateur supprimé N » avec is_deleted = TRUE
+      await query(
+        `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, is_deleted, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW())`,
+        [virtualUserId, deletedFirstName, deletedLastName, dummyEmail, '@supprime', '/Avatar_Herisson.jpg', frozenShares]
+      );
 
-    let virtualMemberData: any = null;
-    let updatedExpenses: any[] = [];
-    let updatedSettlements: any[] = [];
+      // Réattribuer les dépenses payées
+      await query(
+        `UPDATE expenses
+         SET paid_by_id = $1
+         WHERE group_id = $2 AND paid_by_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
 
-    // 3. Si l'utilisateur possède un historique financier (dépenses / dettes / parts), réattribuer sous « Utilisateur supprimé »
-    // afin que la balance globale reste rigoureusement neutre et que l'algorithme d'équilibrage continue de fonctionner.
-    if (hasFinancialOrActivityFootprint) {
-      if (isRealUser) {
-        const userRes = await query(
-          `SELECT id, shares FROM users WHERE id = $1`,
-          [userId]
-        );
-        const user = userRes.rows[0] || {};
-        const frozenShares = user.shares || 1;
+      // Réattribuer les parts de dépenses
+      const allExpensesRes = await query(
+        `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot" FROM expenses WHERE group_id = $1`,
+        [groupId]
+      );
 
-        const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-        const dummyEmail = `${virtualUserId}@outlys.local`;
+      for (const exp of allExpensesRes.rows) {
+        let partIds: string[] = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+        let sharesSnap: Record<string, number> = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
+        let changed = false;
 
-        // Insérer le participant sous le libellé strict "Utilisateur supprimé"
-        await query(
-          `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-          [virtualUserId, 'Utilisateur', 'supprimé', dummyEmail, '@supprime', '/Avatar_Herisson.jpg', frozenShares]
-        );
-
-        // Réattribuer les dépenses payées
-        await query(
-          `UPDATE expenses
-           SET paid_by_id = $1
-           WHERE group_id = $2 AND paid_by_id = $3`,
-          [virtualUserId, groupId, userId]
-        );
-
-        // Réattribuer les parts de dépenses
-        for (const exp of allExpensesRes.rows) {
-          let partIds: string[] = Array.isArray(exp.participantIds) ? exp.participantIds : [];
-          let sharesSnap: Record<string, number> = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
-          let changed = false;
-
-          if (partIds.includes(userId)) {
-            partIds = partIds.map((id) => (id === userId ? virtualUserId : id));
-            partIds = [...new Set(partIds)];
-            changed = true;
-          }
-
-          if (sharesSnap[userId] !== undefined) {
-            const userShare = sharesSnap[userId];
-            delete sharesSnap[userId];
-            if (sharesSnap[virtualUserId] === undefined) {
-              sharesSnap[virtualUserId] = userShare;
-            }
-            changed = true;
-          }
-
-          if (changed) {
-            await query(
-              `UPDATE expenses
-               SET participant_ids = $1, shares_snapshot = $2
-               WHERE id = $3`,
-              [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
-            );
-          }
+        if (partIds.includes(userId)) {
+          partIds = partIds.map((id) => (id === userId ? virtualUserId : id));
+          partIds = [...new Set(partIds)];
+          changed = true;
         }
 
-        // Réattribuer les dettes et remboursements
-        await query(
-          `UPDATE debt_settlements
-           SET from_user_id = $1
-           WHERE group_id = $2 AND from_user_id = $3`,
-          [virtualUserId, groupId, userId]
-        );
+        if (sharesSnap[userId] !== undefined) {
+          const userShare = sharesSnap[userId];
+          delete sharesSnap[userId];
+          if (sharesSnap[virtualUserId] === undefined) {
+            sharesSnap[virtualUserId] = userShare;
+          }
+          changed = true;
+        }
 
-        await query(
-          `UPDATE debt_settlements
-           SET to_user_id = $1
-           WHERE group_id = $2 AND to_user_id = $3`,
-          [virtualUserId, groupId, userId]
-        );
-
-        // Réattribuer les tâches logistiques
-        await query(
-          `UPDATE logistics_tasks
-           SET assigned_to_id = $1
-           WHERE group_id = $2 AND assigned_to_id = $3`,
-          [virtualUserId, groupId, userId]
-        );
-
-        // Réattribuer les RSVPs
-        await query(
-          `UPDATE event_rsvps
-           SET user_id = $1
-           WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
-          [virtualUserId, userId, groupId]
-        );
-
-        // Supprimer l'ancien compte utilisateur du groupe
-        await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
-
-        virtualMemberData = {
-          id: virtualUserId,
-          userId: virtualUserId,
-          firstName: 'Utilisateur',
-          lastName: 'supprimé',
-          name: 'Utilisateur supprimé',
-          handle: '@supprime',
-          avatar: '/Avatar_Herisson.jpg',
-          shares: frozenShares,
-          role: 'member',
-          isVirtual: true,
-        };
-      } else {
-        // Déjà un participant virtuel : anonymiser en 'Utilisateur supprimé' et conserver l'enregistrement
-        await query(
-          `UPDATE users
-           SET first_name = 'Utilisateur', last_name = 'supprimé', handle = '@supprime'
-           WHERE id = $1`,
-          [userId]
-        );
-        await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
+        if (changed) {
+          await query(
+            `UPDATE expenses
+             SET participant_ids = $1, shares_snapshot = $2
+             WHERE id = $3`,
+            [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
+          );
+        }
       }
-    } else {
-      // Suppression standard sans historique financier
+
+      // Réattribuer les dettes et remboursements
+      await query(
+        `UPDATE debt_settlements
+         SET from_user_id = $1
+         WHERE group_id = $2 AND from_user_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      await query(
+        `UPDATE debt_settlements
+         SET to_user_id = $1
+         WHERE group_id = $2 AND to_user_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      // Réattribuer les tâches logistiques
+      await query(
+        `UPDATE logistics_tasks
+         SET assigned_to_id = $1
+         WHERE group_id = $2 AND assigned_to_id = $3`,
+        [virtualUserId, groupId, userId]
+      );
+
+      // Réattribuer les RSVPs
+      await query(
+        `UPDATE event_rsvps
+         SET user_id = $1
+         WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
+        [virtualUserId, userId, groupId]
+      );
+
+      // Supprimer l'ancien compte utilisateur du groupe
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
-      if (userId.startsWith('user-virt-')) {
-        await query(`DELETE FROM users WHERE id = $1`, [userId]);
-      }
+    } else {
+      // Déjà un participant virtuel : anonymiser en 'Utilisateur supprimé N' et marquer is_deleted = TRUE
+      await query(
+        `UPDATE users
+         SET first_name = $1, last_name = $2, handle = '@supprime', is_deleted = TRUE
+         WHERE id = $3`,
+        [deletedFirstName, deletedLastName, userId]
+      );
+      await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
     }
 
     // Récupérer les dépenses et règlements mis à jour pour le groupe
@@ -1550,7 +1585,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
        ORDER BY e.date DESC, e.created_at DESC`,
       [groupId]
     );
-    updatedExpenses = expRes.rows;
+    const updatedExpenses = expRes.rows;
 
     const settRes = await query(
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
@@ -1571,9 +1606,9 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
        ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
       [groupId]
     );
-    updatedSettlements = settRes.rows;
+    const updatedSettlements = settRes.rows;
 
-    // 5. Règle de succession administrative : si l'admin part et qu'il ne reste aucun autre admin
+    // 4. Règle de succession administrative : si l'admin part et qu'il ne reste aucun autre admin
     if (wasAdmin) {
       const remainingAdmins = await query(
         `SELECT user_id FROM group_members WHERE group_id = $1 AND role = 'admin'`,
@@ -1584,7 +1619,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
           `SELECT gm.user_id 
            FROM group_members gm
            JOIN users u ON gm.user_id = u.id
-           WHERE gm.group_id = $1 AND NOT gm.user_id LIKE 'user-virt-%'
+           WHERE gm.group_id = $1 AND NOT gm.user_id LIKE 'user-virt-%' AND COALESCE(u.is_deleted, false) = false
            ORDER BY u.first_name ASC, u.last_name ASC
            LIMIT 1`,
           [groupId]
@@ -1599,33 +1634,46 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       }
     }
 
+    // 5. Récupérer le groupe complet avec les membres actifs restants pour diffusion temps réel
+    const updatedGroupRes = await query(
+      `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
+       FROM groups g WHERE g.id = $1`,
+      [groupId]
+    );
+    const allMembersRes = await query(
+      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
+       ORDER BY gm.joined_at ASC`,
+      [groupId]
+    );
+
+    const fullGroup = {
+      ...updatedGroupRes.rows[0],
+      members: allMembersRes.rows,
+    };
+
     // 6. Diffusion temps réel
-    if (virtualMemberData) {
-      realtimeBroadcaster.broadcast({
-        type: 'group:member_demoted_to_virtual',
-        groupId,
-        data: {
-          groupId,
-          oldUserId: userId,
-          virtualMember: virtualMemberData,
-          expenses: updatedExpenses,
-          settlements: updatedSettlements,
-        },
-      });
-    } else {
-      realtimeBroadcaster.broadcast({
-        type: 'group:member_removed',
-        groupId,
-        data: { groupId, userId, expenses: updatedExpenses, settlements: updatedSettlements },
-      });
-    }
+    realtimeBroadcaster.broadcast({
+      type: 'group:updated',
+      groupId,
+      data: fullGroup,
+    });
+
+    realtimeBroadcaster.broadcast({
+      type: 'group:member_removed',
+      groupId,
+      data: { groupId, userId, expenses: updatedExpenses, settlements: updatedSettlements },
+    });
 
     res.json({
       success: true,
       groupId,
       userId,
-      demoted: Boolean(virtualMemberData),
-      virtualMember: virtualMemberData,
       expenses: updatedExpenses,
       settlements: updatedSettlements,
     });

@@ -46,13 +46,20 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Deduplicate members list to avoid any duplicated row
+  // Deduplicate members list to avoid any duplicated row and exclude deleted members
   const uniqueMembers = React.useMemo(() => {
     const map = new Map<string, GroupMember>();
     (members || []).forEach((m) => {
       const uid = m.userId || m.id;
       if (uid && !map.has(uid)) {
-        map.set(uid, m);
+        if (
+          !m.isDeleted &&
+          m.status !== 'deleted' &&
+          !m.name?.toLowerCase().startsWith('utilisateur supprimé') &&
+          !m.firstName?.toLowerCase().startsWith('utilisateur supprimé')
+        ) {
+          map.set(uid, m);
+        }
       }
     });
     return Array.from(map.values());

@@ -33,6 +33,8 @@ export interface GroupMember {
   shares: number;
   role: 'admin' | 'member';
   isVirtual?: boolean;
+  isDeleted?: boolean;
+  status?: string;
 }
 
 export interface Group {

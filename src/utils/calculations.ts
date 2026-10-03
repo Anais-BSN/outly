@@ -188,35 +188,48 @@ export function calculateExpensesAndDebts(
       payerBal.paidExpensesCents += expCents;
     }
 
-    // Déterminer les participants
-    const participants = (
-      exp.splitMode === 'all'
-        ? safeMembers
-        : safeMembers.filter(
-            (m) =>
-              m &&
-              Array.isArray(exp.participantIds) &&
-              (exp.participantIds.includes(m.id) || (m.userId && exp.participantIds.includes(m.userId)))
-          )
-    ).filter(Boolean);
-
+    // Déterminer les participants et parts
     const sharesSnapshot = exp.sharesSnapshot || {};
+    let participantShareDefs: { userId: string; shares: number; member?: GroupMember }[] = [];
 
-    const participantShareDefs = participants.map((p) => {
-      const pid = p.userId || p.id || '';
-      const shares = sharesSnapshot[pid] ?? sharesSnapshot[p.id] ?? p.shares ?? 1;
-      return {
-        userId: pid,
-        shares: Number(shares) || 1,
-        member: p,
-      };
-    });
+    if (Array.isArray(exp.participantIds) && exp.participantIds.length > 0) {
+      participantShareDefs = exp.participantIds.map((pid) => {
+        const member = safeMembers.find((m) => m && (m.id === pid || m.userId === pid));
+        const shares = sharesSnapshot[pid] ?? member?.shares ?? 1;
+        return {
+          userId: pid,
+          shares: Math.max(1, Number(shares) || 1),
+          member,
+        };
+      });
+    } else if (Object.keys(sharesSnapshot).length > 0) {
+      participantShareDefs = Object.keys(sharesSnapshot).map((pid) => {
+        const member = safeMembers.find((m) => m && (m.id === pid || m.userId === pid));
+        const shares = sharesSnapshot[pid] ?? member?.shares ?? 1;
+        return {
+          userId: pid,
+          shares: Math.max(1, Number(shares) || 1),
+          member,
+        };
+      });
+    } else {
+      participantShareDefs = safeMembers
+        .map((p) => {
+          const pid = p.userId || p.id || '';
+          return {
+            userId: pid,
+            shares: Math.max(1, Number(p.shares) || 1),
+            member: p,
+          };
+        })
+        .filter((p) => Boolean(p.userId));
+    }
 
     const allocatedMap = allocateExpenseSharesInCents(expAmountNum, participantShareDefs);
 
     participantShareDefs.forEach(({ userId, member }) => {
       const partCents = allocatedMap.get(userId) || 0;
-      const partBal = getOrCreateInternalBalance(userId, member.firstName || member.name, member.avatar);
+      const partBal = getOrCreateInternalBalance(userId, member?.firstName || member?.name, member?.avatar);
       if (partBal) {
         partBal.shareCents += partCents;
       }

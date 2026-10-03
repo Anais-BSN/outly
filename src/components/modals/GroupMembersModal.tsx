@@ -63,6 +63,14 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
     }
   };
 
+  const activeMembers = (members || []).filter(
+    (m) =>
+      !m.isDeleted &&
+      m.status !== 'deleted' &&
+      !m.name?.toLowerCase().startsWith('utilisateur supprimé') &&
+      !m.firstName?.toLowerCase().startsWith('utilisateur supprimé')
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
@@ -82,7 +90,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
-              Membres du groupe ({members.length})
+              Membres du groupe ({activeMembers.length})
             </h3>
           </div>
           <button
@@ -121,7 +129,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
 
         {/* Members List */}
         <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1">
-          {members.map((member) => {
+          {activeMembers.map((member) => {
             const memberUserId = member.userId || member.id;
             const isMe = memberUserId === currentUser.id;
             const isAdmin = member.role === 'admin';
@@ -161,7 +169,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
                           Moi
                         </span>
                       )}
-                      {member.isVirtual && (
+                      {member.isVirtual && !member.isDeleted && !memberName.toLowerCase().startsWith('utilisateur supprimé') && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                           Sans compte
                         </span>
