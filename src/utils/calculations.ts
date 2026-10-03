@@ -145,7 +145,7 @@ export function calculateExpensesAndDebts(
 
     const newBal: InternalDebtBalance = {
       userId: finalUserId,
-      userName: member?.firstName || member?.name || fallbackName || 'Membre',
+      userName: member?.firstName || member?.name || (fallbackName && fallbackName !== 'Membre' ? fallbackName : 'Utilisateur supprimé'),
       userAvatar: member?.avatar || fallbackAvatar || '',
       paidExpensesCents: 0,
       shareCents: 0,

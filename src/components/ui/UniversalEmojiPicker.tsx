@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X, Smile, Sparkles, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { Search, X, Smile, Sparkles } from 'lucide-react';
 import { EMOJI_CATEGORIES, ALL_EMOJIS_DATA, QUICK_REACTIONS, EmojiItem } from '../../data/emojis';
 import { triggerHaptic } from '../../services/nativeService';
 
@@ -33,6 +33,8 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const emojiListContainerRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScrollRef = useRef(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -46,6 +48,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
+      setActiveCategory('smileys');
       const timer = setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
@@ -80,6 +83,61 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
       document.removeEventListener('pointerdown', handlePointerDown);
     };
   }, [isOpen, onClose]);
+
+  // Synchronisation dynamique (ScrollSpy) : mise à jour de la catégorie active au défilement
+  const handleScroll = useCallback(() => {
+    if (searchQuery || isProgrammaticScrollRef.current || !emojiListContainerRef.current) return;
+
+    const container = emojiListContainerRef.current;
+    const containerTop = container.scrollTop;
+    const containerRect = container.getBoundingClientRect();
+
+    let currentCatId = EMOJI_CATEGORIES[0].id;
+
+    for (const cat of EMOJI_CATEGORIES) {
+      const section = document.getElementById(`emoji-cat-${cat.id}`);
+      if (section) {
+        const sectionTop = section.offsetTop - container.offsetTop;
+        if (containerTop >= sectionTop - 40) {
+          currentCatId = cat.id;
+        }
+      }
+    }
+
+    setActiveCategory(currentCatId);
+  }, [searchQuery]);
+
+  // Défilement automatique de la barre d'onglets pour garder le bouton actif visible
+  useEffect(() => {
+    if (categoryScrollRef.current && activeCategory) {
+      const btn = categoryScrollRef.current.querySelector<HTMLElement>(`[data-cat-id="${activeCategory}"]`);
+      if (btn) {
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeCategory]);
+
+  // Clic sur une catégorie : défilement fluide vers la section
+  const handleCategoryTabClick = (catId: string) => {
+    setActiveCategory(catId);
+    triggerHaptic('light');
+
+    const container = emojiListContainerRef.current;
+    const section = document.getElementById(`emoji-cat-${catId}`);
+
+    if (container && section) {
+      isProgrammaticScrollRef.current = true;
+      const targetTop = section.offsetTop - container.offsetTop - 4;
+      container.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: 'smooth',
+      });
+
+      setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 500);
+    }
+  };
 
   // Filtrage intelligent des émojis
   const filteredEmojis = useMemo(() => {
@@ -119,7 +177,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
     }
 
     const pickerWidth = 360;
-    const pickerHeight = 420;
+    const pickerHeight = 440;
     const margin = 12;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -169,8 +227,8 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         style={!useBottomSheet ? getPopoverStyle() : undefined}
         className={`${
           useBottomSheet
-            ? 'w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-t-3xl border-t border-[#C7B7A3] dark:border-zinc-800 shadow-2xl max-h-[85vh] h-[480px] flex flex-col p-4 pb-6 animate-slide-up'
-            : 'bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl border border-[#C7B7A3] dark:border-zinc-700 shadow-2xl flex flex-col p-3.5 overflow-hidden'
+            ? 'w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-t-3xl border-t border-[#C7B7A3] dark:border-zinc-800 shadow-2xl max-h-[85vh] h-[500px] flex flex-col p-4 pb-6 animate-slide-up'
+            : 'bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl border border-[#C7B7A3] dark:border-zinc-700 shadow-2xl flex flex-col p-3.5 overflow-hidden h-[440px]'
         } text-[#27272A] dark:text-[#FFF9EB]`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -182,7 +240,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         )}
 
         {/* En-tête avec titre et bouton fermer */}
-        <div className="flex items-center justify-between gap-2 mb-3 px-1">
+        <div className="flex items-center justify-between gap-2 mb-3 px-1 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-xl bg-[#5D0D18] text-amber-200 flex items-center justify-center text-sm shadow-xs">
               <Smile className="w-4 h-4" />
@@ -203,7 +261,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         </div>
 
         {/* Barre de recherche d'émojis */}
-        <div className="relative mb-2.5">
+        <div className="relative mb-2.5 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5D0D18]/70 dark:text-amber-200/70 pointer-events-none" />
           <input
             ref={searchInputRef}
@@ -227,7 +285,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
           )}
         </div>
 
-        {/* Catégories standards (si pas de recherche en cours) */}
+        {/* Catégories standards avec ScrollSpy dynamique */}
         {!searchQuery && (
           <div
             ref={categoryScrollRef}
@@ -238,31 +296,30 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
               return (
                 <button
                   key={cat.id}
+                  data-cat-id={cat.id}
                   type="button"
-                  onClick={() => {
-                    setActiveCategory(cat.id);
-                    const el = document.getElementById(`emoji-cat-${cat.id}`);
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer font-medium ${
+                  onClick={() => handleCategoryTabClick(cat.id)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer font-medium ${
                     isActive
-                      ? 'bg-[#5D0D18] text-amber-200 shadow-xs scale-105'
+                      ? 'bg-[#5D0D18] text-amber-200 shadow-xs scale-105 ring-1 ring-[#5D0D18]'
                       : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A]/80 dark:text-zinc-300 hover:bg-[#E8D8C4]'
                   }`}
                   title={cat.name}
                 >
                   <span className="text-sm">{cat.icon}</span>
-                  <span className="text-[11px] font-semibold">{cat.name.split(' ')[0]}</span>
+                  <span className="text-[11px] font-bold">{cat.name}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Grille des émojis */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-4">
+        {/* Grille des émojis scrollable avec écouteur de défilement synchronisé */}
+        <div
+          ref={emojiListContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-4"
+        >
           {/* Résultats de recherche */}
           {searchQuery && filteredEmojis && (
             <div>

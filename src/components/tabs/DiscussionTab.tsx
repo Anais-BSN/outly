@@ -256,12 +256,12 @@ const MessageItem = React.memo<MessageItemProps>(({
         <div className="flex items-center gap-2 mb-1 px-1">
           {!isMe && (
             <img
-              src={message.senderAvatar}
-              alt={message.senderName}
-              title={`${message.senderName} (cliquer pour agrandir)`}
+              src={message.senderAvatar || '/Avatar_Herisson.jpg'}
+              alt={message.senderName || 'Utilisateur supprimé'}
+              title={`${message.senderName || 'Utilisateur supprimé'} (cliquer pour agrandir)`}
               onClick={() => {
                 if (onViewAvatar && message.senderAvatar) {
-                  onViewAvatar(message.senderAvatar, message.senderName);
+                  onViewAvatar(message.senderAvatar, message.senderName || 'Utilisateur supprimé');
                 }
               }}
               className="w-5 h-5 rounded-full object-cover ring-1 ring-[#C7B7A3] cursor-pointer hover:scale-110 transition-transform"
@@ -269,7 +269,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             />
           )}
           <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB]">
-            {isMe ? 'Moi' : message.senderName}
+            {isMe ? 'Moi' : (message.senderName && message.senderName !== 'Membre' ? message.senderName : 'Utilisateur supprimé')}
           </span>
           <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 font-normal">
             {formatDateTime(message.timestamp)}

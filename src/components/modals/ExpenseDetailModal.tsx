@@ -67,10 +67,10 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     const isVirtual = member?.isVirtual || uid.startsWith('user-virt-');
 
     const displayName = member
-      ? member.name || member.firstName || (isMe ? 'Moi' : 'Membre')
+      ? member.name || member.firstName || (isMe ? 'Moi' : 'Utilisateur supprimé')
       : isMe
       ? 'Moi'
-      : 'Membre';
+      : (expense.paidById === uid && expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé');
 
     const avatar = member?.avatar || '/Avatar_Herisson.jpg';
 

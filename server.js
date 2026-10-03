@@ -1408,7 +1408,7 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
     const updatedExpensesRes = await query(
       `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
               e.paid_by_id as "paidById",
-              COALESCE(u.first_name, 'Membre') as "paidByName",
+              COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
               COALESCE(u.avatar, '') as "paidByAvatar",
               e.category, e.date::text as date,
               e.split_mode as "splitMode",
@@ -1425,13 +1425,13 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
               COALESCE(u1.last_name, '') as "fromUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
               COALESCE(u2.last_name, '') as "toUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -1862,7 +1862,7 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     const expRes = await query(
       `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
               e.paid_by_id as "paidById",
-              COALESCE(u.first_name, 'Membre') as "paidByName",
+              COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
               COALESCE(u.avatar, '') as "paidByAvatar",
               e.category, e.date::text as date,
               e.split_mode as "splitMode",
@@ -1880,13 +1880,13 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
               COALESCE(u1.last_name, '') as "fromUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
               COALESCE(u2.last_name, '') as "toUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3047,7 +3047,7 @@ apiRouter.get("/expenses", async (req, res) => {
     let sql = `
       SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
              e.paid_by_id as "paidById",
-             COALESCE(u.first_name, 'Membre') as "paidByName",
+             COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
              COALESCE(u.avatar, '') as "paidByAvatar",
              e.category, e.date::text as date,
              e.split_mode as "splitMode",
@@ -3108,7 +3108,7 @@ apiRouter.post("/expenses", async (req, res) => {
       title,
       amount: Number(amount),
       paidById,
-      paidByName: user?.first_name || "Membre",
+      paidByName: user?.first_name || "Utilisateur supprim\xE9",
       paidByAvatar: user?.avatar || "",
       category,
       date,
@@ -3152,13 +3152,13 @@ apiRouter.get("/settlements", async (req, res) => {
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
              s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
-             COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+             COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
              COALESCE(u1.last_name, '') as "fromUserLastName",
-             COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+             COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
              COALESCE(u1.avatar, '') as "fromUserAvatar",
-             COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+             COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
              COALESCE(u2.last_name, '') as "toUserLastName",
-             COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+             COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
              COALESCE(u2.avatar, '') as "toUserAvatar"
       FROM debt_settlements s
       LEFT JOIN users u1 ON s.from_user_id = u1.id

@@ -161,6 +161,36 @@ export const shareGroupInvite = async (options: ShareOptions): Promise<{ shared:
 
 let pushListenersInitialized = false;
 
+export const checkPushPermissions = async (): Promise<{ receive: string }> => {
+  if (!isNativePlatform() || !PushNotifications || typeof PushNotifications.checkPermissions !== 'function') {
+    return { receive: 'prompt' };
+  }
+  try {
+    const status = await PushNotifications.checkPermissions();
+    return { receive: status?.receive || 'prompt' };
+  } catch (err) {
+    console.warn('[Push] Impossible de vérifier les permissions push:', err);
+    return { receive: 'prompt' };
+  }
+};
+
+export const requestPushPermissions = async (): Promise<{ receive: string }> => {
+  if (!isNativePlatform() || !PushNotifications || typeof PushNotifications.requestPermissions !== 'function') {
+    return { receive: 'prompt' };
+  }
+  try {
+    const status = await PushNotifications.requestPermissions();
+    return { receive: status?.receive || 'prompt' };
+  } catch (err) {
+    console.warn('[Push] Impossible de demander les permissions push:', err);
+    return { receive: 'prompt' };
+  }
+};
+
+export const registerPushNotifications = async (): Promise<void> => {
+  console.warn("Enregistrement push différé : configuration Firebase en attente");
+};
+
 export const initPushNotifications = async (
   userId: string,
   onNotificationReceived?: (notification: any) => void,
@@ -174,7 +204,7 @@ export const initPushNotifications = async (
       return;
     }
 
-    // 1. Vérification / Demande sécurisée de permissions
+    // 1. Vérification / Demande sécurisée de permissions (ne doit pas enchaîner sur register())
     let permStatus: any = null;
     try {
       permStatus = await PushNotifications.checkPermissions();
@@ -245,17 +275,8 @@ export const initPushNotifications = async (
       }
     }
 
-    // 3. Appel sécurisé à la méthode d'enregistrement natif
-    try {
-      await PushNotifications.register();
-      console.log('[Push] Demande d\'enregistrement push envoyée au système natif');
-    } catch (regErr: any) {
-      // Interception propre sans crash si Firebase/APNS n'est pas encore configuré dans le projet Android
-      console.warn(
-        '[Push] Information: Enregistrement push natif non finalisé (services Firebase/APNS non prêts ou non configurés). La navigation continue normalement.',
-        regErr?.message || regErr
-      );
-    }
+    // 3. Neutralisation de l'enregistrement natif pour éviter le crash Firebase Android
+    console.warn("Enregistrement push différé : configuration Firebase en attente");
   } catch (err: any) {
     // Capture d'erreur absolue : l'application ne plantera jamais sur un échec push
     console.warn('[Push] Erreur non bloquante lors de l\'initialisation des notifications push:', err?.message || err);

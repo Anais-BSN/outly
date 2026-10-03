@@ -43,8 +43,10 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
   const getMemberInfo = (userId: string, defaultName: string, defaultAvatar: string) => {
     const member = members.find((m) => m.id === userId || m.userId === userId);
     return {
-      name: member ? (member.firstName || member.name) : defaultName || 'Membre',
-      avatar: member?.avatar || defaultAvatar || '',
+      name: member
+        ? (member.firstName || member.name)
+        : (defaultName && defaultName !== 'Membre' ? defaultName : 'Utilisateur supprimé'),
+      avatar: member?.avatar || defaultAvatar || '/Avatar_Herisson.jpg',
     };
   };
 

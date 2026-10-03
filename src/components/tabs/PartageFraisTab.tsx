@@ -383,12 +383,12 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <img
                       src={expense.paidByAvatar || '/Avatar_Herisson.jpg'}
-                      alt={expense.paidByName}
-                      title={`${expense.paidByName} (cliquer pour agrandir)`}
+                      alt={expense.paidByName || 'Utilisateur supprimé'}
+                      title={`${expense.paidByName || 'Utilisateur supprimé'} (cliquer pour agrandir)`}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onViewAvatar && expense.paidByAvatar) {
-                          onViewAvatar(expense.paidByAvatar, expense.paidByName);
+                          onViewAvatar(expense.paidByAvatar, expense.paidByName || 'Utilisateur supprimé');
                         }
                       }}
                       className="w-10 h-10 rounded-full object-cover ring-2 ring-[#6D2932] shrink-0 cursor-pointer hover:scale-110 transition-transform"
@@ -401,7 +401,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                       </h5>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#27272A]/70 dark:text-zinc-400 flex-wrap">
                         <span>
-                          Payé par <strong>{isPayerMe ? 'Moi' : expense.paidByName}</strong>
+                          Payé par <strong>{isPayerMe ? 'Moi' : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé')}</strong>
                         </span>
                         <span>•</span>
                         <span className="bg-[#FFF9EB] dark:bg-zinc-800 px-2 py-0.5 rounded-full font-semibold text-[#6D2932] dark:text-amber-200">
