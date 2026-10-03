@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from './api';
+
 export interface RealtimeEvent {
   type: string;
   groupId?: string;
@@ -30,7 +32,8 @@ class RealtimeService {
     this.isConnecting = true;
 
     try {
-      const url = `/api/events?userId=${encodeURIComponent(this.currentUserId)}&stream=true`;
+      const apiBase = getApiBaseUrl();
+      const url = `${apiBase}/events?userId=${encodeURIComponent(this.currentUserId)}&stream=true`;
       this.eventSource = new EventSource(url);
 
       this.eventSource.onopen = () => {

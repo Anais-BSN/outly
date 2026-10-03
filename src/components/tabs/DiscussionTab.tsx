@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
   Image as ImageIcon,
   Smile,
+  SmilePlus,
+  Plus,
   X,
   CheckCheck,
   Calendar,
@@ -21,6 +23,8 @@ import {
 import { ChatMessage, UserProfile, GroupMember } from '../../types';
 import { formatDateTime, formatTimeOnly } from '../../utils/formatters';
 import { triggerHaptic } from '../../services/nativeService';
+import { QUICK_REACTIONS } from '../../data/emojis';
+import { UniversalEmojiPicker } from '../ui/UniversalEmojiPicker';
 
 interface DiscussionTabProps {
   messages?: ChatMessage[];
@@ -32,14 +36,6 @@ interface DiscussionTabProps {
   onDeleteMessage?: (messageId: string) => void;
   onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
 }
-
-const QUICK_EMOJIS = ['❤️', '😂', '👏', '🔥', '👍', '🎉'];
-const ALL_EMOJIS = [
-  '❤️', '😂', '👏', '🔥', '👍', '🎉',
-  '😍', '🙌', '😮', '😢', '🚀', '✨',
-  '🤩', '🍻', '🥳', '💪', '🤤', '💯',
-  '🤔', '🙏', '👀', '😎', '💃', '🥂'
-];
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -64,13 +60,43 @@ const MessageItem = React.memo<MessageItemProps>(({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerAnchorRect, setPickerAnchorRect] = useState<DOMRect | null>(null);
+  const [menuPlacement, setMenuPlacement] = useState<'top' | 'bottom'>('top');
+  const [menuAlign, setMenuAlign] = useState<'left' | 'right'>('right');
+
   const [isEditing, setIsEditing] = useState(false);
   const [editingText, setEditingText] = useState(message.text || '');
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pickerBtnRef = useRef<HTMLButtonElement>(null);
 
   const isMe = message.senderId === currentUser.id;
+
+  // Positionnement intelligent adaptatif pour ne jamais déborder du viewport
+  const updateAdaptivePosition = useCallback(() => {
+    if (!bubbleRef.current) return;
+    const rect = bubbleRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Si le haut de la bulle est trop près du haut de l'écran ou de l'en-tête, ouvrir en-dessous
+    if (rect.top < 65) {
+      setMenuPlacement('bottom');
+    } else {
+      setMenuPlacement('top');
+    }
+
+    // Gestion du débordement horizontal
+    if (rect.left < 16) {
+      setMenuAlign('left');
+    } else if (viewportWidth - rect.right < 16) {
+      setMenuAlign('right');
+    } else {
+      setMenuAlign(isMe ? 'right' : 'left');
+    }
+  }, [isMe]);
 
   // Tous les autres membres du groupe en dehors de l'expéditeur
   const otherGroupMembers = members.filter(
@@ -98,6 +124,7 @@ const MessageItem = React.memo<MessageItemProps>(({
 
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
+      updateAdaptivePosition();
       setIsMenuOpen(true);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
@@ -123,9 +150,9 @@ const MessageItem = React.memo<MessageItemProps>(({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    // Si l'utilisateur a maintenu son appui plus de 450ms (même 2s ou plus), le menu reste ouvert
     const elapsed = Date.now() - touchStartTimeRef.current;
     if (elapsed >= 450) {
+      updateAdaptivePosition();
       setIsMenuOpen(true);
     }
     touchStartPos.current = null;
@@ -139,6 +166,7 @@ const MessageItem = React.memo<MessageItemProps>(({
     }
     const elapsed = Date.now() - touchStartTimeRef.current;
     if (elapsed >= 450) {
+      updateAdaptivePosition();
       setIsMenuOpen(true);
     }
     touchStartPos.current = null;
@@ -151,10 +179,8 @@ const MessageItem = React.memo<MessageItemProps>(({
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsMenuOpen(false);
-        setIsPickerOpen(false);
       }
     };
-    // Écouter pointerdown pour fermer au clic en dehors
     const timer = setTimeout(() => {
       document.addEventListener('pointerdown', handleOutsideClick);
     }, 50);
@@ -164,6 +190,22 @@ const MessageItem = React.memo<MessageItemProps>(({
       document.removeEventListener('pointerdown', handleOutsideClick);
     };
   }, [isMenuOpen, isPickerOpen]);
+
+  const handleOpenPicker = () => {
+    triggerHaptic('light');
+    if (pickerBtnRef.current) {
+      setPickerAnchorRect(pickerBtnRef.current.getBoundingClientRect());
+    } else if (menuRef.current) {
+      setPickerAnchorRect(menuRef.current.getBoundingClientRect());
+    }
+    setIsPickerOpen(true);
+  };
+
+  const handleSelectFullEmoji = (emoji: string) => {
+    onAddReaction(message.id, emoji);
+    setIsPickerOpen(false);
+    setIsMenuOpen(false);
+  };
 
   const handleSaveEdit = () => {
     if (editingText.trim() && onEditMessage) {
@@ -251,22 +293,27 @@ const MessageItem = React.memo<MessageItemProps>(({
 
       {/* Conteneur principal de la bulle (w-fit pour épouser strictement le texte du message) */}
       <div
+        ref={bubbleRef}
         className="relative group/bubble w-fit max-w-[85%] sm:max-w-md select-none touch-manipulation"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
+        onMouseEnter={updateAdaptivePosition}
         onContextMenu={(e) => {
           e.preventDefault();
+          updateAdaptivePosition();
           setIsMenuOpen((prev) => !prev);
         }}
       >
-        {/* Barre d'action contextuelle */}
+        {/* Barre d'action contextuelle avec positionnement adaptatif anti-débordement */}
         <div
           ref={menuRef}
-          className={`absolute -top-3.5 ${
-            isMe ? 'right-2' : 'left-2'
-          } z-20 flex items-center gap-0.5 px-1.5 py-1 bg-[#FFF9EB] dark:bg-zinc-900 rounded-full border border-[#C7B7A3] dark:border-zinc-700 shadow-md ${
+          className={`absolute ${
+            menuPlacement === 'top' ? '-top-4' : 'top-full mt-1.5'
+          } ${
+            menuAlign === 'right' ? 'right-1' : 'left-1'
+          } z-20 flex items-center gap-0.5 px-2 py-1 bg-[#FFF9EB] dark:bg-zinc-900 rounded-full border border-[#C7B7A3] dark:border-zinc-700 shadow-lg ${
             isMenuOpen
               ? 'opacity-100 pointer-events-auto scale-100 ring-2 ring-[#6D2932]/30'
               : 'opacity-0 pointer-events-none group-hover/bubble:opacity-100 group-hover/bubble:pointer-events-auto scale-95 group-hover/bubble:scale-100'
@@ -274,7 +321,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Réactions émojis rapides */}
-          {QUICK_EMOJIS.map((emoji) => (
+          {QUICK_REACTIONS.map((emoji) => (
             <button
               key={emoji}
               type="button"
@@ -284,50 +331,23 @@ const MessageItem = React.memo<MessageItemProps>(({
                 setIsMenuOpen(false);
                 setIsPickerOpen(false);
               }}
-              className="w-6 h-6 flex items-center justify-center text-xs hover:scale-125 transition-transform rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
+              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm hover:scale-130 active:scale-95 transition-transform rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
               title={`Réagir avec ${emoji}`}
             >
               {emoji}
             </button>
           ))}
 
-          {/* Bouton pour ouvrir le sélecteur complet d'émojis */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('light');
-                setIsPickerOpen((prev) => !prev);
-              }}
-              className="p-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Plus d'émojis"
-            >
-              <Smile className="w-3.5 h-3.5" />
-            </button>
-
-            {isPickerOpen && (
-              <div
-                className="absolute left-0 bottom-full mb-1.5 p-2 bg-[#FFF9EB] dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3] dark:border-zinc-700 shadow-xl grid grid-cols-6 gap-1 z-30 animate-fade-in w-56 max-h-48 overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {ALL_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic('light');
-                      onAddReaction(message.id, emoji);
-                      setIsPickerOpen(false);
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-7 h-7 flex items-center justify-center text-sm hover:scale-125 transition-transform rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Bouton d'extension universel ouvrant le sélecteur complet */}
+          <button
+            ref={pickerBtnRef}
+            type="button"
+            onClick={handleOpenPicker}
+            className="p-1 sm:p-1.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center justify-center group/btn"
+            title="Tous les émojis..."
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5] group-hover/btn:rotate-90 transition-transform duration-200" />
+          </button>
 
           {/* Séparateur si auteur */}
           {isMe && !message.isSystem && (onEditMessage || onDeleteMessage) && (
@@ -369,6 +389,15 @@ const MessageItem = React.memo<MessageItemProps>(({
             </button>
           )}
         </div>
+
+        {/* Sélecteur d'émojis universel et adaptatif (Popover intelligent ou Bottom Sheet sur mobile) */}
+        <UniversalEmojiPicker
+          isOpen={isPickerOpen}
+          onClose={() => setIsPickerOpen(false)}
+          onSelectEmoji={handleSelectFullEmoji}
+          anchorRect={pickerAnchorRect}
+          title="Ajouter une réaction"
+        />
 
         {/* Bulle de message */}
         <div
@@ -670,6 +699,9 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   }
 
   const [selectedFiles, setSelectedFiles] = useState<PendingAttachment[]>([]);
+  const [isInputEmojiPickerOpen, setIsInputEmojiPickerOpen] = useState(false);
+  const [inputEmojiAnchorRect, setInputEmojiAnchorRect] = useState<DOMRect | null>(null);
+  const inputEmojiBtnRef = useRef<HTMLButtonElement>(null);
 
   // Pagination des messages : 15 messages par défaut
   const [displayedLimit, setDisplayedLimit] = useState(15);
@@ -971,6 +1003,23 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           />
 
           <button
+            ref={inputEmojiBtnRef}
+            type="button"
+            id="chat-emoji-btn"
+            onClick={() => {
+              triggerHaptic('light');
+              if (inputEmojiBtnRef.current) {
+                setInputEmojiAnchorRect(inputEmojiBtnRef.current.getBoundingClientRect());
+              }
+              setIsInputEmojiPickerOpen(true);
+            }}
+            title="Insérer un émoji"
+            className="p-2.5 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#C7B7A3]/60 transition-colors shrink-0 cursor-pointer"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+
+          <button
             type="submit"
             id="chat-send-btn"
             disabled={!inputText.trim() && selectedFiles.length === 0}
@@ -979,6 +1028,17 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
             <Send className="w-5 h-5 stroke-[2.2]" />
           </button>
         </form>
+
+        {/* Sélecteur d'émojis universel pour la saisie de message */}
+        <UniversalEmojiPicker
+          isOpen={isInputEmojiPickerOpen}
+          onClose={() => setIsInputEmojiPickerOpen(false)}
+          onSelectEmoji={(emoji) => {
+            setInputText((prev) => prev + emoji);
+          }}
+          anchorRect={inputEmojiAnchorRect}
+          title="Insérer un émoji"
+        />
       </div>
     </div>
   );

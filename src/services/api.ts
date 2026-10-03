@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import {
   UserProfile,
   Friend,
@@ -13,23 +14,90 @@ import {
   AppNotification,
 } from '../types';
 
-const API_BASE = '/api';
+/**
+ * URL de base absolue officielle de l'API de production Outlys
+ */
+export const PROD_API_BASE = 'https://www.outlys.fr/api';
+export const PROD_HOST_BASE = 'https://www.outlys.fr';
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+/**
+ * Résout dynamiquement l'URL de base des endpoints API :
+ * - Sur mobile natif (Capacitor Android / iOS) et production -> STRICTEMENT 'https://www.outlys.fr/api'
+ * - Si import.meta.env.VITE_API_URL est défini -> `${VITE_API_URL}/api`
+ * - Dans tous les cas, renvoie une URL absolue complète pour éviter tout appel vers localhost
+ */
+export const getApiBaseUrl = (): string => {
+  // 1. Variable d'environnement prioritaire si définie
+  const envApiUrl = (((import.meta as any).env?.VITE_API_URL as string) || '').trim();
+  if (envApiUrl) {
+    const clean = envApiUrl.replace(/\/+$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
 
-  return response.json();
+  // 2. URL absolue stricte de production (mobile natif Capacitor & web)
+  return PROD_API_BASE;
+};
+
+/**
+ * Résout l'URL de base de l'hôte Outlys (sans /api)
+ */
+export const getHostBaseUrl = (): string => {
+  const envApiUrl = (((import.meta as any).env?.VITE_API_URL as string) || '').trim();
+  if (envApiUrl) {
+    return envApiUrl.replace(/\/+$/, '').replace(/\/api$/, '');
+  }
+  return PROD_HOST_BASE;
+};
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const apiBase = getApiBaseUrl();
+  let fullUrl: string;
+
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    fullUrl = url;
+  } else {
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+    fullUrl = `${apiBase}${normalizedPath}`;
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/plain, */*',
+    ...(options?.headers as Record<string, string>),
+  };
+
+  const fetchOptions: RequestInit = {
+    method: options?.method || 'GET',
+    credentials: 'include',
+    ...options,
+    headers,
+  };
+
+  console.log('[API Call]', fullUrl);
+
+  const response = await fetch(fullUrl, fetchOptions);
+
+  const rawText = await response.text();
+  let data: any = null;
+
+  if (rawText && rawText.trim().length > 0) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error(`[API Error] Réponse non-JSON reçue depuis ${fullUrl}:`, rawText.slice(0, 150));
+      if (!response.ok) {
+        throw new Error(`Erreur serveur (${response.status}) : Impossible de joindre l'API Outlys.`);
+      }
+      throw new Error(`Format de réponse invalide reçu du serveur.`);
+    }
+  }
+
+  if (!response.ok) {
+    const errorMsg = data?.error || data?.message || `Erreur requête (${response.status})`;
+    throw new Error(errorMsg);
+  }
+
+  return (data !== null ? data : {}) as T;
 }
 
 export const api = {
@@ -54,15 +122,29 @@ export const api = {
     password?: string;
     avatar?: string;
   }): Promise<UserProfile> {
-    return request<UserProfile>('/auth/register', {
+    const registerUrl = 'https://www.outlys.fr/api/auth/register';
+    console.log('[Auth] Initiating register request to:', registerUrl);
+    return request<UserProfile>(registerUrl, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
   },
 
   async login(emailOrHandle: string, password?: string): Promise<UserProfile> {
-    return request<UserProfile>('/auth/login', {
+    const loginUrl = 'https://www.outlys.fr/api/auth/login';
+
+    console.log('[Auth] Initiating login request to:', loginUrl);
+
+    return request<UserProfile>(loginUrl, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
       body: JSON.stringify({ emailOrHandle, password }),
     });
   },
@@ -74,8 +156,14 @@ export const api = {
     avatar?: string;
     googleId?: string;
   }): Promise<UserProfile> {
-    return request<UserProfile>('/auth/google', {
+    const googleLoginUrl = 'https://www.outlys.fr/api/auth/google';
+    console.log('[Auth] Initiating Google login request to:', googleLoginUrl);
+    return request<UserProfile>(googleLoginUrl, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
   },
@@ -92,19 +180,33 @@ export const api = {
   },
 
   async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-    return request<{ success: boolean; message: string }>('/auth/forgot-password', {
+    const forgotUrl = 'https://www.outlys.fr/api/auth/forgot-password';
+    console.log('[Auth] Initiating forgot-password request to:', forgotUrl);
+    return request<{ success: boolean; message: string }>(forgotUrl, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
       body: JSON.stringify({ email }),
     });
   },
 
   async verifyResetToken(token: string): Promise<{ valid: boolean; email?: string; firstName?: string; error?: string }> {
-    return request<{ valid: boolean; email?: string; firstName?: string; error?: string }>(`/auth/verify-reset-token/${encodeURIComponent(token)}`);
+    const verifyUrl = `https://www.outlys.fr/api/auth/verify-reset-token/${encodeURIComponent(token)}`;
+    console.log('[Auth] Initiating verify-reset-token request to:', verifyUrl);
+    return request<{ valid: boolean; email?: string; firstName?: string; error?: string }>(verifyUrl);
   },
 
   async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
-    return request<{ success: boolean; message: string }>('/auth/reset-password', {
+    const resetUrl = 'https://www.outlys.fr/api/auth/reset-password';
+    console.log('[Auth] Initiating reset-password request to:', resetUrl);
+    return request<{ success: boolean; message: string }>(resetUrl, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
       body: JSON.stringify({ token, password }),
     });
   },

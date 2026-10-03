@@ -1377,7 +1377,174 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === 'admin';
 
-    // 2. Vérifier si l'utilisateur possède des dépenses, dettes, tâches ou participations dans ce groupe
+    // 2. SOLDAGE SYSTÉMATIQUE DES DETTES :
+    // Lorsqu'un membre est supprimé ou retiré d'un groupe, passer automatiquement toutes les dettes
+    // qu'il doit aux autres au statut validé / soldé pour préserver l'équilibre strict des comptes.
+    
+    // a) Passer toutes les dettes existantes dues par ce membre au statut "settled"
+    await query(
+      `UPDATE debt_settlements
+       SET status = 'settled', settled_at = COALESCE(settled_at, NOW()), updated_at = NOW()
+       WHERE group_id = $1 AND from_user_id = $2 AND status != 'settled'`,
+      [groupId, userId]
+    );
+
+    // b) Calculer les dettes restantes issues des dépenses du groupe pour cet utilisateur et les solder
+    try {
+      const allGroupExpensesRes = await query(
+        `SELECT id, amount::float as amount, paid_by_id as "paidById", split_mode as "splitMode",
+                participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
+         FROM expenses
+         WHERE group_id = $1`,
+        [groupId]
+      );
+
+      const allGroupMembersRes = await query(
+        `SELECT gm.user_id as "userId", u.first_name as "firstName", u.last_name as "lastName", COALESCE(u.shares, 1) as shares
+         FROM group_members gm
+         JOIN users u ON gm.user_id = u.id
+         WHERE gm.group_id = $1`,
+        [groupId]
+      );
+
+      const allSettledDebtsRes = await query(
+        `SELECT id, from_user_id as "fromUserId", to_user_id as "toUserId", amount::float as amount
+         FROM debt_settlements
+         WHERE group_id = $1 AND status = 'settled'`,
+        [groupId]
+      );
+
+      const balanceMap: Record<string, {
+        paidCents: number;
+        shareCents: number;
+        reimbursedPaidCents: number;
+        reimbursedReceivedCents: number;
+      }> = {};
+
+      allGroupMembersRes.rows.forEach((m: any) => {
+        balanceMap[m.userId] = {
+          paidCents: 0,
+          shareCents: 0,
+          reimbursedPaidCents: 0,
+          reimbursedReceivedCents: 0,
+        };
+      });
+
+      // Comptabiliser les dépenses en centimes entiers
+      allGroupExpensesRes.rows.forEach((exp: any) => {
+        const expAmount = Number(exp.amount) || 0;
+        const expCents = Math.round(expAmount * 100);
+        if (expCents <= 0) return;
+
+        const payerId = exp.paidById;
+        if (!balanceMap[payerId]) {
+          balanceMap[payerId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        balanceMap[payerId].paidCents += expCents;
+
+        let partIds: string[] = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+        if (partIds.length === 0) {
+          partIds = Object.keys(balanceMap);
+        }
+        if (partIds.length === 0) return;
+
+        const sharesSnap = (exp.sharesSnapshot && typeof exp.sharesSnapshot === 'object') ? exp.sharesSnapshot : {};
+
+        if (exp.splitMode === 'shares' || Object.keys(sharesSnap).length > 0) {
+          let totalShares = 0;
+          partIds.forEach((pid: string) => {
+            totalShares += Number(sharesSnap[pid]) || 1;
+          });
+          totalShares = Math.max(1, totalShares);
+
+          let distributedCents = 0;
+          partIds.forEach((pid: string, idx: number) => {
+            if (!balanceMap[pid]) {
+              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+            }
+            let partCents: number;
+            if (idx === partIds.length - 1) {
+              partCents = expCents - distributedCents;
+            } else {
+              const userShare = Number(sharesSnap[pid]) || 1;
+              partCents = Math.round((expCents * userShare) / totalShares);
+              distributedCents += partCents;
+            }
+            balanceMap[pid].shareCents += partCents;
+          });
+        } else {
+          const baseCents = Math.floor(expCents / partIds.length);
+          const remainderCents = expCents % partIds.length;
+          partIds.forEach((pid: string, idx: number) => {
+            if (!balanceMap[pid]) {
+              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+            }
+            const partCents = baseCents + (idx < remainderCents ? 1 : 0);
+            balanceMap[pid].shareCents += partCents;
+          });
+        }
+      });
+
+      // Comptabiliser les remboursements déjà validés
+      allSettledDebtsRes.rows.forEach((sett: any) => {
+        const sCents = Math.round((Number(sett.amount) || 0) * 100);
+        if (sCents <= 0) return;
+        if (!balanceMap[sett.fromUserId]) {
+          balanceMap[sett.fromUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        if (!balanceMap[sett.toUserId]) {
+          balanceMap[sett.toUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        balanceMap[sett.fromUserId].reimbursedPaidCents += sCents;
+        balanceMap[sett.toUserId].reimbursedReceivedCents += sCents;
+      });
+
+      // Calcul des débiteurs et créditeurs
+      const debtorList: { id: string; remainingCents: number }[] = [];
+      const creditorList: { id: string; remainingCents: number }[] = [];
+
+      Object.entries(balanceMap).forEach(([uid, b]) => {
+        const netCents = (b.paidCents - b.shareCents) + b.reimbursedPaidCents - b.reimbursedReceivedCents;
+        if (netCents < 0) {
+          debtorList.push({ id: uid, remainingCents: -netCents });
+        } else if (netCents > 0) {
+          creditorList.push({ id: uid, remainingCents: netCents });
+        }
+      });
+
+      debtorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
+      creditorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
+
+      // Solder immédiatement toute dette résiduelle où le débiteur est le membre retiré
+      let dIdx = 0;
+      let cIdx = 0;
+      while (dIdx < debtorList.length && cIdx < creditorList.length) {
+        const debtor = debtorList[dIdx];
+        const creditor = creditorList[cIdx];
+        const settleCents = Math.min(debtor.remainingCents, creditor.remainingCents);
+
+        if (settleCents > 0 && debtor.id === userId) {
+          const debtAmount = settleCents / 100;
+          const settleId = `settle_${groupId}_${debtor.id}_${creditor.id}`;
+          await query(
+            `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, 'settled', NOW(), NOW(), NOW())
+             ON CONFLICT (id) DO UPDATE SET status = 'settled', amount = EXCLUDED.amount, settled_at = NOW(), updated_at = NOW()`,
+            [settleId, groupId, debtor.id, creditor.id, debtAmount]
+          );
+        }
+
+        debtor.remainingCents -= settleCents;
+        creditor.remainingCents -= settleCents;
+
+        if (debtor.remainingCents === 0) dIdx++;
+        if (creditor.remainingCents === 0) cIdx++;
+      }
+    } catch (debtSettleErr) {
+      console.error('Erreur lors du soldage automatique des dettes du membre supprimé:', debtSettleErr);
+    }
+
+    // 3. Vérifier si l'utilisateur possède des dépenses, dettes, tâches ou participations dans ce groupe
     const isRealUser = !userId.startsWith('user-virt-');
     let hasFinancialOrActivityFootprint = false;
 
@@ -1411,7 +1578,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     let updatedExpenses: any[] = [];
     let updatedSettlements: any[] = [];
 
-    // 3. Si l'utilisateur est un compte réel avec un historique financier, rétrograder en participant virtuel sans compte
+    // 4. Si l'utilisateur est un compte réel avec un historique financier, rétrograder en participant virtuel sans compte
     if (isRealUser && hasFinancialOrActivityFootprint) {
       const userRes = await query(
         `SELECT id, first_name as "firstName", last_name as "lastName", handle, avatar, shares FROM users WHERE id = $1`,
@@ -1534,46 +1701,6 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
         role: 'member',
         isVirtual: true,
       };
-
-      // Récupérer les dépenses et règlements mis à jour
-      const expRes = await query(
-        `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
-                e.paid_by_id as "paidById",
-                COALESCE(u.first_name, 'Membre') as "paidByName",
-                COALESCE(u.avatar, '') as "paidByAvatar",
-                e.category, e.date::text as date,
-                e.split_mode as "splitMode",
-                COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
-                COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
-                e.created_at as "createdAt"
-         FROM expenses e
-         LEFT JOIN users u ON e.paid_by_id = u.id
-         WHERE e.group_id = $1
-         ORDER BY e.date DESC, e.created_at DESC`,
-        [groupId]
-      );
-      updatedExpenses = expRes.rows;
-
-      const settRes = await query(
-        `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
-                s.amount::float as amount, s.status, s.settled_at as "settledAt",
-                s.created_at as "createdAt", s.updated_at as "updatedAt",
-                COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
-                COALESCE(u1.last_name, '') as "fromUserLastName",
-                COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
-                COALESCE(u1.avatar, '') as "fromUserAvatar",
-                COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
-                COALESCE(u2.last_name, '') as "toUserLastName",
-                COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
-                COALESCE(u2.avatar, '') as "toUserAvatar"
-         FROM debt_settlements s
-         LEFT JOIN users u1 ON s.from_user_id = u1.id
-         LEFT JOIN users u2 ON s.to_user_id = u2.id
-         WHERE s.group_id = $1
-         ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
-        [groupId]
-      );
-      updatedSettlements = settRes.rows;
     } else {
       // Suppression standard sans rétrogradation si aucun historique financier ou participant déjà virtuel
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
@@ -1582,7 +1709,47 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       }
     }
 
-    // 4. Règle de succession administrative : si l'admin part et qu'il ne reste aucun autre admin
+    // Récupérer les dépenses et règlements mis à jour pour le groupe
+    const expRes = await query(
+      `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
+              e.paid_by_id as "paidById",
+              COALESCE(u.first_name, 'Membre') as "paidByName",
+              COALESCE(u.avatar, '') as "paidByAvatar",
+              e.category, e.date::text as date,
+              e.split_mode as "splitMode",
+              COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
+              COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
+              e.created_at as "createdAt"
+       FROM expenses e
+       LEFT JOIN users u ON e.paid_by_id = u.id
+       WHERE e.group_id = $1
+       ORDER BY e.date DESC, e.created_at DESC`,
+      [groupId]
+    );
+    updatedExpenses = expRes.rows;
+
+    const settRes = await query(
+      `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+              s.amount::float as amount, s.status, s.settled_at as "settledAt",
+              s.created_at as "createdAt", s.updated_at as "updatedAt",
+              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, '') as "fromUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(u1.avatar, '') as "fromUserAvatar",
+              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, '') as "toUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(u2.avatar, '') as "toUserAvatar"
+       FROM debt_settlements s
+       LEFT JOIN users u1 ON s.from_user_id = u1.id
+       LEFT JOIN users u2 ON s.to_user_id = u2.id
+       WHERE s.group_id = $1
+       ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
+      [groupId]
+    );
+    updatedSettlements = settRes.rows;
+
+    // 5. Règle de succession administrative : si l'admin part et qu'il ne reste aucun autre admin
     if (wasAdmin) {
       const remainingAdmins = await query(
         `SELECT user_id FROM group_members WHERE group_id = $1 AND role = 'admin'`,
@@ -1608,7 +1775,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       }
     }
 
-    // 5. Diffusion temps réel
+    // 6. Diffusion temps réel
     if (virtualMemberData) {
       realtimeBroadcaster.broadcast({
         type: 'group:member_demoted_to_virtual',
@@ -1625,7 +1792,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       realtimeBroadcaster.broadcast({
         type: 'group:member_removed',
         groupId,
-        data: { groupId, userId },
+        data: { groupId, userId, expenses: updatedExpenses, settlements: updatedSettlements },
       });
     }
 

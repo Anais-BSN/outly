@@ -152,6 +152,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg(null);
 
     try {
+      console.log('[AuthModal] Submitting login request for:', emailOrHandle.trim());
       const user = await api.login(emailOrHandle.trim(), password.trim());
       onAuthSuccess(user);
       onClose();

@@ -169,58 +169,95 @@ export const initPushNotifications = async (
   if (!isNativePlatform() || !userId) return;
 
   try {
-    // 1. Vérification / Demande de permissions
-    let permStatus = await PushNotifications.checkPermissions();
-
-    if (permStatus.receive === 'prompt' || permStatus.receive === 'prompt-with-rationale') {
-      permStatus = await PushNotifications.requestPermissions();
-    }
-
-    if (permStatus.receive !== 'granted') {
-      console.log('[Push] Permission de notifications refusée par l\'utilisateur');
+    if (!PushNotifications || typeof PushNotifications.checkPermissions !== 'function') {
+      console.warn('[Push] Le plugin PushNotifications n\'est pas disponible sur cette plateforme.');
       return;
     }
 
-    // 2. Enregistrement auprès d'APNS / FCM
-    await PushNotifications.register();
-
-    if (!pushListenersInitialized) {
-      pushListenersInitialized = true;
-
-      // Écoute de l'attribution du jeton de l'appareil
-      await PushNotifications.addListener('registration', async (token: Token) => {
-        console.log('[Push] Device Token reçu:', token.value);
-        try {
-          await api.registerPushToken(userId, token.value, getPlatform());
-        } catch (err) {
-          console.warn('[Push] Impossible d\'enregistrer le token push sur le serveur:', err);
-        }
-      });
-
-      // Erreur lors de l'enregistrement
-      await PushNotifications.addListener('registrationError', (error: any) => {
-        console.error('[Push] Erreur d\'enregistrement push:', error);
-      });
-
-      // Réception d'une notification en premier plan
-      await PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-        console.log('[Push] Notification reçue en avant-plan:', notification);
-        triggerHapticNotification('success');
-        if (onNotificationReceived) {
-          onNotificationReceived(notification);
-        }
-      });
-
-      // Clic / Action sur une notification
-      await PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
-        console.log('[Push] Action effectuée sur notification:', action);
-        triggerHaptic('medium');
-        if (onNotificationTapped) {
-          onNotificationTapped(action);
-        }
-      });
+    // 1. Vérification / Demande sécurisée de permissions
+    let permStatus: any = null;
+    try {
+      permStatus = await PushNotifications.checkPermissions();
+      if (permStatus && (permStatus.receive === 'prompt' || permStatus.receive === 'prompt-with-rationale')) {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+    } catch (permErr) {
+      console.warn('[Push] Impossible de vérifier ou demander les permissions push:', permErr);
+      return;
     }
-  } catch (err) {
-    console.warn('[Push] Erreur d\'initialisation des notifications push:', err);
+
+    if (!permStatus || permStatus.receive !== 'granted') {
+      console.log('[Push] Permission de notifications non accordée ou refusée par l\'utilisateur');
+      return;
+    }
+
+    // 2. Initialisation sécurisée des écouteurs d'événements
+    if (!pushListenersInitialized) {
+      try {
+        // Écoute de l'attribution du jeton de l'appareil
+        await PushNotifications.addListener('registration', async (token: Token) => {
+          try {
+            console.log('[Push] Device Token push reçu avec succès');
+            if (token && token.value) {
+              await api.registerPushToken(userId, token.value, getPlatform()).catch((e) => {
+                console.warn('[Push] Enregistrement du token sur l\'API ignoré:', e?.message || e);
+              });
+            }
+          } catch (tokErr) {
+            console.warn('[Push] Erreur lors du traitement du token:', tokErr);
+          }
+        });
+
+        // Erreur lors de l'enregistrement natif (ex. Firebase / Google Play Services non configurés)
+        await PushNotifications.addListener('registrationError', (error: any) => {
+          console.warn('[Push] Avertissement: Services push natifs (Firebase/APNS) non configurés ou indisponibles:', error?.error || error);
+        });
+
+        // Réception d'une notification en premier plan
+        await PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
+          try {
+            console.log('[Push] Notification reçue en avant-plan:', notification);
+            triggerHapticNotification('success');
+            if (onNotificationReceived) {
+              onNotificationReceived(notification);
+            }
+          } catch (notifErr) {
+            console.warn('[Push] Erreur lors de la réception de notification:', notifErr);
+          }
+        });
+
+        // Clic / Action sur une notification
+        await PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
+          try {
+            console.log('[Push] Action effectuée sur notification:', action);
+            triggerHaptic('medium');
+            if (onNotificationTapped) {
+              onNotificationTapped(action);
+            }
+          } catch (actionErr) {
+            console.warn('[Push] Erreur lors du clic notification:', actionErr);
+          }
+        });
+
+        pushListenersInitialized = true;
+      } catch (listenerErr) {
+        console.warn('[Push] Impossible d\'attacher les écouteurs de notifications:', listenerErr);
+      }
+    }
+
+    // 3. Appel sécurisé à la méthode d'enregistrement natif
+    try {
+      await PushNotifications.register();
+      console.log('[Push] Demande d\'enregistrement push envoyée au système natif');
+    } catch (regErr: any) {
+      // Interception propre sans crash si Firebase/APNS n'est pas encore configuré dans le projet Android
+      console.warn(
+        '[Push] Information: Enregistrement push natif non finalisé (services Firebase/APNS non prêts ou non configurés). La navigation continue normalement.',
+        regErr?.message || regErr
+      );
+    }
+  } catch (err: any) {
+    // Capture d'erreur absolue : l'application ne plantera jamais sur un échec push
+    console.warn('[Push] Erreur non bloquante lors de l\'initialisation des notifications push:', err?.message || err);
   }
 };

@@ -423,6 +423,17 @@ var realtimeBroadcaster = new EventBroadcaster();
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   const normalized = origin.trim().toLowerCase().replace(/\/$/, "");
+  const mobileOrigins = [
+    "capacitor://localhost",
+    "ionic://localhost",
+    "http://localhost",
+    "https://localhost",
+    "capacitor://",
+    "null"
+  ];
+  if (mobileOrigins.includes(normalized) || /^capacitor:\/\/[a-zA-Z0-9_.-]+$/.test(normalized)) {
+    return true;
+  }
   const officialDomains = [
     "https://outlys.fr",
     "https://www.outlys.fr",
@@ -434,7 +445,8 @@ function isAllowedOrigin(origin) {
     process.env.APP_URL,
     process.env.CLIENT_URL,
     process.env.FRONTEND_URL,
-    process.env.CORS_ORIGIN
+    process.env.CORS_ORIGIN,
+    process.env.VITE_API_URL
   ].filter(Boolean);
   for (const envUrl of envUrls) {
     const cleanEnv = envUrl.trim().toLowerCase().replace(/\/$/, "");
@@ -452,14 +464,18 @@ function corsMiddleware(req, res, next) {
     if (isAllowedOrigin(origin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Custom-Header");
       res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Max-Age", "86400");
       res.setHeader("Vary", "Origin");
     } else {
       if (req.method === "OPTIONS") {
         return res.status(403).json({ error: "Origine non autoris\xE9e par la politique CORS" });
       }
     }
+  } else {
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
   }
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -1576,6 +1592,138 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       [groupId, userId]
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === "admin";
+    await query(
+      `UPDATE debt_settlements
+       SET status = 'settled', settled_at = COALESCE(settled_at, NOW()), updated_at = NOW()
+       WHERE group_id = $1 AND from_user_id = $2 AND status != 'settled'`,
+      [groupId, userId]
+    );
+    try {
+      const allGroupExpensesRes = await query(
+        `SELECT id, amount::float as amount, paid_by_id as "paidById", split_mode as "splitMode",
+                participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
+         FROM expenses
+         WHERE group_id = $1`,
+        [groupId]
+      );
+      const allGroupMembersRes = await query(
+        `SELECT gm.user_id as "userId", u.first_name as "firstName", u.last_name as "lastName", COALESCE(u.shares, 1) as shares
+         FROM group_members gm
+         JOIN users u ON gm.user_id = u.id
+         WHERE gm.group_id = $1`,
+        [groupId]
+      );
+      const allSettledDebtsRes = await query(
+        `SELECT id, from_user_id as "fromUserId", to_user_id as "toUserId", amount::float as amount
+         FROM debt_settlements
+         WHERE group_id = $1 AND status = 'settled'`,
+        [groupId]
+      );
+      const balanceMap = {};
+      allGroupMembersRes.rows.forEach((m) => {
+        balanceMap[m.userId] = {
+          paidCents: 0,
+          shareCents: 0,
+          reimbursedPaidCents: 0,
+          reimbursedReceivedCents: 0
+        };
+      });
+      allGroupExpensesRes.rows.forEach((exp) => {
+        const expAmount = Number(exp.amount) || 0;
+        const expCents = Math.round(expAmount * 100);
+        if (expCents <= 0) return;
+        const payerId = exp.paidById;
+        if (!balanceMap[payerId]) {
+          balanceMap[payerId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        balanceMap[payerId].paidCents += expCents;
+        let partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+        if (partIds.length === 0) {
+          partIds = Object.keys(balanceMap);
+        }
+        if (partIds.length === 0) return;
+        const sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
+        if (exp.splitMode === "shares" || Object.keys(sharesSnap).length > 0) {
+          let totalShares = 0;
+          partIds.forEach((pid) => {
+            totalShares += Number(sharesSnap[pid]) || 1;
+          });
+          totalShares = Math.max(1, totalShares);
+          let distributedCents = 0;
+          partIds.forEach((pid, idx) => {
+            if (!balanceMap[pid]) {
+              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+            }
+            let partCents;
+            if (idx === partIds.length - 1) {
+              partCents = expCents - distributedCents;
+            } else {
+              const userShare = Number(sharesSnap[pid]) || 1;
+              partCents = Math.round(expCents * userShare / totalShares);
+              distributedCents += partCents;
+            }
+            balanceMap[pid].shareCents += partCents;
+          });
+        } else {
+          const baseCents = Math.floor(expCents / partIds.length);
+          const remainderCents = expCents % partIds.length;
+          partIds.forEach((pid, idx) => {
+            if (!balanceMap[pid]) {
+              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+            }
+            const partCents = baseCents + (idx < remainderCents ? 1 : 0);
+            balanceMap[pid].shareCents += partCents;
+          });
+        }
+      });
+      allSettledDebtsRes.rows.forEach((sett) => {
+        const sCents = Math.round((Number(sett.amount) || 0) * 100);
+        if (sCents <= 0) return;
+        if (!balanceMap[sett.fromUserId]) {
+          balanceMap[sett.fromUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        if (!balanceMap[sett.toUserId]) {
+          balanceMap[sett.toUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
+        }
+        balanceMap[sett.fromUserId].reimbursedPaidCents += sCents;
+        balanceMap[sett.toUserId].reimbursedReceivedCents += sCents;
+      });
+      const debtorList = [];
+      const creditorList = [];
+      Object.entries(balanceMap).forEach(([uid, b]) => {
+        const netCents = b.paidCents - b.shareCents + b.reimbursedPaidCents - b.reimbursedReceivedCents;
+        if (netCents < 0) {
+          debtorList.push({ id: uid, remainingCents: -netCents });
+        } else if (netCents > 0) {
+          creditorList.push({ id: uid, remainingCents: netCents });
+        }
+      });
+      debtorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
+      creditorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
+      let dIdx = 0;
+      let cIdx = 0;
+      while (dIdx < debtorList.length && cIdx < creditorList.length) {
+        const debtor = debtorList[dIdx];
+        const creditor = creditorList[cIdx];
+        const settleCents = Math.min(debtor.remainingCents, creditor.remainingCents);
+        if (settleCents > 0 && debtor.id === userId) {
+          const debtAmount = settleCents / 100;
+          const settleId = `settle_${groupId}_${debtor.id}_${creditor.id}`;
+          await query(
+            `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, 'settled', NOW(), NOW(), NOW())
+             ON CONFLICT (id) DO UPDATE SET status = 'settled', amount = EXCLUDED.amount, settled_at = NOW(), updated_at = NOW()`,
+            [settleId, groupId, debtor.id, creditor.id, debtAmount]
+          );
+        }
+        debtor.remainingCents -= settleCents;
+        creditor.remainingCents -= settleCents;
+        if (debtor.remainingCents === 0) dIdx++;
+        if (creditor.remainingCents === 0) cIdx++;
+      }
+    } catch (debtSettleErr) {
+      console.error("Erreur lors du soldage automatique des dettes du membre supprim\xE9:", debtSettleErr);
+    }
     const isRealUser = !userId.startsWith("user-virt-");
     let hasFinancialOrActivityFootprint = false;
     if (isRealUser) {
@@ -1700,49 +1848,49 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
         role: "member",
         isVirtual: true
       };
-      const expRes = await query(
-        `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
-                e.paid_by_id as "paidById",
-                COALESCE(u.first_name, 'Membre') as "paidByName",
-                COALESCE(u.avatar, '') as "paidByAvatar",
-                e.category, e.date::text as date,
-                e.split_mode as "splitMode",
-                COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
-                COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
-                e.created_at as "createdAt"
-         FROM expenses e
-         LEFT JOIN users u ON e.paid_by_id = u.id
-         WHERE e.group_id = $1
-         ORDER BY e.date DESC, e.created_at DESC`,
-        [groupId]
-      );
-      updatedExpenses = expRes.rows;
-      const settRes = await query(
-        `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
-                s.amount::float as amount, s.status, s.settled_at as "settledAt",
-                s.created_at as "createdAt", s.updated_at as "updatedAt",
-                COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
-                COALESCE(u1.last_name, '') as "fromUserLastName",
-                COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
-                COALESCE(u1.avatar, '') as "fromUserAvatar",
-                COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
-                COALESCE(u2.last_name, '') as "toUserLastName",
-                COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
-                COALESCE(u2.avatar, '') as "toUserAvatar"
-         FROM debt_settlements s
-         LEFT JOIN users u1 ON s.from_user_id = u1.id
-         LEFT JOIN users u2 ON s.to_user_id = u2.id
-         WHERE s.group_id = $1
-         ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
-        [groupId]
-      );
-      updatedSettlements = settRes.rows;
     } else {
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
       if (userId.startsWith("user-virt-")) {
         await query(`DELETE FROM users WHERE id = $1`, [userId]);
       }
     }
+    const expRes = await query(
+      `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
+              e.paid_by_id as "paidById",
+              COALESCE(u.first_name, 'Membre') as "paidByName",
+              COALESCE(u.avatar, '') as "paidByAvatar",
+              e.category, e.date::text as date,
+              e.split_mode as "splitMode",
+              COALESCE(e.participant_ids, '[]'::jsonb) as "participantIds",
+              COALESCE(e.shares_snapshot, '{}'::jsonb) as "sharesSnapshot",
+              e.created_at as "createdAt"
+       FROM expenses e
+       LEFT JOIN users u ON e.paid_by_id = u.id
+       WHERE e.group_id = $1
+       ORDER BY e.date DESC, e.created_at DESC`,
+      [groupId]
+    );
+    updatedExpenses = expRes.rows;
+    const settRes = await query(
+      `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
+              s.amount::float as amount, s.status, s.settled_at as "settledAt",
+              s.created_at as "createdAt", s.updated_at as "updatedAt",
+              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.last_name, '') as "fromUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(u1.avatar, '') as "fromUserAvatar",
+              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.last_name, '') as "toUserLastName",
+              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(u2.avatar, '') as "toUserAvatar"
+       FROM debt_settlements s
+       LEFT JOIN users u1 ON s.from_user_id = u1.id
+       LEFT JOIN users u2 ON s.to_user_id = u2.id
+       WHERE s.group_id = $1
+       ORDER BY COALESCE(s.settled_at, s.updated_at, s.created_at) DESC`,
+      [groupId]
+    );
+    updatedSettlements = settRes.rows;
     if (wasAdmin) {
       const remainingAdmins = await query(
         `SELECT user_id FROM group_members WHERE group_id = $1 AND role = 'admin'`,
@@ -1783,7 +1931,7 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       realtimeBroadcaster.broadcast({
         type: "group:member_removed",
         groupId,
-        data: { groupId, userId }
+        data: { groupId, userId, expenses: updatedExpenses, settlements: updatedSettlements }
       });
     }
     res.json({

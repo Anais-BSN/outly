@@ -183,6 +183,7 @@ export default function App() {
   const [inviteReconcileData, setInviteReconcileData] = useState<{
     groupId: string;
     groupName: string;
+    token: string;
     virtualMembers: GroupMember[];
   } | null>(null);
 
@@ -687,44 +688,74 @@ export default function App() {
     const processInvite = async () => {
       try {
         const inv = await api.getInvitationByToken(pendingInviteToken);
-        if (inv) {
+        if (!inv) {
+          throw new Error('Invitation introuvable ou expirée');
+        }
+
+        if (inv.groupId) {
+          // 1. Récupérer les données du groupe pour vérifier les membres
+          const groupData = await api.getGroup(inv.groupId).catch(() => null);
+          const members = groupData?.members || [];
+          const isAlreadyMember = members.some(
+            (m: GroupMember) => (m.userId || m.id) === currentUser.id
+          );
+
+          if (isAlreadyMember) {
+            await api.acceptInvitationByToken(pendingInviteToken, currentUser.id).catch(() => {});
+            setPendingInviteToken(null);
+            localStorage.removeItem('outly_pending_invite');
+            window.history.replaceState({}, '', '/');
+            await loadData(currentUser.id);
+            setActiveGroupId(inv.groupId);
+            setInviteToast({
+              text: `Vous faites déjà partie du groupe "${groupData?.name || inv.groupName || 'Groupe'}" !`,
+              success: true,
+            });
+            setTimeout(() => setInviteToast(null), 5000);
+            return;
+          }
+
+          // 2. Détecter la présence de participants sans compte
+          const virtuals = members.filter((m: GroupMember) =>
+            Boolean(m.isVirtual || (m.userId && m.userId.startsWith('user-virt-')) || (m.id && m.id.startsWith('user-virt-')))
+          );
+
+          if (virtuals.length > 0) {
+            // Ne pas ajouter aveuglément comme nouveau membre !
+            // Afficher l'écran de confirmation intermédiaire de rapprochement
+            setInviteReconcileData({
+              groupId: inv.groupId,
+              groupName: groupData?.name || inv.groupName || 'Groupe',
+              token: pendingInviteToken,
+              virtualMembers: virtuals,
+            });
+            return;
+          }
+
+          // 3. Aucun participant sans compte : ajout normal en tant que nouveau membre
           await api.acceptInvitationByToken(pendingInviteToken, currentUser.id);
           setPendingInviteToken(null);
           localStorage.removeItem('outly_pending_invite');
           window.history.replaceState({}, '', '/');
 
           await loadData(currentUser.id);
-          if (inv.groupId) {
-            setActiveGroupId(inv.groupId);
-            setInviteToast({
-              text: `Vous avez rejoint le groupe "${inv.groupName || 'd\'escapade'}" ! 🎉`,
-              success: true,
-            });
-
-            // Vérifier la présence de participants sans compte (virtuels) pour proposer le rapprochement
-            try {
-              const groupData = await api.getGroup(inv.groupId);
-              if (groupData && groupData.members) {
-                const virtuals = groupData.members.filter((m: GroupMember) =>
-                  Boolean(m.isVirtual || (m.userId && m.userId.startsWith('user-virt-')) || (m.id && m.id.startsWith('user-virt-')))
-                );
-                if (virtuals.length > 0) {
-                  setInviteReconcileData({
-                    groupId: inv.groupId,
-                    groupName: groupData.name || inv.groupName || 'Groupe',
-                    virtualMembers: virtuals,
-                  });
-                }
-              }
-            } catch (reconErr) {
-              console.error('Erreur vérification membres virtuels pour rapprochement:', reconErr);
-            }
-          } else {
-            setInviteToast({
-              text: `Vous êtes maintenant connecté avec ${inv.inviterFirstName || 'votre ami'} ! 🎉`,
-              success: true,
-            });
-          }
+          setActiveGroupId(inv.groupId);
+          setInviteToast({
+            text: `Vous avez rejoint le groupe "${inv.groupName || 'd\'escapade'}" ! 🎉`,
+            success: true,
+          });
+          setTimeout(() => setInviteToast(null), 6000);
+        } else {
+          // Invitation ami
+          await api.acceptInvitationByToken(pendingInviteToken, currentUser.id);
+          setPendingInviteToken(null);
+          localStorage.removeItem('outly_pending_invite');
+          window.history.replaceState({}, '', '/');
+          await loadData(currentUser.id);
+          setInviteToast({
+            text: `Vous êtes maintenant connecté avec ${inv.inviterFirstName || 'votre ami'} ! 🎉`,
+            success: true,
+          });
           setTimeout(() => setInviteToast(null), 6000);
         }
       } catch (err: any) {
@@ -1583,16 +1614,50 @@ export default function App() {
     const vUserId = virtualMember.userId || virtualMember.id;
     try {
       await handleMergeGroupMember(inviteReconcileData.groupId, vUserId, currentUser.id);
+      if (inviteReconcileData.token) {
+        await api.acceptInvitationByToken(inviteReconcileData.token, currentUser.id).catch(() => {});
+      }
+      setPendingInviteToken(null);
+      localStorage.removeItem('outly_pending_invite');
+      window.history.replaceState({}, '', '/');
+      await loadData(currentUser.id);
+      setActiveGroupId(inviteReconcileData.groupId);
       setInviteReconcileData(null);
       setInviteToast({
-        text: `Votre compte a été synchronisé avec "${virtualMember.name || virtualMember.firstName}". Vos dépenses et dettes sont associées ! ✨`,
+        text: `Votre compte a été rattaché à "${virtualMember.name || virtualMember.firstName}". Vos dépenses et dettes associées ont été récupérées ! ✨`,
         success: true,
       });
       setTimeout(() => setInviteToast(null), 6000);
     } catch (err: any) {
       console.error('Error merging member on invite:', err);
       setInviteToast({
-        text: err.message || 'Erreur lors de la synchronisation',
+        text: err.message || 'Erreur lors du rapprochement du compte',
+        success: false,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
+    }
+  };
+
+  const handleContinueAsNewMember = async () => {
+    if (!inviteReconcileData || !currentUser) return;
+    try {
+      await api.acceptInvitationByToken(inviteReconcileData.token, currentUser.id);
+      setPendingInviteToken(null);
+      localStorage.removeItem('outly_pending_invite');
+      window.history.replaceState({}, '', '/');
+      await loadData(currentUser.id);
+      setActiveGroupId(inviteReconcileData.groupId);
+      const groupName = inviteReconcileData.groupName;
+      setInviteReconcileData(null);
+      setInviteToast({
+        text: `Vous avez rejoint le groupe "${groupName}" en tant que nouveau membre ! 🎉`,
+        success: true,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
+    } catch (err: any) {
+      console.error('Error adding new member from invite:', err);
+      setInviteToast({
+        text: err.message || 'Erreur lors de l\'adhésion au groupe',
         success: false,
       });
       setTimeout(() => setInviteToast(null), 6000);
@@ -1617,23 +1682,6 @@ export default function App() {
             return g;
           })
         );
-        if (res.expenses) {
-          setExpenses((prev) => {
-            const others = prev.filter((e) => e.groupId !== groupId);
-            return [...others, ...res.expenses!];
-          });
-        }
-        if (res.settlements) {
-          setSettlements((prev) => {
-            const others = prev.filter((s) => s.groupId !== groupId);
-            return [...others, ...res.settlements!];
-          });
-        }
-        setInviteToast({
-          text: `Le membre a été converti en participant sans compte. Ses dépenses et dettes sont intégralement préservées ! ⚖️`,
-          success: true,
-        });
-        setTimeout(() => setInviteToast(null), 6000);
       } else {
         setGroups((prev) =>
           prev.map((g) => {
@@ -1649,8 +1697,32 @@ export default function App() {
           })
         );
       }
+
+      if (res.expenses) {
+        setExpenses((prev) => {
+          const others = prev.filter((e) => e.groupId !== groupId);
+          return [...others, ...res.expenses!];
+        });
+      }
+      if (res.settlements) {
+        setSettlements((prev) => {
+          const others = prev.filter((s) => s.groupId !== groupId);
+          return [...others, ...res.settlements!];
+        });
+      }
+
+      setInviteToast({
+        text: `Le membre a été retiré et toutes ses dettes ont été automatiquement soldées pour préserver l'équilibre des comptes ! ⚖️`,
+        success: true,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
     } catch (err: any) {
       console.error('Error removing group member in PostgreSQL:', err);
+      setInviteToast({
+        text: err.message || 'Erreur lors du retrait du membre',
+        success: false,
+      });
+      setTimeout(() => setInviteToast(null), 6000);
     }
   };
 
@@ -2534,6 +2606,7 @@ export default function App() {
           virtualMembers={inviteReconcileData.virtualMembers}
           currentUser={currentUser}
           onConfirmMerge={handleConfirmInviteMerge}
+          onContinueAsNew={handleContinueAsNewMember}
         />
       )}
     </div>

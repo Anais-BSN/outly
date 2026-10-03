@@ -217,7 +217,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
                   Confirmer l'exclusion de {confirmMember.firstName || confirmMember.name} ?
                 </p>
                 <p className="text-[11px] opacity-80 mt-0.5">
-                  Ce participant sera retiré du groupe "{group.name}". Ses dépenses et historiques resteront conservés dans les comptes.
+                  Ce participant sera retiré du groupe "{group.name}". Toutes ses dettes dues aux autres membres seront automatiquement soldées pour préserver l'équilibre strict des comptes.
                 </p>
               </div>
             </div>
