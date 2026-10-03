@@ -44,6 +44,7 @@ import {
   clearNativeSession,
   initPushNotifications,
   triggerHaptic,
+  setupAppUrlListener,
 } from './services/nativeService';
 import {
   TabType,
@@ -639,46 +640,62 @@ export default function App() {
     loadData();
   }, [loadData]);
 
-  // Handle URL deep-links & SPA routes (/reset-password, /invite/:token, /join/:token)
+  // Handle URL deep-links & SPA routes (/reset-password, /invite/:token, /join/:token, /join/group-...)
   useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      const pathname = window.location.pathname;
-      const tokenParam = url.searchParams.get('token');
-
-      // 1. Password reset route (supports /reset-password, /reset-password?token=..., /reset-password/:token, or ?token=...)
-      if (pathname === '/reset-password' || pathname.startsWith('/reset-password/') || (tokenParam && !pathname.startsWith('/invite') && !pathname.startsWith('/join'))) {
-        const token = tokenParam || (pathname.startsWith('/reset-password') ? pathname.replace('/reset-password', '').replace(/^\//, '') : null);
-        if (token) {
-          setResetPasswordToken(token);
-          setIsResetPasswordOpen(true);
-          setIsAuthOpen(false);
-          return;
+    const handleIncomingUrl = (urlString: string) => {
+      try {
+        let cleanUrlString = urlString;
+        if (cleanUrlString.startsWith('outlys://')) {
+          cleanUrlString = cleanUrlString.replace('outlys://', 'https://www.outlys.fr/');
         }
-      }
+        const url = new URL(cleanUrlString, window.location.origin || 'https://www.outlys.fr');
+        const pathname = url.pathname;
+        const tokenParam = url.searchParams.get('token');
 
-      // 2. Invitation route (/invite/:token, /join/:token, /invite?token=..., /join?token=...)
-      let inviteToken: string | null = null;
-      if (pathname.startsWith('/invite/')) {
-        inviteToken = pathname.replace('/invite/', '').split('/')[0];
-      } else if (pathname.startsWith('/join/')) {
-        const segments = pathname.replace('/join/', '').split('/');
-        if (tokenParam) {
+        // 1. Password reset route (supports /reset-password, /reset-password?token=..., /reset-password/:token, or ?token=...)
+        if (pathname === '/reset-password' || pathname.startsWith('/reset-password/') || (tokenParam && !pathname.startsWith('/invite') && !pathname.startsWith('/join'))) {
+          const token = tokenParam || (pathname.startsWith('/reset-password') ? pathname.replace('/reset-password', '').replace(/^\//, '') : null);
+          if (token) {
+            setResetPasswordToken(token);
+            setIsResetPasswordOpen(true);
+            setIsAuthOpen(false);
+            return;
+          }
+        }
+
+        // 2. Invitation route (/invite/:token, /join/:token, /join/group-..., /invite?token=..., /join?token=...)
+        let inviteToken: string | null = null;
+        if (pathname.startsWith('/invite/')) {
+          inviteToken = pathname.replace('/invite/', '').split('/')[0];
+        } else if (pathname.startsWith('/join/')) {
+          const segments = pathname.replace('/join/', '').split('/');
+          if (tokenParam) {
+            inviteToken = tokenParam;
+          } else if (segments[0] && segments[0].length > 0) {
+            inviteToken = segments[0];
+          }
+        } else if (tokenParam && (pathname === '/invite' || pathname === '/join' || pathname === '/')) {
           inviteToken = tokenParam;
-        } else if (segments[0] && segments[0].length > 5) {
-          inviteToken = segments[0];
         }
-      } else if (tokenParam && (pathname === '/invite' || pathname === '/join' || pathname === '/')) {
-        inviteToken = tokenParam;
-      }
 
-      if (inviteToken) {
-        setPendingInviteToken(inviteToken);
-        localStorage.setItem('outly_pending_invite', inviteToken);
+        if (inviteToken) {
+          setPendingInviteToken(inviteToken);
+          localStorage.setItem('outly_pending_invite', inviteToken);
+        }
+      } catch (err) {
+        console.error('Error parsing deep-link route:', err);
       }
-    } catch (err) {
-      console.error('Error parsing deep-link route:', err);
-    }
+    };
+
+    handleIncomingUrl(window.location.href);
+
+    const cleanup = setupAppUrlListener((incomingUrl) => {
+      handleIncomingUrl(incomingUrl);
+    });
+
+    return () => {
+      cleanup();
+    };
   }, []);
 
   // Process pending invitation once user is authenticated

@@ -1592,262 +1592,122 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       [groupId, userId]
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === "admin";
-    await query(
-      `UPDATE debt_settlements
-       SET status = 'settled', settled_at = COALESCE(settled_at, NOW()), updated_at = NOW()
-       WHERE group_id = $1 AND from_user_id = $2 AND status != 'settled'`,
-      [groupId, userId]
-    );
-    try {
-      const allGroupExpensesRes = await query(
-        `SELECT id, amount::float as amount, paid_by_id as "paidById", split_mode as "splitMode",
-                participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
-         FROM expenses
-         WHERE group_id = $1`,
-        [groupId]
-      );
-      const allGroupMembersRes = await query(
-        `SELECT gm.user_id as "userId", u.first_name as "firstName", u.last_name as "lastName", COALESCE(u.shares, 1) as shares
-         FROM group_members gm
-         JOIN users u ON gm.user_id = u.id
-         WHERE gm.group_id = $1`,
-        [groupId]
-      );
-      const allSettledDebtsRes = await query(
-        `SELECT id, from_user_id as "fromUserId", to_user_id as "toUserId", amount::float as amount
-         FROM debt_settlements
-         WHERE group_id = $1 AND status = 'settled'`,
-        [groupId]
-      );
-      const balanceMap = {};
-      allGroupMembersRes.rows.forEach((m) => {
-        balanceMap[m.userId] = {
-          paidCents: 0,
-          shareCents: 0,
-          reimbursedPaidCents: 0,
-          reimbursedReceivedCents: 0
-        };
-      });
-      allGroupExpensesRes.rows.forEach((exp) => {
-        const expAmount = Number(exp.amount) || 0;
-        const expCents = Math.round(expAmount * 100);
-        if (expCents <= 0) return;
-        const payerId = exp.paidById;
-        if (!balanceMap[payerId]) {
-          balanceMap[payerId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
-        }
-        balanceMap[payerId].paidCents += expCents;
-        let partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
-        if (partIds.length === 0) {
-          partIds = Object.keys(balanceMap);
-        }
-        if (partIds.length === 0) return;
-        const sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
-        if (exp.splitMode === "shares" || Object.keys(sharesSnap).length > 0) {
-          let totalShares = 0;
-          partIds.forEach((pid) => {
-            totalShares += Number(sharesSnap[pid]) || 1;
-          });
-          totalShares = Math.max(1, totalShares);
-          let distributedCents = 0;
-          partIds.forEach((pid, idx) => {
-            if (!balanceMap[pid]) {
-              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
-            }
-            let partCents;
-            if (idx === partIds.length - 1) {
-              partCents = expCents - distributedCents;
-            } else {
-              const userShare = Number(sharesSnap[pid]) || 1;
-              partCents = Math.round(expCents * userShare / totalShares);
-              distributedCents += partCents;
-            }
-            balanceMap[pid].shareCents += partCents;
-          });
-        } else {
-          const baseCents = Math.floor(expCents / partIds.length);
-          const remainderCents = expCents % partIds.length;
-          partIds.forEach((pid, idx) => {
-            if (!balanceMap[pid]) {
-              balanceMap[pid] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
-            }
-            const partCents = baseCents + (idx < remainderCents ? 1 : 0);
-            balanceMap[pid].shareCents += partCents;
-          });
-        }
-      });
-      allSettledDebtsRes.rows.forEach((sett) => {
-        const sCents = Math.round((Number(sett.amount) || 0) * 100);
-        if (sCents <= 0) return;
-        if (!balanceMap[sett.fromUserId]) {
-          balanceMap[sett.fromUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
-        }
-        if (!balanceMap[sett.toUserId]) {
-          balanceMap[sett.toUserId] = { paidCents: 0, shareCents: 0, reimbursedPaidCents: 0, reimbursedReceivedCents: 0 };
-        }
-        balanceMap[sett.fromUserId].reimbursedPaidCents += sCents;
-        balanceMap[sett.toUserId].reimbursedReceivedCents += sCents;
-      });
-      const debtorList = [];
-      const creditorList = [];
-      Object.entries(balanceMap).forEach(([uid, b]) => {
-        const netCents = b.paidCents - b.shareCents + b.reimbursedPaidCents - b.reimbursedReceivedCents;
-        if (netCents < 0) {
-          debtorList.push({ id: uid, remainingCents: -netCents });
-        } else if (netCents > 0) {
-          creditorList.push({ id: uid, remainingCents: netCents });
-        }
-      });
-      debtorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
-      creditorList.sort((a, b) => b.remainingCents - a.remainingCents || a.id.localeCompare(b.id));
-      let dIdx = 0;
-      let cIdx = 0;
-      while (dIdx < debtorList.length && cIdx < creditorList.length) {
-        const debtor = debtorList[dIdx];
-        const creditor = creditorList[cIdx];
-        const settleCents = Math.min(debtor.remainingCents, creditor.remainingCents);
-        if (settleCents > 0 && debtor.id === userId) {
-          const debtAmount = settleCents / 100;
-          const settleId = `settle_${groupId}_${debtor.id}_${creditor.id}`;
-          await query(
-            `INSERT INTO debt_settlements (id, group_id, from_user_id, to_user_id, amount, status, settled_at, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, 'settled', NOW(), NOW(), NOW())
-             ON CONFLICT (id) DO UPDATE SET status = 'settled', amount = EXCLUDED.amount, settled_at = NOW(), updated_at = NOW()`,
-            [settleId, groupId, debtor.id, creditor.id, debtAmount]
-          );
-        }
-        debtor.remainingCents -= settleCents;
-        creditor.remainingCents -= settleCents;
-        if (debtor.remainingCents === 0) dIdx++;
-        if (creditor.remainingCents === 0) cIdx++;
-      }
-    } catch (debtSettleErr) {
-      console.error("Erreur lors du soldage automatique des dettes du membre supprim\xE9:", debtSettleErr);
-    }
     const isRealUser = !userId.startsWith("user-virt-");
     let hasFinancialOrActivityFootprint = false;
-    if (isRealUser) {
-      const expensesPaidRes = await query(
-        `SELECT COUNT(*) as count FROM expenses WHERE group_id = $1 AND paid_by_id = $2`,
-        [groupId, userId]
-      );
-      const settlementsRes = await query(
-        `SELECT COUNT(*) as count FROM debt_settlements WHERE group_id = $1 AND (from_user_id = $2 OR to_user_id = $2)`,
-        [groupId, userId]
-      );
-      const allExpensesRes = await query(
-        `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot" FROM expenses WHERE group_id = $1`,
-        [groupId]
-      );
-      const hasExpenseParticipation = allExpensesRes.rows.some((exp) => {
-        const partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
-        const sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
-        return partIds.includes(userId) || sharesSnap[userId] !== void 0;
-      });
-      hasFinancialOrActivityFootprint = Number(expensesPaidRes.rows[0]?.count || 0) > 0 || Number(settlementsRes.rows[0]?.count || 0) > 0 || hasExpenseParticipation;
-    }
+    const expensesPaidRes = await query(
+      `SELECT COUNT(*) as count FROM expenses WHERE group_id = $1 AND paid_by_id = $2`,
+      [groupId, userId]
+    );
+    const settlementsRes = await query(
+      `SELECT COUNT(*) as count FROM debt_settlements WHERE group_id = $1 AND (from_user_id = $2 OR to_user_id = $2)`,
+      [groupId, userId]
+    );
+    const allExpensesRes = await query(
+      `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot" FROM expenses WHERE group_id = $1`,
+      [groupId]
+    );
+    const hasExpenseParticipation = allExpensesRes.rows.some((exp) => {
+      const partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+      const sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
+      return partIds.includes(userId) || sharesSnap[userId] !== void 0;
+    });
+    hasFinancialOrActivityFootprint = Number(expensesPaidRes.rows[0]?.count || 0) > 0 || Number(settlementsRes.rows[0]?.count || 0) > 0 || hasExpenseParticipation;
     let virtualMemberData = null;
     let updatedExpenses = [];
     let updatedSettlements = [];
-    if (isRealUser && hasFinancialOrActivityFootprint) {
-      const userRes = await query(
-        `SELECT id, first_name as "firstName", last_name as "lastName", handle, avatar, shares FROM users WHERE id = $1`,
-        [userId]
-      );
-      const user = userRes.rows[0] || {};
-      const frozenFirstName = user.firstName || (user.handle ? user.handle.replace("@", "") : "Membre");
-      const frozenLastName = user.lastName || "";
-      const frozenFullName = `${frozenFirstName} ${frozenLastName}`.trim();
-      const frozenAvatar = user.avatar || "/Avatar_Herisson.jpg";
-      const frozenShares = user.shares || 1;
-      const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const randomHandle = `@${frozenFirstName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Math.random().toString(36).substring(2, 6)}`;
-      const dummyEmail = `${virtualUserId}@outlys.local`;
-      await query(
-        `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-        [virtualUserId, frozenFirstName, frozenLastName, dummyEmail, randomHandle, frozenAvatar, frozenShares]
-      );
-      await query(
-        `UPDATE expenses
-         SET paid_by_id = $1
-         WHERE group_id = $2 AND paid_by_id = $3`,
-        [virtualUserId, groupId, userId]
-      );
-      const expensesRes = await query(
-        `SELECT id, participant_ids as "participantIds", shares_snapshot as "sharesSnapshot"
-         FROM expenses
-         WHERE group_id = $1`,
-        [groupId]
-      );
-      for (const exp of expensesRes.rows) {
-        let partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
-        let sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
-        let changed = false;
-        if (partIds.includes(userId)) {
-          partIds = partIds.map((id) => id === userId ? virtualUserId : id);
-          partIds = [...new Set(partIds)];
-          changed = true;
-        }
-        if (sharesSnap[userId] !== void 0) {
-          const userShare = sharesSnap[userId];
-          delete sharesSnap[userId];
-          if (sharesSnap[virtualUserId] === void 0) {
-            sharesSnap[virtualUserId] = userShare;
+    if (hasFinancialOrActivityFootprint) {
+      if (isRealUser) {
+        const userRes = await query(
+          `SELECT id, shares FROM users WHERE id = $1`,
+          [userId]
+        );
+        const user = userRes.rows[0] || {};
+        const frozenShares = user.shares || 1;
+        const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const dummyEmail = `${virtualUserId}@outlys.local`;
+        await query(
+          `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+          [virtualUserId, "Utilisateur", "supprim\xE9", dummyEmail, "@supprime", "/Avatar_Herisson.jpg", frozenShares]
+        );
+        await query(
+          `UPDATE expenses
+           SET paid_by_id = $1
+           WHERE group_id = $2 AND paid_by_id = $3`,
+          [virtualUserId, groupId, userId]
+        );
+        for (const exp of allExpensesRes.rows) {
+          let partIds = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+          let sharesSnap = exp.sharesSnapshot && typeof exp.sharesSnapshot === "object" ? exp.sharesSnapshot : {};
+          let changed = false;
+          if (partIds.includes(userId)) {
+            partIds = partIds.map((id) => id === userId ? virtualUserId : id);
+            partIds = [...new Set(partIds)];
+            changed = true;
           }
-          changed = true;
+          if (sharesSnap[userId] !== void 0) {
+            const userShare = sharesSnap[userId];
+            delete sharesSnap[userId];
+            if (sharesSnap[virtualUserId] === void 0) {
+              sharesSnap[virtualUserId] = userShare;
+            }
+            changed = true;
+          }
+          if (changed) {
+            await query(
+              `UPDATE expenses
+               SET participant_ids = $1, shares_snapshot = $2
+               WHERE id = $3`,
+              [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
+            );
+          }
         }
-        if (changed) {
-          await query(
-            `UPDATE expenses
-             SET participant_ids = $1, shares_snapshot = $2
-             WHERE id = $3`,
-            [JSON.stringify(partIds), JSON.stringify(sharesSnap), exp.id]
-          );
-        }
+        await query(
+          `UPDATE debt_settlements
+           SET from_user_id = $1
+           WHERE group_id = $2 AND from_user_id = $3`,
+          [virtualUserId, groupId, userId]
+        );
+        await query(
+          `UPDATE debt_settlements
+           SET to_user_id = $1
+           WHERE group_id = $2 AND to_user_id = $3`,
+          [virtualUserId, groupId, userId]
+        );
+        await query(
+          `UPDATE logistics_tasks
+           SET assigned_to_id = $1
+           WHERE group_id = $2 AND assigned_to_id = $3`,
+          [virtualUserId, groupId, userId]
+        );
+        await query(
+          `UPDATE event_rsvps
+           SET user_id = $1
+           WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
+          [virtualUserId, userId, groupId]
+        );
+        await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
+        virtualMemberData = {
+          id: virtualUserId,
+          userId: virtualUserId,
+          firstName: "Utilisateur",
+          lastName: "supprim\xE9",
+          name: "Utilisateur supprim\xE9",
+          handle: "@supprime",
+          avatar: "/Avatar_Herisson.jpg",
+          shares: frozenShares,
+          role: "member",
+          isVirtual: true
+        };
+      } else {
+        await query(
+          `UPDATE users
+           SET first_name = 'Utilisateur', last_name = 'supprim\xE9', handle = '@supprime'
+           WHERE id = $1`,
+          [userId]
+        );
+        await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
       }
-      await query(
-        `UPDATE debt_settlements
-         SET from_user_id = $1
-         WHERE group_id = $2 AND from_user_id = $3`,
-        [virtualUserId, groupId, userId]
-      );
-      await query(
-        `UPDATE debt_settlements
-         SET to_user_id = $1
-         WHERE group_id = $2 AND to_user_id = $3`,
-        [virtualUserId, groupId, userId]
-      );
-      await query(
-        `UPDATE logistics_tasks
-         SET assigned_to_id = $1
-         WHERE group_id = $2 AND assigned_to_id = $3`,
-        [virtualUserId, groupId, userId]
-      );
-      await query(
-        `UPDATE event_rsvps
-         SET user_id = $1
-         WHERE user_id = $2 AND event_id IN (SELECT id FROM events WHERE group_id = $3)`,
-        [virtualUserId, userId, groupId]
-      );
-      await query(
-        `INSERT INTO group_members (group_id, user_id, role, joined_at)
-         VALUES ($1, $2, 'member', NOW())`,
-        [groupId, virtualUserId]
-      );
-      await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
-      virtualMemberData = {
-        id: virtualUserId,
-        userId: virtualUserId,
-        firstName: frozenFirstName,
-        lastName: frozenLastName,
-        name: frozenFullName,
-        handle: randomHandle,
-        avatar: frozenAvatar,
-        shares: frozenShares,
-        role: "member",
-        isVirtual: true
-      };
     } else {
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
       if (userId.startsWith("user-virt-")) {
@@ -3348,6 +3208,8 @@ apiRouter.post("/invitations/send-email", async (req, res) => {
 apiRouter.get("/invitations/:token", async (req, res) => {
   try {
     const { token } = req.params;
+    const cleanId = token.replace(/^group-/, "");
+    const altGroupId = `group-${cleanId}`;
     const invRes = await query(
       `SELECT i.id, i.token, i.email, i.group_id as "groupId", i.inviter_id as "inviterId",
               i.type, i.status, i.created_at as "createdAt",
@@ -3366,8 +3228,8 @@ apiRouter.get("/invitations/:token", async (req, res) => {
       `SELECT g.id as "groupId", g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
               'group' as "type", 'active' as "status", g.created_at as "createdAt"
        FROM groups g
-       WHERE g.id = $1`,
-      [token]
+       WHERE g.id = $1 OR g.id = $2 OR g.id = $3`,
+      [token, cleanId, altGroupId]
     );
     if (groupRes.rows.length > 0) {
       return res.json({
@@ -3386,6 +3248,8 @@ apiRouter.post("/invitations/:token/accept", async (req, res) => {
   try {
     const { token } = req.params;
     const { userId = "user-me" } = req.body;
+    const cleanId = token.replace(/^group-/, "");
+    const altGroupId = `group-${cleanId}`;
     const invRes = await query(
       `SELECT id, token, email, group_id as "groupId", inviter_id as "inviterId", type, status
        FROM invitations
@@ -3397,8 +3261,9 @@ apiRouter.post("/invitations/:token/accept", async (req, res) => {
       invitation = invRes.rows[0];
     } else {
       const groupRes = await query(
-        `SELECT id as "groupId", name as "groupName", 'group' as "type", 'active' as "status" FROM groups WHERE id = $1`,
-        [token]
+        `SELECT id as "groupId", name as "groupName", 'group' as "type", 'active' as "status"
+         FROM groups WHERE id = $1 OR id = $2 OR id = $3`,
+        [token, cleanId, altGroupId]
       );
       if (groupRes.rows.length > 0) {
         invitation = groupRes.rows[0];
@@ -3414,6 +3279,38 @@ apiRouter.post("/invitations/:token/accept", async (req, res) => {
          ON CONFLICT (group_id, user_id) DO NOTHING`,
         [invitation.groupId, userId]
       );
+      const updatedGroupRes = await query(
+        `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
+         FROM groups g WHERE g.id = $1`,
+        [invitation.groupId]
+      );
+      const membersRes = await query(
+        `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+                concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+         FROM group_members gm
+         JOIN users u ON gm.user_id = u.id
+         WHERE gm.group_id = $1`,
+        [invitation.groupId]
+      );
+      const fullGroup = {
+        ...updatedGroupRes.rows[0],
+        members: membersRes.rows
+      };
+      realtimeBroadcaster.broadcast({
+        type: "group:updated",
+        groupId: invitation.groupId,
+        data: fullGroup
+      });
+      const addedMember = membersRes.rows.find((m) => (m.userId || m.id) === userId);
+      realtimeBroadcaster.broadcast({
+        type: "group:member_added",
+        groupId: invitation.groupId,
+        data: {
+          groupId: invitation.groupId,
+          userId,
+          member: addedMember || { id: userId, userId, role: "member" }
+        }
+      });
     }
     if (invitation.type === "friend" && invitation.inviterId && invitation.inviterId !== userId) {
       await query(

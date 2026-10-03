@@ -124,7 +124,8 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     );
   });
 
-  const inviteLink = `${window.location.origin}/join/${group.id}`;
+  const cleanGroupId = group.id.startsWith('group-') ? group.id : `group-${group.id}`;
+  const inviteLink = `https://www.outlys.fr/join/${cleanGroupId}`;
 
   const handleShareLink = async () => {
     const result = await shareGroupInvite({
@@ -239,7 +240,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
       const count = result.count || emails.length;
       setFeedbackMsg({
         type: 'success',
-        text: `${count} invitation${count > 1 ? 's ont été envoyées' : ' a été envoyée'} avec succès via Resend ! ✉️`,
+        text: `${count} invitation${count > 1 ? 's ont été envoyées' : ' a été envoyée'} avec succès ! ✉️`,
       });
       setEmails([]);
     } catch (err: any) {
@@ -552,11 +553,11 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                   </div>
                 </div>
 
-                {/* Resend Email Invitation Section Multi-Destinataires */}
+                {/* Email Invitation Section Multi-Destinataires */}
                 <form onSubmit={handleSendEmailInvite} className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                      Inviter par e-mail (via Resend)
+                      Inviter par e-mail
                     </label>
                     {emails.length > 0 && (
                       <span className="text-[11px] font-bold text-[#6D2932] dark:text-amber-300">

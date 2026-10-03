@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp, URLOpenListenerEvent } from '@capacitor/app';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Preferences } from '@capacitor/preferences';
 import { Share } from '@capacitor/share';
@@ -281,4 +282,31 @@ export const initPushNotifications = async (
     // Capture d'erreur absolue : l'application ne plantera jamais sur un échec push
     console.warn('[Push] Erreur non bloquante lors de l\'initialisation des notifications push:', err?.message || err);
   }
+};
+
+/* =========================================================================
+   5. DEEP LINKING (Interception des URL / Liens d'invitation natifs)
+   ========================================================================= */
+
+export const setupAppUrlListener = (onUrlOpen: (url: string) => void): (() => void) => {
+  let removeListener: (() => void) | null = null;
+  try {
+    if (isNativePlatform()) {
+      const handleListener = CapApp.addListener('appUrlOpen', (data: URLOpenListenerEvent) => {
+        if (data && data.url) {
+          console.log('[DeepLink] Lien externe ouvert dans l\'application:', data.url);
+          onUrlOpen(data.url);
+        }
+      });
+      removeListener = () => {
+        handleListener.then((handle) => handle.remove()).catch(() => {});
+      };
+    }
+  } catch (err) {
+    console.warn('[DeepLink] Erreur lors de l\'initialisation de appUrlOpen:', err);
+  }
+
+  return () => {
+    if (removeListener) removeListener();
+  };
 };

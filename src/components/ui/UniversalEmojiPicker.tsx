@@ -44,15 +44,11 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Focus automatique du champ de recherche à l'ouverture
+  // Réinitialisation de la recherche et de la catégorie à l'ouverture (sans auto-focus intempestif)
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
       setActiveCategory('smileys');
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -232,13 +228,6 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         } text-[#27272A] dark:text-[#FFF9EB]`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Handle bar pour mobile / bottom sheet */}
-        {useBottomSheet && (
-          <div className="flex justify-center pb-2">
-            <div className="w-12 h-1.5 rounded-full bg-[#C7B7A3]/60 dark:bg-zinc-700" />
-          </div>
-        )}
-
         {/* En-tête avec titre et bouton fermer */}
         <div className="flex items-center justify-between gap-2 mb-3 px-1 shrink-0">
           <div className="flex items-center gap-2">
@@ -266,9 +255,10 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
           <input
             ref={searchInputRef}
             type="text"
+            autoFocus={false}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un émoji (ex: rire, coeur, bière, feu, pouce)..."
+            placeholder="Rechercher un émoji"
             className="w-full pl-9 pr-8 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/90 border border-[#C7B7A3] dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/50 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
           />
           {searchQuery && (
@@ -276,7 +266,6 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                searchInputRef.current?.focus();
               }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/10 text-zinc-500 cursor-pointer"
             >
@@ -299,10 +288,10 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                   data-cat-id={cat.id}
                   type="button"
                   onClick={() => handleCategoryTabClick(cat.id)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer font-medium ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer font-medium border ${
                     isActive
-                      ? 'bg-[#5D0D18] text-amber-200 shadow-xs scale-105 ring-1 ring-[#5D0D18]'
-                      : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A]/80 dark:text-zinc-300 hover:bg-[#E8D8C4]'
+                      ? 'bg-[#5D0D18] text-amber-200 border-[#5D0D18] shadow-xs'
+                      : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A]/80 dark:text-zinc-300 border-transparent hover:bg-[#E8D8C4] dark:hover:bg-zinc-700'
                   }`}
                   title={cat.name}
                 >
@@ -383,9 +372,6 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                       <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-200 flex items-center gap-1.5">
                         <span>{cat.icon}</span>
                         <span>{cat.name}</span>
-                      </span>
-                      <span className="text-[10px] text-zinc-400 font-normal">
-                        {list.length}
                       </span>
                     </div>
 
