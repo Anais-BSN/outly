@@ -15,7 +15,7 @@ export interface EmojiItem {
 export const EMOJI_CATEGORIES: { id: string; name: string; icon: string }[] = [
   { id: 'smileys', name: 'Émoticônes', icon: '😀' },
   { id: 'people', name: 'Gestes', icon: '👍' },
-  { id: 'nature', name: 'Animaux & Nature', icon: '🌿' },
+  { id: 'nature', name: 'Animaux & Nature', icon: '🦊' },
   { id: 'food', name: 'Gastronomie', icon: '🍔' },
   { id: 'activities', name: 'Activités', icon: '⚽' },
   { id: 'objects', name: 'Objet', icon: '💡' },
