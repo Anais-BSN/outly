@@ -855,6 +855,65 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
   }
 });
 
+// Récupérer un groupe spécifique avec ses membres actifs (lecture seule)
+apiRouter.get('/groups/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const cleanId = id.replace(/^group-/, '');
+    const altGroupId = `group-${cleanId}`;
+
+    const groupRes = await query(
+      `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
+       FROM groups g
+       WHERE g.id = $1 OR g.id = $2 OR g.id = $3`,
+      [id, cleanId, altGroupId]
+    );
+
+    if (groupRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Groupe introuvable' });
+    }
+
+    const group = groupRes.rows[0];
+    const actualGroupId = group.id;
+
+    const membersRes = await query(
+      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+              COALESCE(u.is_deleted, false) as "isDeleted",
+              Boolean(u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') as "isVirtual"
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
+       ORDER BY gm.joined_at ASC`,
+      [actualGroupId]
+    );
+
+    const members = membersRes.rows.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      name: m.name.trim(),
+      handle: m.handle,
+      avatar: m.avatar,
+      shares: m.shares,
+      role: m.role,
+      isVirtual: Boolean(m.isVirtual),
+      isDeleted: Boolean(m.isDeleted),
+    }));
+
+    res.json({
+      ...group,
+      members,
+    });
+  } catch (err: any) {
+    console.error('Error in GET /groups/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.post('/groups', async (req: Request, res: Response) => {
   try {
     const { name, description, coverImage, creatorId = 'user-me', invitedFriendIds = [] } = req.body;
@@ -1438,11 +1497,21 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === 'admin';
 
-    // 2. Déterminer le prochain numéro d'incrémentation pour « Utilisateur supprimé N »
+    // 2. Déterminer le prochain numéro d'incrémentation pour « Utilisateur supprimé N » dans ce groupe
     const existingDeletedRes = await query(
-      `SELECT first_name, last_name FROM users
-       WHERE (first_name ILIKE 'Utilisateur%' AND (last_name ILIKE 'supprimé%' OR first_name ILIKE 'Utilisateur supprimé%'))
-          OR is_deleted = TRUE`
+      `SELECT DISTINCT u.first_name, u.last_name
+       FROM users u
+       WHERE (
+         u.id IN (SELECT paid_by_id FROM expenses WHERE group_id = $1)
+         OR u.id IN (SELECT from_user_id FROM debt_settlements WHERE group_id = $1)
+         OR u.id IN (SELECT to_user_id FROM debt_settlements WHERE group_id = $1)
+         OR (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprimé%' OR u.first_name ILIKE 'Utilisateur supprimé%'))
+         OR u.is_deleted = TRUE
+       ) AND (
+         (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprimé%' OR u.first_name ILIKE 'Utilisateur supprimé%'))
+         OR u.is_deleted = TRUE
+       )`,
+      [groupId]
     );
     let maxDeletedNum = 0;
     for (const r of existingDeletedRes.rows) {
@@ -1458,6 +1527,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     const nextDeletedNum = maxDeletedNum + 1;
     const deletedFirstName = 'Utilisateur';
     const deletedLastName = `supprimé ${nextDeletedNum}`;
+    const deletedHandle = `@deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     const isRealUser = !userId.startsWith('user-virt-');
 
@@ -1473,11 +1543,11 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       const virtualUserId = `user-virt-del-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const dummyEmail = `${virtualUserId}@outlys.local`;
 
-      // Insérer le participant sous le libellé « Utilisateur supprimé N » avec is_deleted = TRUE
+      // Insérer le participant sous le libellé « Utilisateur supprimé N » avec is_deleted = TRUE et handle unique
       await query(
         `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, is_deleted, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW())`,
-        [virtualUserId, deletedFirstName, deletedLastName, dummyEmail, '@supprime', '/Avatar_Herisson.jpg', frozenShares]
+        [virtualUserId, deletedFirstName, deletedLastName, dummyEmail, deletedHandle, '/Avatar_Herisson.jpg', frozenShares]
       );
 
       // Réattribuer les dépenses payées
@@ -1561,9 +1631,9 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       // Déjà un participant virtuel : anonymiser en 'Utilisateur supprimé N' et marquer is_deleted = TRUE
       await query(
         `UPDATE users
-         SET first_name = $1, last_name = $2, handle = '@supprime', is_deleted = TRUE
-         WHERE id = $3`,
-        [deletedFirstName, deletedLastName, userId]
+         SET first_name = $1, last_name = $2, handle = $3, is_deleted = TRUE
+         WHERE id = $4`,
+        [deletedFirstName, deletedLastName, deletedHandle, userId]
       );
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
     }
@@ -3388,28 +3458,63 @@ apiRouter.get('/invitations/:token', async (req: Request, res: Response) => {
       [token]
     );
 
+    let invitationData: any = null;
     if (invRes.rows.length > 0) {
-      return res.json(invRes.rows[0]);
+      invitationData = invRes.rows[0];
+    } else {
+      // Si non trouvé dans la table invitations, vérifier si le token correspond directement à un groupe valide
+      const groupRes = await query(
+        `SELECT g.id as "groupId", g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
+                'group' as "type", 'active' as "status", g.created_at as "createdAt"
+         FROM groups g
+         WHERE g.id = $1 OR g.id = $2 OR g.id = $3`,
+        [token, cleanId, altGroupId]
+      );
+
+      if (groupRes.rows.length > 0) {
+        invitationData = {
+          id: `inv-${groupRes.rows[0].groupId}`,
+          token,
+          ...groupRes.rows[0],
+        };
+      }
     }
 
-    // Si non trouvé dans la table invitations, vérifier si le token correspond directement à un groupe valide
-    const groupRes = await query(
-      `SELECT g.id as "groupId", g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
-              'group' as "type", 'active' as "status", g.created_at as "createdAt"
-       FROM groups g
-       WHERE g.id = $1 OR g.id = $2 OR g.id = $3`,
-      [token, cleanId, altGroupId]
-    );
-
-    if (groupRes.rows.length > 0) {
-      return res.json({
-        id: `inv-${groupRes.rows[0].groupId}`,
-        token,
-        ...groupRes.rows[0],
-      });
+    if (!invitationData) {
+      return res.status(404).json({ error: 'Invitation introuvable ou expirée' });
     }
 
-    return res.status(404).json({ error: 'Invitation introuvable ou expirée' });
+    if (invitationData.groupId) {
+      const membersRes = await query(
+        `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
+                concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+                COALESCE(u.is_deleted, false) as "isDeleted",
+                Boolean(u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') as "isVirtual"
+         FROM group_members gm
+         JOIN users u ON gm.user_id = u.id
+         WHERE gm.group_id = $1
+           AND COALESCE(u.is_deleted, false) = false
+           AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprimé%')
+         ORDER BY gm.joined_at ASC`,
+        [invitationData.groupId]
+      );
+
+      invitationData.members = membersRes.rows.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        name: m.name.trim(),
+        handle: m.handle,
+        avatar: m.avatar,
+        shares: m.shares,
+        role: m.role,
+        isVirtual: Boolean(m.isVirtual),
+        isDeleted: Boolean(m.isDeleted),
+      }));
+    }
+
+    return res.json(invitationData);
   } catch (err: any) {
     console.error('Error in GET /invitations/:token:', err);
     res.status(500).json({ error: err.message });

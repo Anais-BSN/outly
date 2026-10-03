@@ -712,7 +712,7 @@ export default function App() {
         if (inv.groupId) {
           // 1. Récupérer les données du groupe pour vérifier les membres
           const groupData = await api.getGroup(inv.groupId).catch(() => null);
-          const members = groupData?.members || [];
+          const members: GroupMember[] = groupData?.members || inv.members || [];
           const isAlreadyMember = members.some(
             (m: GroupMember) => (m.userId || m.id) === currentUser.id
           );
