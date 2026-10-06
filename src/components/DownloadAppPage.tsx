@@ -7,6 +7,7 @@ import { UserProfile } from '../types';
 
 interface DownloadAppPageProps {
   onOpenDrawer?: () => void;
+  onGoHome?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   currentUser?: UserProfile;
@@ -14,6 +15,7 @@ interface DownloadAppPageProps {
 
 export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
   onOpenDrawer,
+  onGoHome,
   isDarkMode = false,
 }) => {
   const handleDownloadApk = () => {
@@ -47,15 +49,22 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
             </button>
           </div>
 
-          {/* Center: Brand Logo */}
+          {/* Center: Brand Logo (Clickable to return Home) */}
           <div className="flex items-center justify-center h-full select-none">
-            <div className="h-full py-1.5 flex items-center justify-center bg-transparent border-none p-0">
+            <button
+              type="button"
+              id="download-page-logo-home-btn"
+              onClick={onGoHome}
+              aria-label="Retour à l'accueil"
+              title="Retour à l'accueil"
+              className="h-full py-1.5 flex items-center justify-center bg-transparent border-none p-0 cursor-pointer active:scale-95 transition-transform"
+            >
               <img
                 src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
                 alt="Outlys"
                 className="h-full max-h-12 w-auto object-contain select-none"
               />
-            </div>
+            </button>
           </div>
 
           {/* Right spacer to balance burger menu for strict logo centering */}
@@ -66,14 +75,6 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
       {/* Main Centered Content: Essential Download Card */}
       <main className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full z-10">
         <div className="w-full max-w-md bg-[#FFF9EB]/90 dark:bg-[#18181B]/90 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-[#C7B7A3]/60 dark:border-zinc-800 shadow-xl space-y-6 text-center">
-          {/* Logo Centered in Card */}
-          <div className="flex justify-center pt-2 pb-1">
-            <img
-              src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
-              alt="Outlys"
-              className="h-16 sm:h-20 w-auto object-contain select-none drop-shadow-xs"
-            />
-          </div>
 
           {/* Primary APK Download Action */}
           <div className="space-y-3 pt-1">

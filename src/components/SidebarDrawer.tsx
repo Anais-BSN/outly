@@ -222,7 +222,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-left text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4]/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200">
+                  <div className="p-2 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-800 text-[#5D0D18] dark:text-[#FFF9EB]">
                     <Smartphone className="w-4 h-4" />
                   </div>
                   <span>Installer l'application</span>

@@ -151,14 +151,6 @@ export function calculateExpensesAndDebts(
     const expCents = Math.round(expAmountNum * 100);
     if (expCents <= 0) return;
 
-    totalSpentCents += expCents;
-
-    // Créditer le payeur (créancier initial)
-    const payerBal = getOrCreateInternalBalance(exp.paidById, exp.paidByName, exp.paidByAvatar);
-    if (payerBal) {
-      payerBal.paidExpensesCents += expCents;
-    }
-
     // Déterminer les participants et parts
     const sharesSnapshot = exp.sharesSnapshot || {};
     let participantShareDefs: { userId: string; shares: number; member?: GroupMember }[] = [];
@@ -198,13 +190,25 @@ export function calculateExpensesAndDebts(
 
     const allocatedMap = allocateExpenseSharesInCents(expAmountNum, participantShareDefs);
 
+    // Règle comptable : Le montant total effectif de la dépense est la somme exacte des parts arrondies
+    let totalExpenseSharesCents = 0;
     participantShareDefs.forEach(({ userId, member }) => {
       const partCents = allocatedMap.get(userId) || 0;
+      totalExpenseSharesCents += partCents;
       const partBal = getOrCreateInternalBalance(userId, member?.firstName || member?.name, member?.avatar);
       if (partBal) {
         partBal.shareCents += partCents;
       }
     });
+
+    const effectiveExpCents = totalExpenseSharesCents > 0 ? totalExpenseSharesCents : expCents;
+    totalSpentCents += effectiveExpCents;
+
+    // Créditer le payeur (créancier initial) du montant total effectif (somme exacte des parts)
+    const payerBal = getOrCreateInternalBalance(exp.paidById, exp.paidByName, exp.paidByAvatar);
+    if (payerBal) {
+      payerBal.paidExpensesCents += effectiveExpCents;
+    }
   });
 
   // 3. Application stricte des remboursements déjà soldés en centimes entiers

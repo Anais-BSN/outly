@@ -156,6 +156,17 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     return allocateExpenseSharesInCents(parsedAmount, participantDefs);
   }, [parsedAmount, activeParticipants]);
 
+  // Règle comptable : Recalcul automatique du montant total comme étant la somme exacte des parts arrondies
+  const totalAllocatedCents = React.useMemo(() => {
+    let total = 0;
+    liveAllocatedMap.forEach((cents) => {
+      total += cents;
+    });
+    return total;
+  }, [liveAllocatedMap]);
+
+  const finalAdjustedAmount = totalAllocatedCents > 0 ? totalAllocatedCents / 100 : parsedAmount;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || parsedAmount <= 0 || participantIds.length === 0) return;
@@ -165,7 +176,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const expensePayload: Partial<Expense> = {
       groupId: initialExpense?.groupId || groupId,
       title: title.trim(),
-      amount: parsedAmount,
+      amount: finalAdjustedAmount,
       date: date || new Date().toISOString().split('T')[0],
       category,
       paidById,
@@ -471,7 +482,12 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#6D2932] dark:text-amber-300" />
                 <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200">
-                  Total réparti : {formatCurrency(parsedAmount)}
+                  Total réparti : {formatCurrency(finalAdjustedAmount)}
+                  {finalAdjustedAmount !== parsedAmount && (
+                    <span className="ml-1.5 text-[10px] opacity-80 font-normal">
+                      (ajusté à {formatCurrency(finalAdjustedAmount)})
+                    </span>
+                  )}
                 </span>
               </div>
               <span className="text-xs text-[#27272A]/70 dark:text-zinc-300 font-semibold">

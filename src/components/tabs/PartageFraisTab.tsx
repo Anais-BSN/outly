@@ -21,6 +21,7 @@ import { calculateExpensesAndDebts, allocateExpenseSharesInCents } from '../../u
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
 import { DebtHistoryModal } from '../modals/DebtHistoryModal';
 import { ExpenseDetailModal } from '../modals/ExpenseDetailModal';
+import { ExpenseHistoryModal } from '../modals/ExpenseHistoryModal';
 import { triggerHapticNotification } from '../../services/nativeService';
 
 interface PartageFraisTabProps {
@@ -58,11 +59,12 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   onViewAvatar,
 }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isExpenseHistoryOpen, setIsExpenseHistoryOpen] = useState(false);
   const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
   const [hiddenDebtKeys, setHiddenDebtKeys] = useState<Set<string>>(new Set());
 
-  // Budget Diagram Filters: Time (Mois, Année, Tout) and Scope (Tout le groupe / Mes dépenses)
+  // Budget Diagram Filters: Time (Mois, Année, Tout) and Scope (Tout / Mes dépenses)
   const [timeFilter, setTimeFilter] = useState<'month' | 'year' | 'all'>('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'me'>('all');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
@@ -459,7 +461,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         })()}
       </div>
 
-      {/* Expenses History List */}
+      {/* Expenses History List (Affichage réduit aux 3 dépenses les plus récentes + Bouton Voir plus) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -468,6 +470,18 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               Historique des dépenses
             </h4>
           </div>
+
+          {safeExpenses.length > 3 && (
+            <button
+              type="button"
+              id="frais-header-btn-view-more"
+              onClick={() => setIsExpenseHistoryOpen(true)}
+              className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <span>Tout voir ({safeExpenses.length})</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {safeExpenses.length === 0 ? (
@@ -482,7 +496,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {safeExpenses.map((expense) => {
+            {safeExpenses.slice(0, 3).map((expense) => {
               const isPayerMe = expense.paidById === currentUser.id;
 
               return (
@@ -542,6 +556,21 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 </div>
               );
             })}
+
+            {/* Bouton Voir plus (style visuel identique à l'historique d'activité) */}
+            {safeExpenses.length > 3 && (
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  id="frais-btn-view-more-expenses"
+                  onClick={() => setIsExpenseHistoryOpen(true)}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <History className="w-4 h-4 stroke-[2.2]" />
+                  <span>Voir plus ({safeExpenses.length} dépenses)</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -561,23 +590,50 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </span>
         </div>
 
-        {/* Filter Controls: Time Filters (Mois, Année, Tout), Period Stepper (‹ Mois › / ‹ Année ›) & Scope Switch (Tout le groupe / Mes dépenses) */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 pb-1 border-y border-[#C7B7A3]/40 dark:border-zinc-700/60">
-          {/* Left Group: Mode Buttons + Stepper */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Time Mode Buttons (Mois, Année, Tout) */}
-            <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+        {/* Filter Controls: Scope Switch (Tout / Mes dépenses) + Centered Time Filters (« Tout », « Année », « Mois ») & Centered Stepper */}
+        <div className="flex flex-col items-center gap-3 pt-2 pb-2 border-y border-[#C7B7A3]/40 dark:border-zinc-700/60">
+          {/* 1. Scope Switch (Tout / Mes dépenses) */}
+          <div className="flex items-center justify-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+            <button
+              type="button"
+              id="budget-scope-all-btn"
+              onClick={() => setScopeFilter('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scopeFilter === 'all'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Tout
+            </button>
+            <button
+              type="button"
+              id="budget-scope-me-btn"
+              onClick={() => setScopeFilter('me')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scopeFilter === 'me'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Mes dépenses
+            </button>
+          </div>
+
+          {/* 2. Centered Time Filters Block (« Tout », « Année », « Mois ») */}
+          <div className="flex items-center justify-center w-full">
+            <div className="flex items-center justify-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
               <button
                 type="button"
-                id="budget-filter-month-btn"
-                onClick={() => setTimeFilter('month')}
+                id="budget-filter-all-time-btn"
+                onClick={() => setTimeFilter('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeFilter === 'month'
+                  timeFilter === 'all'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
                     : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
                 }`}
               >
-                Mois
+                Tout
               </button>
               <button
                 type="button"
@@ -593,21 +649,23 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               </button>
               <button
                 type="button"
-                id="budget-filter-all-time-btn"
-                onClick={() => setTimeFilter('all')}
+                id="budget-filter-month-btn"
+                onClick={() => setTimeFilter('month')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeFilter === 'all'
+                  timeFilter === 'month'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
                     : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
                 }`}
               >
-                Tout
+                Mois
               </button>
             </div>
+          </div>
 
-            {/* Stepper with arrows (‹ Mois › / ‹ Année ›) */}
-            {timeFilter !== 'all' && (
-              <div className="flex items-center gap-1 bg-[#FFF9EB]/90 dark:bg-zinc-900/80 px-2 py-1 rounded-xl border border-[#C7B7A3]/50 dark:border-zinc-700/80 shadow-2xs">
+          {/* 3. Centered Period Stepper with arrows (‹ Mois › / ‹ Année ›) */}
+          {timeFilter !== 'all' && (
+            <div className="flex items-center justify-center w-full">
+              <div className="flex items-center justify-center gap-1 bg-[#FFF9EB]/90 dark:bg-zinc-900/80 px-2 py-1 rounded-xl border border-[#C7B7A3]/50 dark:border-zinc-700/80 shadow-2xs">
                 <button
                   type="button"
                   id="budget-stepper-prev-btn"
@@ -618,7 +676,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 >
                   <ChevronLeft className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>
-                <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] px-1.5 min-w-[75px] text-center select-none">
+                <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] px-2 min-w-[85px] text-center select-none">
                   {formattedPeriodLabel}
                 </span>
                 <button
@@ -632,36 +690,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                   <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Scope Filter Switch */}
-          <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
-            <button
-              type="button"
-              id="budget-scope-all-btn"
-              onClick={() => setScopeFilter('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                scopeFilter === 'all'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
-              }`}
-            >
-              Tout le groupe
-            </button>
-            <button
-              type="button"
-              id="budget-scope-me-btn"
-              onClick={() => setScopeFilter('me')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                scopeFilter === 'me'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
-              }`}
-            >
-              Mes dépenses
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {categoryBreakdown.length === 0 ? (
@@ -731,6 +761,18 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         settlements={safeSettlements}
         members={safeMembers}
         currentUser={currentUser}
+        onViewAvatar={onViewAvatar}
+      />
+
+      {/* Modal Vue dédiée : Historique complet des dépenses */}
+      <ExpenseHistoryModal
+        isOpen={isExpenseHistoryOpen}
+        onClose={() => setIsExpenseHistoryOpen(false)}
+        expenses={safeExpenses}
+        members={safeMembers}
+        currentUser={currentUser}
+        onSelectExpense={(exp) => setSelectedExpenseForDetail(exp)}
+        onOpenAddExpense={onOpenAddExpense}
         onViewAvatar={onViewAvatar}
       />
 

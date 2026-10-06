@@ -1398,7 +1398,7 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistic UI update
+    // 1. Instantaneous optimistic state update
     setExpenses((prev) => [optimisticExp, ...prev]);
 
     try {
@@ -1414,32 +1414,31 @@ export default function App() {
         sharesSnapshot: expenseData.sharesSnapshot || {},
       });
 
+      // 2. Immediate direct state update with the real server entity
       setExpenses((prev) => {
-        const alreadyHasDbItem = prev.some((e) => e.id === newExp.id);
-        if (alreadyHasDbItem) {
-          return prev.filter((e) => e.id !== tempId);
-        }
-        return prev.map((exp) => (exp.id === tempId ? newExp : exp));
+        const filtered = prev.filter((e) => e.id !== tempId && e.id !== newExp.id);
+        return [newExp, ...filtered];
       });
 
-      // Immediate cache invalidation & re-fetching
-      api.getExpenses(activeGroupId).then((freshExps) => {
-        if (Array.isArray(freshExps)) {
-          setExpenses((prev) => {
-            const others = prev.filter((e) => e.groupId !== activeGroupId);
-            return [...freshExps, ...others];
-          });
-        }
-      }).catch(() => {});
-      api.getSettlements(activeGroupId).then((freshSettlements) => {
-        if (Array.isArray(freshSettlements)) {
-          setSettlements((prev) => {
-            const freshIds = new Set(freshSettlements.map((s) => s.id));
-            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-            return [...freshSettlements, ...others];
-          });
-        }
-      }).catch(() => {});
+      // 3. Forced immediate re-fetching of all expenses & settlements (no reliance on SSE)
+      const [freshExps, freshSettlements] = await Promise.all([
+        api.getExpenses(activeGroupId).catch(() => null),
+        api.getSettlements(activeGroupId).catch(() => null),
+      ]);
+
+      if (Array.isArray(freshExps)) {
+        setExpenses((prev) => {
+          const others = prev.filter((e) => e.groupId !== activeGroupId);
+          return [...freshExps, ...others];
+        });
+      }
+      if (Array.isArray(freshSettlements)) {
+        setSettlements((prev) => {
+          const freshIds = new Set(freshSettlements.map((s) => s.id));
+          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+          return [...freshSettlements, ...others];
+        });
+      }
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
       setExpenses((prev) => prev.filter((exp) => exp.id !== tempId));
@@ -1450,7 +1449,7 @@ export default function App() {
     if (!currentUser || !activeGroupId) return;
     triggerHaptic('medium');
 
-    // Optimistic UI update
+    // 1. Instantaneous optimistic state update
     setExpenses((prev) =>
       prev.map((exp) => (exp.id === expenseId ? { ...exp, ...expenseData } as Expense : exp))
     );
@@ -1461,24 +1460,25 @@ export default function App() {
         prev.map((exp) => (exp.id === expenseId ? updated : exp))
       );
 
-      // Immediate cache invalidation & re-fetching
-      api.getExpenses(activeGroupId).then((freshExps) => {
-        if (Array.isArray(freshExps)) {
-          setExpenses((prev) => {
-            const others = prev.filter((e) => e.groupId !== activeGroupId);
-            return [...freshExps, ...others];
-          });
-        }
-      }).catch(() => {});
-      api.getSettlements(activeGroupId).then((freshSettlements) => {
-        if (Array.isArray(freshSettlements)) {
-          setSettlements((prev) => {
-            const freshIds = new Set(freshSettlements.map((s) => s.id));
-            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-            return [...freshSettlements, ...others];
-          });
-        }
-      }).catch(() => {});
+      // 2. Forced immediate re-fetching of all expenses & settlements
+      const [freshExps, freshSettlements] = await Promise.all([
+        api.getExpenses(activeGroupId).catch(() => null),
+        api.getSettlements(activeGroupId).catch(() => null),
+      ]);
+
+      if (Array.isArray(freshExps)) {
+        setExpenses((prev) => {
+          const others = prev.filter((e) => e.groupId !== activeGroupId);
+          return [...freshExps, ...others];
+        });
+      }
+      if (Array.isArray(freshSettlements)) {
+        setSettlements((prev) => {
+          const freshIds = new Set(freshSettlements.map((s) => s.id));
+          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+          return [...freshSettlements, ...others];
+        });
+      }
     } catch (err) {
       console.error('Error updating expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -1490,30 +1490,31 @@ export default function App() {
     if (!currentUser || !activeGroupId) return;
     triggerHaptic('heavy');
 
-    // Optimistic UI update
+    // 1. Instantaneous optimistic state update
     setExpenses((prev) => prev.filter((exp) => exp.id !== expenseId));
 
     try {
       await api.deleteExpense(expenseId);
 
-      // Immediate cache invalidation & re-fetching
-      api.getExpenses(activeGroupId).then((freshExps) => {
-        if (Array.isArray(freshExps)) {
-          setExpenses((prev) => {
-            const others = prev.filter((e) => e.groupId !== activeGroupId);
-            return [...freshExps, ...others];
-          });
-        }
-      }).catch(() => {});
-      api.getSettlements(activeGroupId).then((freshSettlements) => {
-        if (Array.isArray(freshSettlements)) {
-          setSettlements((prev) => {
-            const freshIds = new Set(freshSettlements.map((s) => s.id));
-            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-            return [...freshSettlements, ...others];
-          });
-        }
-      }).catch(() => {});
+      // 2. Forced immediate re-fetching of all expenses & settlements
+      const [freshExps, freshSettlements] = await Promise.all([
+        api.getExpenses(activeGroupId).catch(() => null),
+        api.getSettlements(activeGroupId).catch(() => null),
+      ]);
+
+      if (Array.isArray(freshExps)) {
+        setExpenses((prev) => {
+          const others = prev.filter((e) => e.groupId !== activeGroupId);
+          return [...freshExps, ...others];
+        });
+      }
+      if (Array.isArray(freshSettlements)) {
+        setSettlements((prev) => {
+          const freshIds = new Set(freshSettlements.map((s) => s.id));
+          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+          return [...freshSettlements, ...others];
+        });
+      }
     } catch (err) {
       console.error('Error deleting expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -2229,6 +2230,10 @@ export default function App() {
       {isDownloadPage ? (
         <DownloadAppPage
           onOpenDrawer={() => setIsDrawerOpen(true)}
+          onGoHome={() => {
+            setIsDownloadPage(false);
+            window.history.pushState({}, '', '/');
+          }}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
           currentUser={currentUser || undefined}
