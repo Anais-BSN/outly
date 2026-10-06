@@ -74,6 +74,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [title, setTitle] = useState(initialExpense?.title || '');
   const [amount, setAmount] = useState(initialExpense ? initialExpense.amount.toString() : '');
   const [category, setCategory] = useState<ExpenseCategory>(initialExpense?.category || 'Courses');
+  const [date, setDate] = useState<string>(
+    initialExpense?.date ? initialExpense.date.split('T')[0] : new Date().toISOString().split('T')[0]
+  );
   const [paidById, setPaidById] = useState<string>(initialExpense?.paidById || currentUser.id);
   const [participantIds, setParticipantIds] = useState<string[]>(
     initialExpense?.participantIds || uniqueMembers.map((m) => m.userId || m.id)
@@ -84,12 +87,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setTitle(initialExpense.title || '');
       setAmount(initialExpense.amount ? initialExpense.amount.toString() : '');
       setCategory(initialExpense.category || 'Courses');
+      setDate(initialExpense.date ? initialExpense.date.split('T')[0] : new Date().toISOString().split('T')[0]);
       setPaidById(initialExpense.paidById || currentUser.id);
       setParticipantIds(initialExpense.participantIds || uniqueMembers.map((m) => m.userId || m.id));
     } else {
       setTitle('');
       setAmount('');
       setCategory('Courses');
+      setDate(new Date().toISOString().split('T')[0]);
       setPaidById(currentUser.id);
       setParticipantIds(uniqueMembers.map((m) => m.userId || m.id));
     }
@@ -161,7 +166,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       groupId: initialExpense?.groupId || groupId,
       title: title.trim(),
       amount: parsedAmount,
-      date: initialExpense?.date || new Date().toISOString().split('T')[0],
+      date: date || new Date().toISOString().split('T')[0],
       category,
       paidById,
       paidByName: payer?.name || payer?.firstName || currentUser.firstName,
@@ -255,26 +260,43 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
           </div>
 
-          {/* Category Chips */}
-          <div>
-            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1.5">
-              Catégorie
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    category === cat
-                      ? 'bg-[#6D2932] text-[#FFF9EB]'
-                      : 'bg-[#E8D8C4]/60 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+          {/* Category Dropdown & Date Picker (Compact & Inline) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Category */}
+            <div>
+              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                <span>Catégorie *</span>
+              </label>
+              <select
+                id="expense-category-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                <span>Date *</span>
+              </label>
+              <input
+                type="date"
+                id="expense-date-input"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] [color-scheme:light] dark:[color-scheme:dark] focus:ring-2 focus:ring-[#5D0D18]"
+              >
+              </input>
             </div>
           </div>
 

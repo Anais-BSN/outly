@@ -445,7 +445,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Prénom
                 </label>
                 {isEditingFirstName ? (
-                  <div className="flex items-center gap-1.5 w-full min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
                     <input
                       type="text"
                       id="profile-input-firstname"
@@ -461,27 +461,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         }
                       }}
                       autoFocus
-                      className="w-full min-w-0 flex-1 px-2.5 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                      className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
                     />
                     <button
                       type="button"
                       id="profile-save-firstname-btn"
                       onClick={handleSaveFirstName}
-                      className="px-2 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
                     >
-                      Enregistrer
+                      <span>Enregistrer</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0">
-                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
                       {firstName || currentUser.firstName || 'Non renseigné'}
                     </span>
                     <button
                       type="button"
                       id="profile-edit-firstname-btn"
                       onClick={() => setIsEditingFirstName(true)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
                     >
                       <Pencil className="w-3 h-3" />
                       <span>Modifier</span>
@@ -496,7 +496,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Nom
                 </label>
                 {isEditingLastName ? (
-                  <div className="flex items-center gap-1.5 w-full min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
                     <input
                       type="text"
                       id="profile-input-lastname"
@@ -512,27 +512,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         }
                       }}
                       autoFocus
-                      className="w-full min-w-0 flex-1 px-2.5 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                      className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
                     />
                     <button
                       type="button"
                       id="profile-save-lastname-btn"
                       onClick={handleSaveLastName}
-                      className="px-2 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
                     >
-                      Enregistrer
+                      <span>Enregistrer</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0">
-                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
                       {lastName || currentUser.lastName || 'Non renseigné'}
                     </span>
                     <button
                       type="button"
                       id="profile-edit-lastname-btn"
                       onClick={() => setIsEditingLastName(true)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
                     >
                       <Pencil className="w-3 h-3" />
                       <span>Modifier</span>
@@ -551,7 +551,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <span>Adresse e-mail</span>
                 </div>
                 {isEditingEmail ? (
-                  <div className="flex items-center gap-1.5 w-full min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
                     <input
                       type="email"
                       id="profile-input-email"
@@ -567,27 +567,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         }
                       }}
                       autoFocus
-                      className="w-full min-w-0 flex-1 px-2.5 py-1.5 text-xs rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-[#27272A] dark:text-[#FFF9EB] focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                      className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
                     />
                     <button
                       type="button"
                       id="profile-save-email-btn"
                       onClick={handleSaveEmail}
-                      className="px-2 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
                     >
-                      Enregistrer
+                      <span>Enregistrer</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0">
-                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
+                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
                       {email || currentUser.email}
                     </span>
                     <button
                       type="button"
                       id="profile-edit-email-btn"
                       onClick={() => setIsEditingEmail(true)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
                     >
                       <Pencil className="w-3 h-3" />
                       <span>Modifier</span>
@@ -602,8 +602,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <AtSign className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
                   <span>Pseudo</span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/50 dark:bg-zinc-900/40 border border-[#C7B7A3]/30 dark:border-zinc-700/40 w-full min-w-0">
-                  <span className="text-xs font-bold text-[#5D0D18] dark:text-white truncate min-w-0">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/50 dark:bg-zinc-900/40 border border-[#C7B7A3]/30 dark:border-zinc-700/40 w-full min-w-0 h-[42px] box-border">
+                  <span className="text-xs font-bold text-[#5D0D18] dark:text-white truncate min-w-0 px-1">
                     {currentUser.handle || (currentUser.email ? `@${currentUser.email.split('@')[0]}` : '@utilisateur')}
                   </span>
                 </div>
@@ -830,7 +830,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
                       isCurrent
                         ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] dark:border-amber-300/40 shadow-xs'
-                        : 'bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border-[#C7B7A3]/40 dark:border-zinc-800 hover:bg-[#FFF9EB]'
+                        : 'bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border-[#C7B7A3]/40 dark:border-zinc-800 hover:bg-[#FFF9EB] dark:hover:bg-zinc-800 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">

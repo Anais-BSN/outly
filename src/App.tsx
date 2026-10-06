@@ -2089,8 +2089,10 @@ export default function App() {
             setIsAuthOpen(true);
           }
         }}
+        onOpenDrawer={() => setIsDrawerOpen(true)}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+        currentUser={currentUser || undefined}
       />
     );
   }

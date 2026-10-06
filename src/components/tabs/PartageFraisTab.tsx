@@ -16,7 +16,7 @@ import {
   PieChart as PieChartIcon,
 } from 'lucide-react';
 import { Expense, UserProfile, GroupMember, DebtSettlement, ExpenseCategory } from '../../types';
-import { calculateExpensesAndDebts } from '../../utils/calculations';
+import { calculateExpensesAndDebts, allocateExpenseSharesInCents } from '../../utils/calculations';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
 import { DebtHistoryModal } from '../modals/DebtHistoryModal';
 import { ExpenseDetailModal } from '../modals/ExpenseDetailModal';
@@ -60,6 +60,10 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
   const [hiddenDebtKeys, setHiddenDebtKeys] = useState<Set<string>>(new Set());
+
+  // Budget Diagram Filters: Time (Mois, Année, Tout) and Scope (Tout le groupe / Mes dépenses)
+  const [timeFilter, setTimeFilter] = useState<'month' | 'year' | 'all'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'me'>('all');
 
   // Synchronize local state with props when parent or backend updates
   useEffect(() => {
@@ -169,19 +173,53 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   };
 
 
-  // Category Breakdown Aggregation for Diagram
-  const categoryBreakdown = useMemo(() => {
+  // Category Breakdown Aggregation for Diagram with dynamic temporal and scope filtering
+  const { categoryBreakdown, filteredTotalSpent } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
     const map = new Map<string, { total: number; count: number }>();
+    let totalCalculated = 0;
+
     safeExpenses.forEach((exp) => {
+      // 1. Filter by Time (Mois, Année, Tout)
+      if (timeFilter !== 'all') {
+        const expDateStr = exp.date || exp.createdAt;
+        if (expDateStr) {
+          const expDate = new Date(expDateStr);
+          if (!isNaN(expDate.getTime())) {
+            if (expDate.getFullYear() !== currentYear) return;
+            if (timeFilter === 'month' && expDate.getMonth() !== currentMonth) return;
+          }
+        }
+      }
+
+      // 2. Filter by Scope (Tout le groupe / Mes dépenses)
+      let expenseAmount = exp.amount || 0;
+      if (scopeFilter === 'me') {
+        const participantIds = exp.participantIds || [];
+        const sharesSnapshot = exp.sharesSnapshot || {};
+        const participantDefs = participantIds.map((uid) => ({
+          userId: uid,
+          shares: exp.splitMode === 'custom' && sharesSnapshot[uid] ? sharesSnapshot[uid] : 1,
+        }));
+        const allocatedMap = allocateExpenseSharesInCents(expenseAmount, participantDefs);
+        const myShareCents = allocatedMap.get(currentUser.id) || (currentUser.userId ? allocatedMap.get(currentUser.userId) : 0) || 0;
+        expenseAmount = myShareCents / 100;
+        if (expenseAmount <= 0) return;
+      }
+
       const cat = exp.category || 'Autre';
       const current = map.get(cat) || { total: 0, count: 0 };
-      current.total += exp.amount || 0;
+      current.total += expenseAmount;
       current.count += 1;
       map.set(cat, current);
+      totalCalculated += expenseAmount;
     });
 
     const categoriesArray = Array.from(map.entries()).map(([category, data]) => {
-      const percentage = totalSpent > 0 ? (data.total / totalSpent) * 100 : 0;
+      const percentage = totalCalculated > 0 ? (data.total / totalCalculated) * 100 : 0;
       const colorMeta = CATEGORY_COLORS[category] || CATEGORY_COLORS['Autre'];
       return {
         category,
@@ -196,8 +234,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
     // Sort by total descending
     categoriesArray.sort((a, b) => b.total - a.total);
-    return categoriesArray;
-  }, [safeExpenses, totalSpent]);
+    return { categoryBreakdown: categoriesArray, filteredTotalSpent: totalCalculated };
+  }, [safeExpenses, timeFilter, scopeFilter, currentUser.id, currentUser.userId]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
@@ -474,7 +512,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
       {/* Budget Category Breakdown Section (Diagramme de budget) */}
       <div className="p-5 sm:p-6 rounded-3xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <PieChartIcon className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
@@ -483,13 +521,84 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </div>
 
           <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-300">
-            Total : {formatCurrency(totalSpent)}
+            Total : {formatCurrency(filteredTotalSpent)}
           </span>
+        </div>
+
+        {/* Filter Controls: Time Filters (Mois, Année, Tout) & Scope Switch (Tout le groupe / Mes dépenses) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 pb-1 border-y border-[#C7B7A3]/40 dark:border-zinc-700/60">
+          {/* Time Filters */}
+          <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+            <button
+              type="button"
+              id="budget-filter-month-btn"
+              onClick={() => setTimeFilter('month')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeFilter === 'month'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Mois
+            </button>
+            <button
+              type="button"
+              id="budget-filter-year-btn"
+              onClick={() => setTimeFilter('year')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeFilter === 'year'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Année
+            </button>
+            <button
+              type="button"
+              id="budget-filter-all-time-btn"
+              onClick={() => setTimeFilter('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeFilter === 'all'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Tout
+            </button>
+          </div>
+
+          {/* Scope Filter Switch */}
+          <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+            <button
+              type="button"
+              id="budget-scope-all-btn"
+              onClick={() => setScopeFilter('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scopeFilter === 'all'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Tout le groupe
+            </button>
+            <button
+              type="button"
+              id="budget-scope-me-btn"
+              onClick={() => setScopeFilter('me')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scopeFilter === 'me'
+                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+              }`}
+            >
+              Mes dépenses
+            </button>
+          </div>
         </div>
 
         {categoryBreakdown.length === 0 ? (
           <div className="p-6 text-center bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-800 text-xs text-[#27272A]/70 dark:text-zinc-400">
-            Aucune dépense enregistrée pour générer le diagramme de budget.
+            Aucune dépense enregistrée pour ce filtre de budget.
           </div>
         ) : (
           <div className="space-y-4">

@@ -23,12 +23,12 @@ interface InternalDebtBalance {
 }
 
 /**
- * Alloue le montant total d'une dépense en centimes entiers de façon équitable et stricte
- * entre les participants selon leurs parts / poids respectifs (Largest Remainder Method / Hare-Niemeyer).
- *
- * Garantit:
- * 1. sum(allocatedCents) === totalCents
- * 2. Si totalCents se divise exactement, chaque participant ayant le même nombre de parts reçoit exactement la même part au centime près.
+ * Alloue le montant total d'une dépense en centimes entiers entre les participants.
+ * Règle comptable :
+ * Lorsque la division du montant d'une dépense par le nombre de participants produit un nombre décimal non fini,
+ * chaque part est systématiquement arrondie au centime supérieur :
+ * part = Math.ceil((montantTotal / nbParticipants) * 100) / 100
+ * Exemple : 50 € divisés entre 3 personnes donne 16,67 € (1667 centimes) par personne.
  */
 export function allocateExpenseSharesInCents(
   amount: number,
@@ -37,8 +37,8 @@ export function allocateExpenseSharesInCents(
   const result = new Map<string, number>();
   if (!participants || participants.length === 0) return result;
 
-  const totalCents = Math.round((Number(amount) || 0) * 100);
-  if (totalCents <= 0) {
+  const numAmount = Number(amount) || 0;
+  if (numAmount <= 0) {
     participants.forEach((p) => {
       if (p?.userId) result.set(p.userId, 0);
     });
@@ -58,40 +58,11 @@ export function allocateExpenseSharesInCents(
     return result;
   }
 
-  let allocatedSum = 0;
-  const allocations = validParticipants.map((p, index) => {
+  validParticipants.forEach((p) => {
     const shares = Math.max(1, Number(p.shares) || 1);
-    const idealCents = (totalCents * shares) / totalShares;
-    const baseCents = Math.floor(idealCents);
-    const remainder = idealCents - baseCents;
-    allocatedSum += baseCents;
-    return {
-      userId: p.userId,
-      baseCents,
-      remainder,
-      index,
-    };
-  });
-
-  const centsToDistribute = totalCents - allocatedSum;
-
-  // Si des centimes résiduels doivent être répartis, on les attribue aux plus grands restes décimaux
-  // (avec ordre stable par index en cas d'égalité stricte)
-  if (centsToDistribute > 0) {
-    const sorted = [...allocations].sort((a, b) => {
-      if (Math.abs(b.remainder - a.remainder) > 1e-9) {
-        return b.remainder - a.remainder;
-      }
-      return a.index - b.index;
-    });
-
-    for (let i = 0; i < centsToDistribute && i < sorted.length; i++) {
-      sorted[i].baseCents += 1;
-    }
-  }
-
-  allocations.forEach((item) => {
-    result.set(item.userId, item.baseCents);
+    // Règle comptable : Arrondi systématique de chaque part au centime supérieur
+    const shareCents = Math.ceil(((numAmount * shares) / totalShares) * 100);
+    result.set(p.userId, shareCents);
   });
 
   return result;

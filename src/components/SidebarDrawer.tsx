@@ -211,27 +211,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               <ChevronRight className="w-4 h-4 text-[#C7B7A3] dark:text-zinc-600" />
             </button>
 
-            {/* 4. Créer un groupe */}
-            <button
-              id="drawer-nav-create-group"
-              onClick={() => {
-                onClose();
-                onOpenCreateGroup();
-              }}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-left text-sm font-semibold text-[#6D2932] dark:text-amber-200 bg-[#E8D8C4]/50 dark:bg-zinc-800/60 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors border border-[#C7B7A3] dark:border-zinc-700 cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-[#6D2932] text-[#FFF9EB]">
-                  <PlusCircle className="w-4 h-4" />
-                </div>
-                <span>Créer un groupe</span>
-              </div>
-              <span className="text-xs font-bold bg-[#6D2932]/10 dark:bg-zinc-700 px-2.5 py-0.5 rounded-full">
-                Nouveau
-              </span>
-            </button>
-
-            {/* 5. Télécharger l'application */}
+            {/* 4. Installer l'application */}
             {onOpenDownloadPage && (
               <button
                 id="drawer-nav-download-app"
@@ -250,6 +230,26 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 <ChevronRight className="w-4 h-4 text-[#C7B7A3] dark:text-zinc-600" />
               </button>
             )}
+
+            {/* 5. Créer un groupe */}
+            <button
+              id="drawer-nav-create-group"
+              onClick={() => {
+                onClose();
+                onOpenCreateGroup();
+              }}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-left text-sm font-semibold text-[#6D2932] dark:text-amber-200 bg-[#E8D8C4]/50 dark:bg-zinc-800/60 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors border border-[#C7B7A3] dark:border-zinc-700 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-[#6D2932] text-[#FFF9EB]">
+                  <PlusCircle className="w-4 h-4" />
+                </div>
+                <span>Créer un groupe</span>
+              </div>
+              <span className="text-xs font-bold bg-[#6D2932]/10 dark:bg-zinc-700 px-2.5 py-0.5 rounded-full">
+                Nouveau
+              </span>
+            </button>
           </nav>
 
           {/* Section: Mes groupes */}
