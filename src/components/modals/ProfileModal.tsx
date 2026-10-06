@@ -75,6 +75,39 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [isEditingLastName, setIsEditingLastName] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
 
+  const firstNameRef = useRef<HTMLDivElement>(null);
+  const lastNameRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLDivElement>(null);
+
+  // Annulation en cas de clic en dehors du champ édité ou du bouton d'enregistrement
+  useEffect(() => {
+    const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (isEditingFirstName && firstNameRef.current && !firstNameRef.current.contains(target)) {
+        setFirstName(currentUser?.firstName || '');
+        setIsEditingFirstName(false);
+      }
+      if (isEditingLastName && lastNameRef.current && !lastNameRef.current.contains(target)) {
+        setLastName(currentUser?.lastName || '');
+        setIsEditingLastName(false);
+      }
+      if (isEditingEmail && emailRef.current && !emailRef.current.contains(target)) {
+        setEmail(currentUser?.email || '');
+        setIsEditingEmail(false);
+      }
+    };
+
+    if (isEditingFirstName || isEditingLastName || isEditingEmail) {
+      document.addEventListener('mousedown', handlePointerDownOutside);
+      document.addEventListener('touchstart', handlePointerDownOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside);
+      document.removeEventListener('touchstart', handlePointerDownOutside);
+    };
+  }, [isEditingFirstName, isEditingLastName, isEditingEmail, currentUser]);
+
   useEffect(() => {
     if (isOpen) {
       setFirstName(currentUser?.firstName || '');
@@ -406,7 +439,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Prénom */}
-              <div className="space-y-1">
+              <div className="space-y-1" ref={firstNameRef}>
                 <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   Prénom
                 </label>
@@ -422,6 +455,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           e.preventDefault();
                           handleSaveFirstName();
                         } else if (e.key === 'Escape') {
+                          setFirstName(currentUser?.firstName || '');
                           setIsEditingFirstName(false);
                         }
                       }}
@@ -456,7 +490,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
 
               {/* Nom */}
-              <div className="space-y-1">
+              <div className="space-y-1" ref={lastNameRef}>
                 <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   Nom
                 </label>
@@ -472,6 +506,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           e.preventDefault();
                           handleSaveLastName();
                         } else if (e.key === 'Escape') {
+                          setLastName(currentUser?.lastName || '');
                           setIsEditingLastName(false);
                         }
                       }}
@@ -509,7 +544,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             {/* E-mail & Pseudo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {/* E-mail */}
-              <div className="space-y-1">
+              <div className="space-y-1" ref={emailRef}>
                 <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
                   <Mail className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
                   <span>Adresse e-mail</span>
@@ -526,6 +561,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           e.preventDefault();
                           handleSaveEmail();
                         } else if (e.key === 'Escape') {
+                          setEmail(currentUser?.email || '');
                           setIsEditingEmail(false);
                         }
                       }}

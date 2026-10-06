@@ -328,7 +328,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   placeholder="Ex: Col de la Faucille, 01170 Gex"
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB]"
                 />
-                <MapPin className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                <MapPin className="w-4 h-4 text-[#5D0D18] dark:text-amber-200 absolute left-3 top-3" />
               </div>
             </div>
 

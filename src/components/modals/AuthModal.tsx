@@ -15,6 +15,7 @@ import {
 import { UserProfile } from '../../types';
 import { api } from '../../services/api';
 import { CARTOON_AVATARS } from '../../constants/avatars';
+import { validatePasswordSecurity } from '../../utils/passwordValidation';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -191,8 +192,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Continuer
     }
 
-    if (!registerPassword || registerPassword.length < 4) {
-      setErrorMsg('Le mot de passe doit comporter au moins 4 caractères');
+    const pwdValidation = validatePasswordSecurity(registerPassword);
+    if (!pwdValidation.isValid) {
+      setErrorMsg(pwdValidation.errorMessage || 'Le mot de passe ne respecte pas les critères de sécurité requis');
       setLoading(false);
       return;
     }
@@ -520,18 +522,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Password */}
             <div>
               <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Mot de passe (au moins 4 caractères) *
+                Mot de passe *
               </label>
               <div className="relative">
                 <input
                   type={showRegisterPassword ? 'text' : 'password'}
+                  id="auth-register-password-input"
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   className="w-full pl-8 pr-10 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB]"
                 />
-                <Lock className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
+                <Lock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 absolute left-2.5 top-2.5" />
                 <button
                   type="button"
                   onClick={() => setShowRegisterPassword(!showRegisterPassword)}
@@ -541,6 +544,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+              </div>
+
+              {/* Security Checklist (shown when typing or registering) */}
+              <div className="mt-2 p-2 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-800/40 border border-[#C7B7A3]/30 dark:border-zinc-700/50 space-y-1">
+                <div className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                  Critères de sécurité requis :
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                  {validatePasswordSecurity(registerPassword).criteria.map((crit) => (
+                    <div
+                      key={crit.id}
+                      className={`text-[10px] flex items-center gap-1 transition-colors ${
+                        crit.met
+                          ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                          : 'text-[#27272A]/60 dark:text-zinc-400'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${crit.met ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                      <span>{crit.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

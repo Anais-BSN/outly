@@ -11,6 +11,7 @@ import {
   X
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { validatePasswordSecurity } from '../../utils/passwordValidation';
 
 interface ResetPasswordModalProps {
   isOpen: boolean;
@@ -75,8 +76,9 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 4) {
-      setErrorMsg('Le nouveau mot de passe doit comporter au moins 4 caractères');
+    const pwdValidation = validatePasswordSecurity(newPassword);
+    if (!pwdValidation.isValid) {
+      setErrorMsg(pwdValidation.errorMessage || 'Le nouveau mot de passe ne respecte pas les critères de sécurité requis');
       return;
     }
 
@@ -190,18 +192,19 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             {/* Nouveau mot de passe */}
             <div>
               <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                Nouveau mot de passe (au moins 4 caractères) *
+                Nouveau mot de passe *
               </label>
               <div className="relative">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
+                  id="reset-password-new-input"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
                 />
-                <Lock className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[#5D0D18] dark:text-amber-300 absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
@@ -211,6 +214,28 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+              </div>
+
+              {/* Security Checklist */}
+              <div className="mt-2 p-2 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-800/40 border border-[#C7B7A3]/30 dark:border-zinc-700/50 space-y-1">
+                <div className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                  Critères de sécurité requis :
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                  {validatePasswordSecurity(newPassword).criteria.map((crit) => (
+                    <div
+                      key={crit.id}
+                      className={`text-[10px] flex items-center gap-1 transition-colors ${
+                        crit.met
+                          ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                          : 'text-[#27272A]/60 dark:text-zinc-400'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${crit.met ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                      <span>{crit.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

@@ -410,13 +410,13 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
 
                         <div className="flex items-center gap-3 text-xs text-[#27272A]/80 dark:text-zinc-300">
                           <div className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-[#5D0D18]" />
+                            <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
                             <span>{formatDateTime(event.startDateTime)}</span>
                           </div>
 
                           {event.location && (
                             <div className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-[#5D0D18]" />
+                              <MapPin className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
                               <span className="truncate max-w-[150px]">{event.location}</span>
                             </div>
                           )}

@@ -308,12 +308,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 type="button"
                 id="poll-type-date-btn"
                 onClick={() => setType('date')}
-                className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   type === 'date'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
+                <Calendar className={`w-4 h-4 ${type === 'date' ? 'text-[#FFF9EB]' : 'text-[#5D0D18] dark:text-amber-300'}`} />
                 <div className="font-bold text-xs text-center">
                   Sondage de date
                 </div>
@@ -323,12 +324,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 type="button"
                 id="poll-type-choice-btn"
                 onClick={() => setType('choice')}
-                className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   type === 'choice'
                     ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
+                <BarChart2 className={`w-4 h-4 ${type === 'choice' ? 'text-[#FFF9EB]' : 'text-[#5D0D18] dark:text-amber-300'}`} />
                 <div className="font-bold text-xs text-center">
                   Autres sondages
                 </div>
@@ -383,8 +385,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                     className="p-3 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/60 border border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-300">
-                        Option {idx + 1} : {formatDateDisplay(opt)}
+                      <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                        <span>Option {idx + 1} : {formatDateDisplay(opt)}</span>
                       </span>
                       {dateOptions.length > 2 && (
                         <button
@@ -400,8 +403,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5">
-                          Début *
+                        <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                          <span>Début *</span>
                         </label>
                         <input
                           type="datetime-local"
@@ -416,8 +420,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5">
-                          Fin *
+                        <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                          <span>Fin *</span>
                         </label>
                         <input
                           type="datetime-local"

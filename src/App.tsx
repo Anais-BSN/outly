@@ -33,6 +33,7 @@ import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
 import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { InviteReconcileModal } from './components/modals/InviteReconcileModal';
 import { AppDownloadBanner } from './components/AppDownloadBanner';
+import { DownloadAppPage } from './components/DownloadAppPage';
 import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
@@ -166,6 +167,10 @@ export default function App() {
   const [tieBreakOptions, setTieBreakOptions] = useState<PollOption[]>([]);
   const [convertChoiceData, setConvertChoiceData] = useState<{ poll: Poll; winningOption: PollOption | null } | null>(null);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [isDownloadPage, setIsDownloadPage] = useState<boolean>(() => {
+    return window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
+  });
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [isMembersListOpen, setIsMembersListOpen] = useState(false);
@@ -209,11 +214,12 @@ export default function App() {
         }
       }
 
-      // If not logged in, prompt authentication immediately (unless user is arriving via reset-password deep link)
+      // If not logged in, prompt authentication immediately (unless user is arriving via reset-password or download deep link)
       if (!activeUserId) {
         setCurrentUser(null);
         const isResetRoute = window.location.pathname.startsWith('/reset-password') || window.location.search.includes('token=');
-        if (!isResetRoute) {
+        const isDownloadRoute = window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
+        if (!isResetRoute && !isDownloadRoute) {
           setIsAuthOpen(true);
         }
         setIsLoading(false);
@@ -606,6 +612,13 @@ export default function App() {
         case 'expense:deleted':
           setExpenses((prev) => prev.filter((exp) => exp.id !== event.data?.id));
           break;
+        case 'expense:updated':
+          if (event.data) {
+            setExpenses((prev) =>
+              prev.map((exp) => (exp.id === event.data?.id ? event.data : exp))
+            );
+          }
+          break;
         case 'settlement:updated':
           if (event.data) {
             setSettlements((prev) => {
@@ -652,6 +665,13 @@ export default function App() {
         const pathname = url.pathname;
         const tokenParam = url.searchParams.get('token');
 
+        // 0. Download page route (/telecharger, /download)
+        if (pathname === '/telecharger' || pathname.startsWith('/telecharger/') || pathname === '/download' || pathname.startsWith('/download/')) {
+          setIsDownloadPage(true);
+          setIsAuthOpen(false);
+          return;
+        }
+
         // 1. Password reset route (supports /reset-password, /reset-password?token=..., /reset-password/:token, or ?token=...)
         if (pathname === '/reset-password' || pathname.startsWith('/reset-password/') || (tokenParam && !pathname.startsWith('/invite') && !pathname.startsWith('/join'))) {
           const token = tokenParam || (pathname.startsWith('/reset-password') ? pathname.replace('/reset-password', '').replace(/^\//, '') : null);
@@ -689,11 +709,18 @@ export default function App() {
 
     handleIncomingUrl(window.location.href);
 
+    const handlePopState = () => {
+      const isDl = window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
+      setIsDownloadPage(isDl);
+    };
+    window.addEventListener('popstate', handlePopState);
+
     const cleanup = setupAppUrlListener((incomingUrl) => {
       handleIncomingUrl(incomingUrl);
     });
 
     return () => {
+      window.removeEventListener('popstate', handlePopState);
       cleanup();
     };
   }, []);
@@ -1392,6 +1419,48 @@ export default function App() {
     }
   };
 
+  const handleUpdateExpense = async (expenseId: string, expenseData: Partial<Expense>) => {
+    if (!currentUser || !activeGroupId) return;
+    triggerHaptic('medium');
+
+    // Optimistic UI update
+    setExpenses((prev) =>
+      prev.map((exp) => (exp.id === expenseId ? { ...exp, ...expenseData } as Expense : exp))
+    );
+
+    try {
+      const updated = await api.updateExpense(expenseId, expenseData);
+      setExpenses((prev) =>
+        prev.map((exp) => (exp.id === expenseId ? updated : exp))
+      );
+    } catch (err) {
+      console.error('Error updating expense in PostgreSQL:', err);
+      // Reload on error to ensure sync
+      api.getExpenses(activeGroupId).then(setExpenses).catch(() => {});
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!currentUser || !activeGroupId) return;
+    triggerHaptic('heavy');
+
+    // Optimistic UI update
+    setExpenses((prev) => prev.filter((exp) => exp.id !== expenseId));
+
+    try {
+      await api.deleteExpense(expenseId);
+    } catch (err) {
+      console.error('Error deleting expense in PostgreSQL:', err);
+      // Reload on error to ensure sync
+      api.getExpenses(activeGroupId).then(setExpenses).catch(() => {});
+    }
+  };
+
+  const navigateToDownload = () => {
+    window.history.pushState({}, '', '/telecharger');
+    setIsDownloadPage(true);
+  };
+
   const handleToggleSettlementStatus = async (settlement: DebtSettlement) => {
     try {
       const newStatus: 'settled' | 'pending' = settlement.status || 'settled';
@@ -2002,6 +2071,22 @@ export default function App() {
     partage_frais: 0,
   };
 
+  if (isDownloadPage) {
+    return (
+      <DownloadAppPage
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          setIsDownloadPage(false);
+          if (!currentUser) {
+            setIsAuthOpen(true);
+          }
+        }}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col items-center justify-center p-6 space-y-4">
@@ -2081,6 +2166,10 @@ export default function App() {
         onOpenCreateGroup={() => {
           setIsDrawerOpen(false);
           setIsCreateGroupOpen(true);
+        }}
+        onOpenDownloadPage={() => {
+          setIsDrawerOpen(false);
+          navigateToDownload();
         }}
       />
 
@@ -2236,7 +2325,7 @@ export default function App() {
                   onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
                 {/* Bannière promotionnelle Web : Téléchargez l'application Outlys (Exclusif web, masquée sur mobile natif) */}
-                <AppDownloadBanner />
+                <AppDownloadBanner onNavigateToDownload={navigateToDownload} />
               </>
             )}
 
@@ -2327,7 +2416,15 @@ export default function App() {
                   members={activeGroup.members}
                   settlements={settlements.filter((s) => !s.groupId || !activeGroupId || s.groupId === activeGroupId || s.groupId === 'group-current')}
                   groupId={activeGroupId || activeGroup?.id || 'group-current'}
-                  onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+                  onOpenAddExpense={() => {
+                    setEditingExpense(null);
+                    setIsAddExpenseOpen(true);
+                  }}
+                  onEditExpense={(expense) => {
+                    setEditingExpense(expense);
+                    setIsAddExpenseOpen(true);
+                  }}
+                  onDeleteExpense={handleDeleteExpense}
                   onToggleSettlementStatus={handleToggleSettlementStatus}
                   onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
                 />
@@ -2542,15 +2639,20 @@ export default function App() {
         />
       )}
 
-      {/* Add Expense Modal */}
+      {/* Add / Edit Expense Modal */}
       {currentUser && (
         <AddExpenseModal
           isOpen={isAddExpenseOpen}
-          onClose={() => setIsAddExpenseOpen(false)}
+          onClose={() => {
+            setIsAddExpenseOpen(false);
+            setEditingExpense(null);
+          }}
           currentUser={currentUser}
           members={activeGroup.members}
           groupId={activeGroupId}
+          initialExpense={editingExpense}
           onAddExpense={handleAddExpense}
+          onUpdateExpense={handleUpdateExpense}
           onAddVirtualMember={(name) => handleAddVirtualMember(activeGroupId, name)}
         />
       )}

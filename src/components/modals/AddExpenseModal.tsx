@@ -23,6 +23,8 @@ interface AddExpenseModalProps {
   members: GroupMember[];
   groupId: string;
   onAddExpense: (expenseData: Partial<Expense>) => void;
+  onUpdateExpense?: (expenseId: string, expenseData: Partial<Expense>) => void;
+  initialExpense?: Expense | null;
   onAddVirtualMember?: (firstName: string) => Promise<GroupMember | any> | void;
 }
 
@@ -42,9 +44,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   members,
   groupId,
   onAddExpense,
+  onUpdateExpense,
+  initialExpense,
   onAddVirtualMember,
 }) => {
   if (!isOpen) return null;
+
+  const isEditing = Boolean(initialExpense);
 
   // Deduplicate members list to avoid any duplicated row and exclude deleted members
   const uniqueMembers = React.useMemo(() => {
@@ -65,13 +71,29 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     return Array.from(map.values());
   }, [members]);
 
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<ExpenseCategory>('Courses');
-  const [paidById, setPaidById] = useState<string>(currentUser.id);
+  const [title, setTitle] = useState(initialExpense?.title || '');
+  const [amount, setAmount] = useState(initialExpense ? initialExpense.amount.toString() : '');
+  const [category, setCategory] = useState<ExpenseCategory>(initialExpense?.category || 'Courses');
+  const [paidById, setPaidById] = useState<string>(initialExpense?.paidById || currentUser.id);
   const [participantIds, setParticipantIds] = useState<string[]>(
-    uniqueMembers.map((m) => m.userId || m.id)
+    initialExpense?.participantIds || uniqueMembers.map((m) => m.userId || m.id)
   );
+
+  React.useEffect(() => {
+    if (initialExpense) {
+      setTitle(initialExpense.title || '');
+      setAmount(initialExpense.amount ? initialExpense.amount.toString() : '');
+      setCategory(initialExpense.category || 'Courses');
+      setPaidById(initialExpense.paidById || currentUser.id);
+      setParticipantIds(initialExpense.participantIds || uniqueMembers.map((m) => m.userId || m.id));
+    } else {
+      setTitle('');
+      setAmount('');
+      setCategory('Courses');
+      setPaidById(currentUser.id);
+      setParticipantIds(uniqueMembers.map((m) => m.userId || m.id));
+    }
+  }, [initialExpense, uniqueMembers, currentUser]);
 
   // Virtual member inline creation state
   const [showAddVirtualInput, setShowAddVirtualInput] = useState(false);
@@ -135,11 +157,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
     const payer = uniqueMembers.find((m) => (m.userId || m.id) === paidById);
 
-    onAddExpense({
-      groupId,
+    const expensePayload: Partial<Expense> = {
+      groupId: initialExpense?.groupId || groupId,
       title: title.trim(),
       amount: parsedAmount,
-      date: new Date().toISOString().split('T')[0],
+      date: initialExpense?.date || new Date().toISOString().split('T')[0],
       category,
       paidById,
       paidByName: payer?.name || payer?.firstName || currentUser.firstName,
@@ -151,7 +173,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         acc[uid] = m.shares || 1;
         return acc;
       }, {} as { [userId: string]: number }),
-    });
+    };
+
+    if (isEditing && initialExpense && onUpdateExpense) {
+      onUpdateExpense(initialExpense.id, expensePayload);
+    } else {
+      onAddExpense(expensePayload);
+    }
     onClose();
   };
 
@@ -174,7 +202,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-display">
-              Ajouter une dépense
+              {isEditing ? 'Modifier la dépense' : 'Ajouter une dépense'}
             </h3>
           </div>
           <button
@@ -446,7 +474,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               disabled={parsedAmount <= 0 || !title.trim() || participantIds.length === 0}
               className="px-6 py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              Enregistrer la dépense
+              {isEditing ? 'Enregistrer les modifications' : 'Enregistrer la dépense'}
             </button>
           </div>
         </form>

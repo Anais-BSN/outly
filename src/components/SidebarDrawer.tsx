@@ -8,6 +8,7 @@ import {
   UserPlus,
   CheckCircle2,
   ChevronRight,
+  Smartphone,
 } from 'lucide-react';
 import { UserProfile, Group, AppNotification } from '../types';
 
@@ -23,6 +24,7 @@ interface SidebarDrawerProps {
   onOpenCreateGroup: () => void;
   onOpenAddFriends: () => void;
   onOpenProfile: () => void;
+  onOpenDownloadPage?: () => void;
   notifications?: AppNotification[];
   isDarkMode?: boolean;
   onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
@@ -100,6 +102,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   onOpenCreateGroup,
   onOpenAddFriends,
   onOpenProfile,
+  onOpenDownloadPage,
   notifications = [],
   isDarkMode = false,
   onViewAvatar,
@@ -227,6 +230,26 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 Nouveau
               </span>
             </button>
+
+            {/* 5. Télécharger l'application */}
+            {onOpenDownloadPage && (
+              <button
+                id="drawer-nav-download-app"
+                onClick={() => {
+                  onClose();
+                  onOpenDownloadPage();
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-left text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4]/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <span>Installer l'application</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[#C7B7A3] dark:text-zinc-600" />
+              </button>
+            )}
           </nav>
 
           {/* Section: Mes groupes */}

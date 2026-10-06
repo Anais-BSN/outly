@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Receipt,
@@ -7,7 +7,10 @@ import {
   Sparkles,
   Tag,
   CheckCircle2,
-  PieChart
+  PieChart,
+  MoreVertical,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { Expense, GroupMember, UserProfile } from '../../types';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
@@ -19,6 +22,8 @@ interface ExpenseDetailModalProps {
   expense: Expense | null;
   members?: GroupMember[];
   currentUser: UserProfile;
+  onEditExpense?: (expense: Expense) => void;
+  onDeleteExpense?: (expenseId: string) => void;
   onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
@@ -28,8 +33,25 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   expense,
   members = [],
   currentUser,
+  onEditExpense,
+  onDeleteExpense,
   onViewAvatar,
 }) => {
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setShowActionMenu(false);
+      }
+    };
+    if (showActionMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showActionMenu]);
+
   if (!isOpen || !expense) return null;
 
   const isPayerMe = expense.paidById === currentUser.id;
@@ -85,6 +107,24 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
     };
   });
 
+  const handleDelete = () => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer définitivement cette dépense ? Les dettes et soldes du groupe seront automatiquement recalculés.')) {
+      setShowActionMenu(false);
+      onClose();
+      if (onDeleteExpense) {
+        onDeleteExpense(expense.id);
+      }
+    }
+  };
+
+  const handleEdit = () => {
+    setShowActionMenu(false);
+    onClose();
+    if (onEditExpense) {
+      onEditExpense(expense);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
@@ -120,18 +160,62 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             </div>
           </div>
 
-          <button
-            id="expense-detail-close-btn"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 3-dots Context Menu */}
+            {(onEditExpense || onDeleteExpense) && (
+              <div className="relative" ref={actionMenuRef}>
+                <button
+                  type="button"
+                  id="expense-detail-menu-btn"
+                  onClick={() => setShowActionMenu(!showActionMenu)}
+                  className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Options de la dépense"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+
+                {showActionMenu && (
+                  <div className="absolute right-0 mt-1 top-full w-44 bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 py-1.5 z-50 animate-fade-in">
+                    {onEditExpense && (
+                      <button
+                        type="button"
+                        id="expense-detail-edit-btn"
+                        onClick={handleEdit}
+                        className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Edit className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                        <span>Modifier</span>
+                      </button>
+                    )}
+                    {onDeleteExpense && (
+                      <button
+                        type="button"
+                        id="expense-detail-delete-btn"
+                        onClick={handleDelete}
+                        className="w-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Supprimer</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              id="expense-detail-close-btn"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1">
-          {/* Main Total Card - Haute lisibilité & contraste parfait en blanc cassé/crème */}
+          {/* Main Total Card */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#5D0D18] via-[#6D2932] to-[#450912] text-[#FFF9EB] shadow-md border border-[#8B3D48]/30 flex items-center justify-between">
             <div>
               <span className="text-xs text-[#FFF9EB]/90 font-semibold tracking-wide uppercase block">
@@ -182,7 +266,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" />
-                <span>Pour qui était cette dépense ({breakdownList.length})</span>
+                <span>Pour qui était cette dépense</span>
               </span>
               <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 font-semibold">
                 {totalShares} part{totalShares > 1 ? 's' : ''} au total
@@ -239,18 +323,6 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
               ))}
             </div>
           </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="pt-2 border-t border-[#C7B7A3]/30 dark:border-zinc-800 flex items-center justify-end shrink-0">
-          <button
-            type="button"
-            id="expense-detail-dismiss-btn"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-colors cursor-pointer shadow-xs active:scale-95"
-          >
-            Fermer
-          </button>
         </div>
       </div>
     </div>

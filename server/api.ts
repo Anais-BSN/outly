@@ -141,6 +141,23 @@ apiRouter.get('/auth/check-handle', async (req: Request, res: Response) => {
   }
 });
 
+function validatePasswordRules(pwd: string): string | null {
+  if (!pwd || pwd.length < 8) {
+    return 'Le mot de passe doit comporter au moins 8 caractères';
+  }
+  if (!/[A-Z]/.test(pwd)) {
+    return 'Le mot de passe doit comporter au moins 1 majuscule';
+  }
+  if (!/[a-z]/.test(pwd)) {
+    return 'Le mot de passe doit comporter au moins 1 minuscule';
+  }
+  const specialCharsRegex = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/;
+  if (!specialCharsRegex.test(pwd)) {
+    return 'Le mot de passe doit comporter au moins 1 caractère spécial parmi : ! "#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+  }
+  return null;
+}
+
 // Inscription
 apiRouter.post('/auth/register', async (req: Request, res: Response) => {
   try {
@@ -154,8 +171,9 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Le pseudo est obligatoire' });
     }
 
-    if (!password || password.length < 4) {
-      return res.status(400).json({ error: 'Le mot de passe doit comporter au moins 4 caractères' });
+    const passwordError = validatePasswordRules(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const cleanHandle = handle.startsWith('@') ? handle.trim() : `@${handle.trim()}`;
@@ -354,8 +372,9 @@ apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Jeton de réinitialisation manquant' });
     }
 
-    if (!password || password.length < 4) {
-      return res.status(400).json({ error: 'Le nouveau mot de passe doit comporter au moins 4 caractères' });
+    const passwordError = validatePasswordRules(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const userRes = await query(
@@ -397,8 +416,9 @@ apiRouter.post('/users/:id/password', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 4 caractères' });
+    const passwordError = validatePasswordRules(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const userRes = await query(`SELECT password_hash FROM users WHERE id = $1`, [id]);
@@ -3189,6 +3209,88 @@ apiRouter.post('/expenses', async (req: Request, res: Response) => {
     res.json(newExpense);
   } catch (err: any) {
     console.error('Error in POST /expenses:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.put('/expenses/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      amount,
+      paidById,
+      category,
+      date,
+      splitMode,
+      participantIds,
+      sharesSnapshot,
+    } = req.body;
+
+    const existingRes = await query(`SELECT * FROM expenses WHERE id = $1`, [id]);
+    if (existingRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Dépense introuvable' });
+    }
+    const existing = existingRes.rows[0];
+
+    const updatedTitle = title !== undefined ? title : existing.title;
+    const updatedAmount = amount !== undefined ? Number(amount) : existing.amount;
+    const updatedPaidById = paidById !== undefined ? paidById : existing.paid_by_id;
+    const updatedCategory = category !== undefined ? category : existing.category;
+    const updatedDate = date !== undefined ? date : existing.date;
+    const updatedSplitMode = splitMode !== undefined ? splitMode : existing.split_mode;
+    const updatedParticipantIds = participantIds !== undefined ? participantIds : existing.participant_ids;
+    const updatedSharesSnapshot = sharesSnapshot !== undefined ? sharesSnapshot : existing.shares_snapshot;
+
+    await query(
+      `UPDATE expenses
+       SET title = $1, amount = $2, paid_by_id = $3, category = $4, date = $5,
+           split_mode = $6, participant_ids = $7, shares_snapshot = $8
+       WHERE id = $9`,
+      [
+        updatedTitle,
+        updatedAmount,
+        updatedPaidById,
+        updatedCategory,
+        updatedDate,
+        updatedSplitMode,
+        JSON.stringify(updatedParticipantIds),
+        JSON.stringify(updatedSharesSnapshot),
+        id,
+      ]
+    );
+
+    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [updatedPaidById]);
+    const user = userRes.rows[0];
+    const paidByName = user
+      ? (user.first_name + (user.last_name ? ` ${user.last_name}` : '')).trim() || user.first_name
+      : 'Utilisateur supprimé';
+
+    const updatedExpense = {
+      id,
+      groupId: existing.group_id,
+      title: updatedTitle,
+      amount: Number(updatedAmount),
+      paidById: updatedPaidById,
+      paidByName,
+      paidByAvatar: user?.avatar || '',
+      category: updatedCategory,
+      date: updatedDate,
+      splitMode: updatedSplitMode,
+      participantIds: updatedParticipantIds,
+      sharesSnapshot: updatedSharesSnapshot,
+      createdAt: existing.created_at,
+    };
+
+    realtimeBroadcaster.broadcast({
+      type: 'expense:updated',
+      groupId: existing.group_id,
+      data: updatedExpense,
+    });
+
+    res.json(updatedExpense);
+  } catch (err: any) {
+    console.error('Error in PUT /expenses/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });

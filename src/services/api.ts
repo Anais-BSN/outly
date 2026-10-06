@@ -578,6 +578,13 @@ export const api = {
     });
   },
 
+  async updateExpense(expenseId: string, expenseData: Partial<Expense>): Promise<Expense> {
+    return request<Expense>(`/expenses/${expenseId}`, {
+      method: 'PUT',
+      body: JSON.stringify(expenseData),
+    });
+  },
+
   async deleteExpense(expenseId: string): Promise<{ success: boolean; id: string }> {
     return request<{ success: boolean; id: string }>(`/expenses/${expenseId}`, {
       method: 'DELETE',
