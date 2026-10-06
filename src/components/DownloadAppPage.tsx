@@ -1,18 +1,11 @@
 import React from 'react';
 import {
   Download,
-  ArrowLeft,
   Menu,
-  Sparkles,
-  Calendar,
-  Wallet,
-  Users,
-  CheckCircle2,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface DownloadAppPageProps {
-  onBack: () => void;
   onOpenDrawer?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
@@ -20,7 +13,6 @@ interface DownloadAppPageProps {
 }
 
 export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
-  onBack,
   onOpenDrawer,
   isDarkMode = false,
 }) => {
@@ -44,136 +36,43 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Left: Burger Menu */}
           <div className="flex items-center gap-3">
-            {onOpenDrawer ? (
-              <button
-                type="button"
-                id="download-page-burger-btn"
-                onClick={onOpenDrawer}
-                aria-label="Ouvrir le menu"
-                className="p-2 rounded-full text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#FFF9EB]/60 dark:hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer"
-              >
-                <Menu className="w-6 h-6 stroke-[2.2]" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                id="download-page-back-btn"
-                onClick={onBack}
-                aria-label="Retour"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF9EB]/80 dark:bg-zinc-800 hover:bg-[#FFF9EB] text-[#5D0D18] dark:text-amber-200 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Retour</span>
-              </button>
-            )}
+            <button
+              type="button"
+              id="download-page-burger-btn"
+              onClick={onOpenDrawer}
+              aria-label="Ouvrir le menu"
+              className="p-2 rounded-full text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#FFF9EB]/60 dark:hover:bg-zinc-800 transition-all active:scale-95 cursor-pointer"
+            >
+              <Menu className="w-6 h-6 stroke-[2.2]" />
+            </button>
           </div>
 
           {/* Center: Brand Logo */}
           <div className="flex items-center justify-center h-full select-none">
-            <button
-              type="button"
-              id="download-page-logo-btn"
-              onClick={onBack}
-              aria-label="Retour à l'accueil"
-              title="Retour à l'accueil"
-              className="h-full py-1.5 flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95 bg-transparent border-none p-0 focus:outline-none"
-            >
+            <div className="h-full py-1.5 flex items-center justify-center bg-transparent border-none p-0">
               <img
                 src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
                 alt="Outlys"
                 className="h-full max-h-12 w-auto object-contain select-none"
               />
-            </button>
+            </div>
           </div>
 
-          {/* Right: Return action button */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              id="download-page-return-btn"
-              onClick={onBack}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-800 hover:bg-[#5D0D18]/20 dark:hover:bg-zinc-700 text-[#5D0D18] dark:text-amber-200 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Retour</span>
-            </button>
-          </div>
+          {/* Right spacer to balance burger menu for strict logo centering */}
+          <div className="w-10" />
         </div>
       </header>
 
-      {/* Main Centered Content: Product Card Presentation */}
+      {/* Main Centered Content: Essential Download Card */}
       <main className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full z-10">
         <div className="w-full max-w-md bg-[#FFF9EB]/90 dark:bg-[#18181B]/90 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-[#C7B7A3]/60 dark:border-zinc-800 shadow-xl space-y-6 text-center">
-          {/* Smartphone Mockup */}
-          <div className="flex justify-center pt-1">
-            <div className="w-44 sm:w-48 bg-zinc-900 dark:bg-zinc-950 rounded-[32px] p-2.5 shadow-2xl border-4 border-zinc-800 dark:border-zinc-700/80 transition-transform hover:scale-[1.02] duration-300">
-              {/* Dynamic Island / Speaker Notch */}
-              <div className="flex justify-center mb-1.5">
-                <div className="w-14 h-3 bg-black rounded-full flex items-center justify-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-                  <div className="w-1 h-1 rounded-full bg-blue-900/60" />
-                </div>
-              </div>
-
-              {/* Mockup Screen Content */}
-              <div className="bg-[#FFF9EB] dark:bg-[#18181B] rounded-[22px] p-2.5 space-y-2 border border-[#C7B7A3]/40 dark:border-zinc-800 text-left overflow-hidden">
-                {/* Mockup Mini Header */}
-                <div className="flex items-center justify-between pb-1 border-b border-[#C7B7A3]/30 dark:border-zinc-800">
-                  <div className="flex items-center gap-1">
-                    <img
-                      src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
-                      alt="Logo"
-                      className="h-3.5 w-auto object-contain"
-                    />
-                  </div>
-                  <div className="w-4 h-4 rounded-full bg-[#5D0D18] flex items-center justify-center">
-                    <span className="text-[7px] text-white font-bold">O</span>
-                  </div>
-                </div>
-
-                {/* Mockup Group Pill */}
-                <div className="p-1.5 rounded-lg bg-[#E8D8C4]/60 dark:bg-zinc-800 flex items-center justify-between">
-                  <div className="flex items-center gap-1 min-w-0">
-                    <div className="w-4 h-4 rounded-md bg-[#5D0D18] text-[#FFF9EB] flex items-center justify-center shrink-0">
-                      <Users className="w-2.5 h-2.5" />
-                    </div>
-                    <span className="text-[9px] font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-                      Week-end Alpes
-                    </span>
-                  </div>
-                  <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-[#5D0D18]/10 text-[#5D0D18] dark:text-amber-200">
-                    6 pers.
-                  </span>
-                </div>
-
-                {/* Mockup Mini Event Card */}
-                <div className="p-1.5 rounded-lg bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/40 dark:border-zinc-800 space-y-0.5">
-                  <div className="flex items-center gap-1 text-[8px] font-bold text-[#5D0D18] dark:text-amber-300">
-                    <Calendar className="w-2.5 h-2.5" />
-                    <span>Départ Chalet</span>
-                  </div>
-                  <div className="text-[7px] text-[#27272A]/70 dark:text-zinc-400">
-                    Vendredi 18:00 • 5 participants
-                  </div>
-                </div>
-
-                {/* Mockup Mini Expense Breakdown */}
-                <div className="p-1.5 rounded-lg bg-[#E8D8C4]/40 dark:bg-zinc-900 border border-[#C7B7A3]/40 dark:border-zinc-800 space-y-1">
-                  <div className="flex items-center justify-between text-[8px] font-bold">
-                    <span className="text-[#5D0D18] dark:text-white flex items-center gap-0.5">
-                      <Wallet className="w-2 h-2" />
-                      <span>Budget</span>
-                    </span>
-                    <span className="text-[#5D0D18] dark:text-amber-300">340,00 €</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-[#C7B7A3]/40 dark:bg-zinc-800 overflow-hidden flex">
-                    <div className="w-[45%] h-full bg-[#C28B38]" />
-                    <div className="w-[30%] h-full bg-[#5E7A68]" />
-                    <div className="w-[25%] h-full bg-[#5D0D18]" />
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Logo Centered in Card */}
+          <div className="flex justify-center pt-2 pb-1">
+            <img
+              src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
+              alt="Outlys"
+              className="h-16 sm:h-20 w-auto object-contain select-none drop-shadow-xs"
+            />
           </div>
 
           {/* Primary APK Download Action */}

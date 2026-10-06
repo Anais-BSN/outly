@@ -27,14 +27,26 @@ export const PROD_HOST_BASE = 'https://www.outlys.fr';
  * - Dans tous les cas, renvoie une URL absolue complète pour éviter tout appel vers localhost
  */
 export const getApiBaseUrl = (): string => {
-  // 1. Variable d'environnement prioritaire si définie
+  // 1. Mobile natif Capacitor (Android / iOS) -> STRICTEMENT l'API de production
+  if (Capacitor.isNativePlatform()) {
+    return PROD_API_BASE;
+  }
+
+  // 2. Variable d'environnement prioritaire si explicitement définie
   const envApiUrl = (((import.meta as any).env?.VITE_API_URL as string) || '').trim();
   if (envApiUrl) {
     const clean = envApiUrl.replace(/\/+$/, '');
     return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
 
-  // 2. URL absolue stricte de production (mobile natif Capacitor & web)
+  // 3. Navigateur web local (localhost / 127.0.0.1) en développement
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${window.location.origin}/api`;
+    }
+  }
+
+  // 4. URL absolue stricte de production par défaut
   return PROD_API_BASE;
 };
 
@@ -42,9 +54,17 @@ export const getApiBaseUrl = (): string => {
  * Résout l'URL de base de l'hôte Outlys (sans /api)
  */
 export const getHostBaseUrl = (): string => {
+  if (Capacitor.isNativePlatform()) {
+    return PROD_HOST_BASE;
+  }
   const envApiUrl = (((import.meta as any).env?.VITE_API_URL as string) || '').trim();
   if (envApiUrl) {
     return envApiUrl.replace(/\/+$/, '').replace(/\/api$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return window.location.origin;
+    }
   }
   return PROD_HOST_BASE;
 };

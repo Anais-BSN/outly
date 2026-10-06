@@ -12,6 +12,7 @@ import {
   Wallet,
   Sparkles,
   History,
+  ChevronLeft,
   ChevronRight,
   PieChart as PieChartIcon,
 } from 'lucide-react';
@@ -64,6 +65,42 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   // Budget Diagram Filters: Time (Mois, Année, Tout) and Scope (Tout le groupe / Mes dépenses)
   const [timeFilter, setTimeFilter] = useState<'month' | 'year' | 'all'>('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'me'>('all');
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
+  const handlePrevPeriod = () => {
+    setSelectedDate((prev) => {
+      if (timeFilter === 'month') {
+        return new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      } else if (timeFilter === 'year') {
+        return new Date(prev.getFullYear() - 1, prev.getMonth(), 1);
+      }
+      return prev;
+    });
+  };
+
+  const handleNextPeriod = () => {
+    setSelectedDate((prev) => {
+      if (timeFilter === 'month') {
+        return new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+      } else if (timeFilter === 'year') {
+        return new Date(prev.getFullYear() + 1, prev.getMonth(), 1);
+      }
+      return prev;
+    });
+  };
+
+  const formattedPeriodLabel = useMemo(() => {
+    if (timeFilter === 'month') {
+      const monthStr = selectedDate.toLocaleDateString('fr-FR', { month: 'short' });
+      const capitalizedMonth = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
+      const yearStr = selectedDate.getFullYear();
+      return `${capitalizedMonth} ${yearStr}`;
+    }
+    if (timeFilter === 'year') {
+      return selectedDate.getFullYear().toString();
+    }
+    return 'Tout';
+  }, [selectedDate, timeFilter]);
 
   // Synchronize local state with props when parent or backend updates
   useEffect(() => {
@@ -175,9 +212,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
 
   // Category Breakdown Aggregation for Diagram with dynamic temporal and scope filtering
   const { categoryBreakdown, filteredTotalSpent } = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+    const targetYear = selectedDate.getFullYear();
+    const targetMonth = selectedDate.getMonth();
 
     const map = new Map<string, { total: number; count: number }>();
     let totalCalculated = 0;
@@ -189,8 +225,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         if (expDateStr) {
           const expDate = new Date(expDateStr);
           if (!isNaN(expDate.getTime())) {
-            if (expDate.getFullYear() !== currentYear) return;
-            if (timeFilter === 'month' && expDate.getMonth() !== currentMonth) return;
+            if (expDate.getFullYear() !== targetYear) return;
+            if (timeFilter === 'month' && expDate.getMonth() !== targetMonth) return;
           }
         }
       }
@@ -235,7 +271,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     // Sort by total descending
     categoriesArray.sort((a, b) => b.total - a.total);
     return { categoryBreakdown: categoriesArray, filteredTotalSpent: totalCalculated };
-  }, [safeExpenses, timeFilter, scopeFilter, currentUser.id, currentUser.userId]);
+  }, [safeExpenses, timeFilter, scopeFilter, selectedDate, currentUser.id, currentUser.userId]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
@@ -525,46 +561,78 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           </span>
         </div>
 
-        {/* Filter Controls: Time Filters (Mois, Année, Tout) & Scope Switch (Tout le groupe / Mes dépenses) */}
+        {/* Filter Controls: Time Filters (Mois, Année, Tout), Period Stepper (‹ Mois › / ‹ Année ›) & Scope Switch (Tout le groupe / Mes dépenses) */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 pb-1 border-y border-[#C7B7A3]/40 dark:border-zinc-700/60">
-          {/* Time Filters */}
-          <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
-            <button
-              type="button"
-              id="budget-filter-month-btn"
-              onClick={() => setTimeFilter('month')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeFilter === 'month'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
-              }`}
-            >
-              Mois
-            </button>
-            <button
-              type="button"
-              id="budget-filter-year-btn"
-              onClick={() => setTimeFilter('year')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeFilter === 'year'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
-              }`}
-            >
-              Année
-            </button>
-            <button
-              type="button"
-              id="budget-filter-all-time-btn"
-              onClick={() => setTimeFilter('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeFilter === 'all'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
-              }`}
-            >
-              Tout
-            </button>
+          {/* Left Group: Mode Buttons + Stepper */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Time Mode Buttons (Mois, Année, Tout) */}
+            <div className="flex items-center gap-1 bg-[#FFF9EB]/70 dark:bg-zinc-900/60 p-1 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+              <button
+                type="button"
+                id="budget-filter-month-btn"
+                onClick={() => setTimeFilter('month')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeFilter === 'month'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                }`}
+              >
+                Mois
+              </button>
+              <button
+                type="button"
+                id="budget-filter-year-btn"
+                onClick={() => setTimeFilter('year')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeFilter === 'year'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                }`}
+              >
+                Année
+              </button>
+              <button
+                type="button"
+                id="budget-filter-all-time-btn"
+                onClick={() => setTimeFilter('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeFilter === 'all'
+                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                }`}
+              >
+                Tout
+              </button>
+            </div>
+
+            {/* Stepper with arrows (‹ Mois › / ‹ Année ›) */}
+            {timeFilter !== 'all' && (
+              <div className="flex items-center gap-1 bg-[#FFF9EB]/90 dark:bg-zinc-900/80 px-2 py-1 rounded-xl border border-[#C7B7A3]/50 dark:border-zinc-700/80 shadow-2xs">
+                <button
+                  type="button"
+                  id="budget-stepper-prev-btn"
+                  onClick={handlePrevPeriod}
+                  aria-label="Période précédente"
+                  title="Période précédente"
+                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+                </button>
+                <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] px-1.5 min-w-[75px] text-center select-none">
+                  {formattedPeriodLabel}
+                </span>
+                <button
+                  type="button"
+                  id="budget-stepper-next-btn"
+                  onClick={handleNextPeriod}
+                  aria-label="Période suivante"
+                  title="Période suivante"
+                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Scope Filter Switch */}

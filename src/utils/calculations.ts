@@ -307,7 +307,13 @@ export function calculateExpensesAndDebts(
   while (dIdx < debtorList.length && cIdx < creditorList.length) {
     const debtor = debtorList[dIdx];
     const creditor = creditorList[cIdx];
-    const settleCents = Math.min(debtor.remainingCents, creditor.remainingCents);
+    const isLastCreditor = cIdx === creditorList.length - 1;
+
+    // Règle comptable : la part de chaque débiteur (arrondie au centime supérieur) est strictement préservée
+    // sans ajustement résiduel négatif qui retirerait 1 centime au dernier participant
+    const settleCents = isLastCreditor
+      ? debtor.remainingCents
+      : Math.min(debtor.remainingCents, creditor.remainingCents);
 
     if (settleCents > 0) {
       calculatedSettlements.push({
@@ -324,11 +330,12 @@ export function calculateExpensesAndDebts(
       });
 
       debtor.remainingCents -= settleCents;
-      creditor.remainingCents -= settleCents;
+      creditor.remainingCents = Math.max(0, creditor.remainingCents - settleCents);
     }
 
-    if (debtor.remainingCents === 0) dIdx++;
-    if (creditor.remainingCents === 0) cIdx++;
+    if (debtor.remainingCents <= 0) dIdx++;
+    if (creditor.remainingCents <= 0 && !isLastCreditor) cIdx++;
+    if (isLastCreditor && debtor.remainingCents <= 0 && dIdx >= debtorList.length) cIdx++;
   }
 
   return {

@@ -1421,6 +1421,25 @@ export default function App() {
         }
         return prev.map((exp) => (exp.id === tempId ? newExp : exp));
       });
+
+      // Immediate cache invalidation & re-fetching
+      api.getExpenses(activeGroupId).then((freshExps) => {
+        if (Array.isArray(freshExps)) {
+          setExpenses((prev) => {
+            const others = prev.filter((e) => e.groupId !== activeGroupId);
+            return [...freshExps, ...others];
+          });
+        }
+      }).catch(() => {});
+      api.getSettlements(activeGroupId).then((freshSettlements) => {
+        if (Array.isArray(freshSettlements)) {
+          setSettlements((prev) => {
+            const freshIds = new Set(freshSettlements.map((s) => s.id));
+            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+            return [...freshSettlements, ...others];
+          });
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
       setExpenses((prev) => prev.filter((exp) => exp.id !== tempId));
@@ -1441,6 +1460,25 @@ export default function App() {
       setExpenses((prev) =>
         prev.map((exp) => (exp.id === expenseId ? updated : exp))
       );
+
+      // Immediate cache invalidation & re-fetching
+      api.getExpenses(activeGroupId).then((freshExps) => {
+        if (Array.isArray(freshExps)) {
+          setExpenses((prev) => {
+            const others = prev.filter((e) => e.groupId !== activeGroupId);
+            return [...freshExps, ...others];
+          });
+        }
+      }).catch(() => {});
+      api.getSettlements(activeGroupId).then((freshSettlements) => {
+        if (Array.isArray(freshSettlements)) {
+          setSettlements((prev) => {
+            const freshIds = new Set(freshSettlements.map((s) => s.id));
+            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+            return [...freshSettlements, ...others];
+          });
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Error updating expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -1457,6 +1495,25 @@ export default function App() {
 
     try {
       await api.deleteExpense(expenseId);
+
+      // Immediate cache invalidation & re-fetching
+      api.getExpenses(activeGroupId).then((freshExps) => {
+        if (Array.isArray(freshExps)) {
+          setExpenses((prev) => {
+            const others = prev.filter((e) => e.groupId !== activeGroupId);
+            return [...freshExps, ...others];
+          });
+        }
+      }).catch(() => {});
+      api.getSettlements(activeGroupId).then((freshSettlements) => {
+        if (Array.isArray(freshSettlements)) {
+          setSettlements((prev) => {
+            const freshIds = new Set(freshSettlements.map((s) => s.id));
+            const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
+            return [...freshSettlements, ...others];
+          });
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Error deleting expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -1587,6 +1644,13 @@ export default function App() {
         return prev.map((g) => (g.id === tempId ? newGroup : g));
       });
       setActiveGroupId(newGroup.id);
+
+      // Immediate cache invalidation & re-fetching
+      api.getGroups(currentUser.id).then((refreshed) => {
+        if (Array.isArray(refreshed) && refreshed.length > 0) {
+          setGroups(refreshed);
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Error creating group in PostgreSQL:', err);
       setGroups((prev) => prev.filter((g) => g.id !== tempId));
@@ -2079,24 +2143,6 @@ export default function App() {
     partage_frais: 0,
   };
 
-  if (isDownloadPage) {
-    return (
-      <DownloadAppPage
-        onBack={() => {
-          window.history.pushState({}, '', '/');
-          setIsDownloadPage(false);
-          if (!currentUser) {
-            setIsAuthOpen(true);
-          }
-        }}
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
-        currentUser={currentUser || undefined}
-      />
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col items-center justify-center p-6 space-y-4">
@@ -2129,21 +2175,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col font-sans transition-colors duration-200">
-      {/* 1. Header Fixe */}
-      <Header
-        currentUser={currentUser}
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-        onOpenSearchFriends={() => setIsFriendsOpen(true)}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onGoHome={() => {
-          setActiveGroupId('');
-          localStorage.removeItem('outly_active_group_id');
-        }}
-        unreadNotificationsCount={unreadNotifsCount}
-        isDarkMode={isDarkMode}
-        onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
-      />
-
       {/* 2. Menu Burger / Lateral Drawer */}
       <SidebarDrawer
         isOpen={isDrawerOpen}
@@ -2156,25 +2187,37 @@ export default function App() {
         onSelectGroup={(id) => {
           setActiveGroupId(id);
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
         }}
         onOpenProfile={() => {
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
           setIsProfileOpen(true);
         }}
         onOpenCalendar={() => {
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
           setIsCalendarOpen(true);
         }}
         onOpenAddFriends={() => {
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
           setIsFriendsOpen(true);
         }}
         onOpenNotifications={() => {
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
           setIsNotificationsOpen(true);
         }}
         onOpenCreateGroup={() => {
           setIsDrawerOpen(false);
+          setIsDownloadPage(false);
+          window.history.pushState({}, '', '/');
           setIsCreateGroupOpen(true);
         }}
         onOpenDownloadPage={() => {
@@ -2183,8 +2226,32 @@ export default function App() {
         }}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col pt-2 pb-24">
+      {isDownloadPage ? (
+        <DownloadAppPage
+          onOpenDrawer={() => setIsDrawerOpen(true)}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+          currentUser={currentUser || undefined}
+        />
+      ) : (
+        <>
+          {/* 1. Header Fixe */}
+          <Header
+            currentUser={currentUser}
+            onOpenDrawer={() => setIsDrawerOpen(true)}
+            onOpenSearchFriends={() => setIsFriendsOpen(true)}
+            onOpenNotifications={() => setIsNotificationsOpen(true)}
+            onGoHome={() => {
+              setActiveGroupId('');
+              localStorage.removeItem('outly_active_group_id');
+            }}
+            unreadNotificationsCount={unreadNotifsCount}
+            isDarkMode={isDarkMode}
+            onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
+          />
+
+          {/* Main Content Area */}
+          <main className="flex-1 flex flex-col pt-2 pb-24">
         {!currentUser ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-[#E8D8C4] flex items-center justify-center animate-pulse text-[#6D2932] mb-3">
@@ -2443,6 +2510,8 @@ export default function App() {
           </>
         )}
       </main>
+        </>
+      )}
 
       {/* 6. All Interactive Application Modals */}
       {/* Floating Invite / Action Toast */}
@@ -2472,7 +2541,7 @@ export default function App() {
 
       {/* Auth Modal (Inscription & Connexion & Google OAuth & Mot de passe oublié) */}
       <AuthModal
-        isOpen={!isResetPasswordOpen && (isAuthOpen || !currentUser)}
+        isOpen={!isResetPasswordOpen && !isDownloadPage && (isAuthOpen || !currentUser)}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
         canClose={Boolean(currentUser)}

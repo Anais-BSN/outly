@@ -33,12 +33,12 @@ class RealtimeService {
 
     try {
       const apiBase = getApiBaseUrl();
-      const url = `${apiBase}/events?userId=${encodeURIComponent(this.currentUserId)}&stream=true`;
+      const url = `${apiBase}/events/stream?userId=${encodeURIComponent(this.currentUserId)}`;
       this.eventSource = new EventSource(url);
 
       this.eventSource.onopen = () => {
         this.isConnecting = false;
-        console.debug('[Realtime] Flux SSE connecté avec succès pour', this.currentUserId);
+        console.debug('[Realtime] Flux SSE connecté avec succès pour', this.currentUserId, 'sur', url);
       };
 
       this.eventSource.onmessage = (e) => {
