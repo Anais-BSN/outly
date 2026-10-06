@@ -733,19 +733,27 @@ export default function App() {
           }
 
           // 2. Détecter la présence de participants sans compte (hors comptes supprimés)
-          const virtuals = members.filter((m: GroupMember) => {
-            const isVirt = Boolean(
-              m.isVirtual ||
-              (m.userId && m.userId.startsWith('user-virt-')) ||
-              (m.id && m.id.startsWith('user-virt-'))
-            );
+          const rawVirtuals: GroupMember[] = (Array.isArray(inv.virtualMembers) && inv.virtualMembers.length > 0)
+            ? inv.virtualMembers
+            : (Array.isArray(groupData?.virtualMembers) && groupData.virtualMembers.length > 0)
+            ? groupData.virtualMembers
+            : members.filter((m: GroupMember) => {
+                const isVirt = Boolean(
+                  m.isVirtual ||
+                  (m.userId && m.userId.startsWith('user-virt-')) ||
+                  (m.id && m.id.startsWith('user-virt-'))
+                );
+                return isVirt;
+              });
+
+          const virtuals = (rawVirtuals || []).filter((m: GroupMember) => {
             const isDeleted = Boolean(
               m.isDeleted ||
               m.status === 'deleted' ||
               m.name?.toLowerCase().includes('utilisateur supprimé') ||
               m.firstName?.toLowerCase().includes('utilisateur supprimé')
             );
-            return isVirt && !isDeleted;
+            return !isDeleted;
           });
 
           if (virtuals.length > 0) {

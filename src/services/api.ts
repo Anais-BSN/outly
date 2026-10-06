@@ -660,6 +660,10 @@ export const api = {
     return request(`/invitations/${encodeURIComponent(token)}`);
   },
 
+  async getGroupPreview(groupIdOrToken: string): Promise<any> {
+    return request(`/groups/preview/${encodeURIComponent(groupIdOrToken)}`);
+  },
+
   async acceptInvitationByToken(token: string, userId: string = 'user-me'): Promise<any> {
     return request(`/invitations/${encodeURIComponent(token)}/accept`, {
       method: 'POST',
