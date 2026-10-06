@@ -484,7 +484,15 @@ export default function App() {
           }
           break;
         case 'group:deleted':
-          setGroups((prev) => prev.filter((g) => g.id !== event.groupId));
+          const deletedGrpId = event.groupId || event.data?.groupId;
+          setGroups((prev) => prev.filter((g) => g.id !== deletedGrpId));
+          setActiveGroupId((prev) => {
+            if (prev === deletedGrpId) {
+              localStorage.removeItem('outly_active_group_id');
+              return '';
+            }
+            return prev;
+          });
           break;
         case 'gallery:uploaded':
           setGalleryItems((prev) => {

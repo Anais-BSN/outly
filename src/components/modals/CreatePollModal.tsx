@@ -393,7 +393,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         <button
                           type="button"
                           onClick={() => removeDateOption(idx)}
-                          className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 rounded-lg text-xs cursor-pointer"
+                          className="p-1 text-red-600 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-950/50 rounded-lg text-xs cursor-pointer transition-colors"
                           title="Supprimer ce créneau"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -416,7 +416,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                             handleDateOptionChange(idx, 'startTime', t);
                           }}
                           required
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] [color-scheme:light] dark:[color-scheme:dark]"
                         />
                       </div>
                       <div>
@@ -433,7 +433,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                             handleDateOptionChange(idx, 'endTime', t);
                           }}
                           required
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] [color-scheme:light] dark:[color-scheme:dark]"
                         />
                       </div>
                     </div>
@@ -478,7 +478,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       <button
                         type="button"
                         onClick={() => removeChoiceOption(idx)}
-                        className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 rounded-lg text-xs cursor-pointer"
+                        className="p-1.5 text-red-600 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-950/50 rounded-lg text-xs cursor-pointer transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

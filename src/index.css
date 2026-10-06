@@ -38,6 +38,12 @@
   .dark h1, .dark h2, .dark h3, .dark h4, .dark .font-serif, .dark .font-display {
     color: #FFF9EB;
   }
+
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark input[type="datetime-local"] {
+    color-scheme: dark;
+  }
 }
 
 /* Custom scrollbar styling for slick artistic feel */

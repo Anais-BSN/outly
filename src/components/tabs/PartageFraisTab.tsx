@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Receipt,
   Plus,
@@ -13,9 +13,6 @@ import {
   Sparkles,
   History,
   ChevronRight,
-  MoreVertical,
-  Edit,
-  Trash2,
   PieChart as PieChartIcon,
 } from 'lucide-react';
 import { Expense, UserProfile, GroupMember, DebtSettlement, ExpenseCategory } from '../../types';
@@ -39,12 +36,12 @@ interface PartageFraisTabProps {
 }
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; hex: string }> = {
-  Restaurant: { bg: 'bg-amber-500', text: 'text-amber-500', hex: '#D97706' },
-  Courses: { bg: 'bg-emerald-500', text: 'text-emerald-500', hex: '#059669' },
-  Transport: { bg: 'bg-blue-500', text: 'text-blue-500', hex: '#2563EB' },
-  Logement: { bg: 'bg-purple-500', text: 'text-purple-500', hex: '#7C3AED' },
-  Activités: { bg: 'bg-pink-500', text: 'text-pink-500', hex: '#DB2777' },
-  Autre: { bg: 'bg-zinc-500', text: 'text-zinc-500', hex: '#64748B' },
+  Restaurant: { bg: 'bg-[#C28B38]', text: 'text-[#C28B38]', hex: '#C28B38' }, // Warm Caramel Gold
+  Courses: { bg: 'bg-[#5E7A68]', text: 'text-[#5E7A68]', hex: '#5E7A68' },       // Sage Green
+  Transport: { bg: 'bg-[#485665]', text: 'text-[#485665]', hex: '#485665' },     // Indigo Slate
+  Logement: { bg: 'bg-[#5D0D18]', text: 'text-[#5D0D18]', hex: '#5D0D18' },       // Outlys Burgundy
+  Activités: { bg: 'bg-[#8E4A5B]', text: 'text-[#8E4A5B]', hex: '#8E4A5B' },     // Dusty Rose
+  Autre: { bg: 'bg-[#8C7D70]', text: 'text-[#8C7D70]', hex: '#8C7D70' },         // Warm Taupe
 };
 
 export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
@@ -63,21 +60,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
   const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const [localSettlements, setLocalSettlements] = useState<DebtSettlement[]>(settlements || []);
   const [hiddenDebtKeys, setHiddenDebtKeys] = useState<Set<string>>(new Set());
-  const [activeMenuExpenseId, setActiveMenuExpenseId] = useState<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement>(null);
-
-  // Close context menu on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(event.target as Node)) {
-        setActiveMenuExpenseId(null);
-      }
-    };
-    if (activeMenuExpenseId) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeMenuExpenseId]);
 
   // Synchronize local state with props when parent or backend updates
   useEffect(() => {
@@ -186,23 +168,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     }
   };
 
-  const handleDeleteExpenseClick = (e: React.MouseEvent, expenseId: string) => {
-    e.stopPropagation();
-    setActiveMenuExpenseId(null);
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer définitivement cette dépense ? Les comptes du groupe seront recalculés automatiquement.')) {
-      if (onDeleteExpense) {
-        onDeleteExpense(expenseId);
-      }
-    }
-  };
-
-  const handleEditExpenseClick = (e: React.MouseEvent, expense: Expense) => {
-    e.stopPropagation();
-    setActiveMenuExpenseId(null);
-    if (onEditExpense) {
-      onEditExpense(expense);
-    }
-  };
 
   // Category Breakdown Aggregation for Diagram
   const categoryBreakdown = useMemo(() => {
@@ -442,10 +407,9 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3" ref={menuContainerRef}>
+          <div className="space-y-3">
             {safeExpenses.map((expense) => {
               const isPayerMe = expense.paidById === currentUser.id;
-              const isMenuOpen = activeMenuExpenseId === expense.id;
 
               return (
                 <div
@@ -499,54 +463,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                       </div>
                     </div>
 
-                    {/* 3-dots context menu trigger */}
-                    {(onEditExpense || onDeleteExpense) && (
-                      <div className="relative">
-                        <button
-                          type="button"
-                          id={`expense-menu-btn-${expense.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuExpenseId(isMenuOpen ? null : expense.id);
-                          }}
-                          className="p-1.5 rounded-xl hover:bg-[#FFF9EB] dark:hover:bg-zinc-700 text-[#6D2932] dark:text-zinc-300 transition-colors cursor-pointer"
-                          title="Actions de la dépense"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-
-                        {isMenuOpen && (
-                          <div
-                            className="absolute right-0 mt-1 top-full w-40 bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 py-1.5 z-40 animate-fade-in"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {onEditExpense && (
-                              <button
-                                type="button"
-                                id={`expense-edit-opt-${expense.id}`}
-                                onClick={(e) => handleEditExpenseClick(e, expense)}
-                                className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
-                              >
-                                <Edit className="w-3.5 h-3.5 text-[#5D0D18] dark:text-zinc-400" />
-                                <span>Modifier</span>
-                              </button>
-                            )}
-                            {onDeleteExpense && (
-                              <button
-                                type="button"
-                                id={`expense-delete-opt-${expense.id}`}
-                                onClick={(e) => handleDeleteExpenseClick(e, expense.id)}
-                                className="w-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Supprimer</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <ChevronRight className="w-4 h-4 text-[#6D2932]/40 dark:text-zinc-500 group-hover/card:text-[#6D2932] dark:group-hover/card:text-amber-300 group-hover/card:translate-x-0.5 transition-all" />
                   </div>
                 </div>
@@ -562,7 +478,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           <div className="flex items-center gap-2">
             <PieChartIcon className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
             <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
-              Répartition du budget par catégorie
+              Budget
             </h4>
           </div>
 
