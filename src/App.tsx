@@ -742,8 +742,8 @@ export default function App() {
             const isDeleted = Boolean(
               m.isDeleted ||
               m.status === 'deleted' ||
-              m.name?.toLowerCase().startsWith('utilisateur supprimé') ||
-              m.firstName?.toLowerCase().startsWith('utilisateur supprimé')
+              m.name?.toLowerCase().includes('utilisateur supprimé') ||
+              m.firstName?.toLowerCase().includes('utilisateur supprimé')
             );
             return isVirt && !isDeleted;
           });

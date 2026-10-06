@@ -169,7 +169,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
                           Moi
                         </span>
                       )}
-                      {member.isVirtual && !member.isDeleted && !memberName.toLowerCase().startsWith('utilisateur supprimé') && (
+                      {member.isVirtual && !member.isDeleted && !memberName.toLowerCase().includes('utilisateur supprimé') && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                           Sans compte
                         </span>

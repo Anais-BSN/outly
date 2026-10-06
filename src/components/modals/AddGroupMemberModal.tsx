@@ -100,9 +100,14 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     (group.members || []).map((m) => m.userId || m.id)
   );
 
-  // Participants sans compte existant dans ce groupe
+  // Participants sans compte existant dans ce groupe (hors comptes supprimés)
   const virtualMembers = (group.members || []).filter(
-    (m) => m.isVirtual || (m.id && m.id.startsWith('user-virt-')) || (m.userId && m.userId.startsWith('user-virt-'))
+    (m) =>
+      (m.isVirtual || (m.id && m.id.startsWith('user-virt-')) || (m.userId && m.userId.startsWith('user-virt-'))) &&
+      !m.isDeleted &&
+      m.status !== 'deleted' &&
+      !m.name?.toLowerCase().includes('utilisateur supprimé') &&
+      !m.firstName?.toLowerCase().includes('utilisateur supprimé')
   );
 
   const acceptedFriends = (friends || []).filter(

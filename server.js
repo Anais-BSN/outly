@@ -565,6 +565,13 @@ apiRouter.get("/sse", handleSseConnection);
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_from_user_id_fkey;`);
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_to_user_id_fkey;`);
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_group_id_fkey;`);
+    await query(`
+      UPDATE users
+      SET handle = 'deleted_' || id || '_' || substr(md5(random()::text), 1, 6)
+      WHERE handle ILIKE '%utilisateur_supprime%' 
+         OR handle ILIKE '%utilisateur%supprim%'
+         OR (is_deleted = TRUE AND (handle IS NULL OR handle = '' OR handle LIKE '@deleted_%' OR handle LIKE 'deleted_%'));
+    `);
   } catch (e) {
     console.error("Migration error (can be ignored if table locked):", e);
   }
@@ -681,7 +688,12 @@ apiRouter.post("/auth/google", async (req, res) => {
       return res.json(existing.rows[0]);
     }
     const userId = `user-google-${googleId || Date.now()}`;
-    const handle = `@${email.split("@")[0]}`;
+    const cleanPrefix = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "") || "user";
+    let handle = `@${cleanPrefix}`;
+    const existingHandle = await query(`SELECT id FROM users WHERE handle ILIKE $1`, [handle]);
+    if (existingHandle.rows.length > 0) {
+      handle = `@${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    }
     const userAvatar = avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80";
     const insertRes = await query(
       `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash, google_id)
@@ -1347,7 +1359,8 @@ apiRouter.post("/groups/:id/virtual-member", async (req, res) => {
       return res.status(400).json({ error: "Le pr\xE9nom du participant est requis" });
     }
     const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const randomHandle = `@${trimmedFirstName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Math.random().toString(36).substring(2, 6)}`;
+    const cleanPrefix = trimmedFirstName.toLowerCase().replace(/[^a-z0-9]/g, "") || "invite";
+    const randomHandle = `@${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const dummyEmail = `${virtualUserId}@outlys.local`;
     await query(
       `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
@@ -1729,9 +1742,9 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       }
     }
     const nextDeletedNum = maxDeletedNum + 1;
-    const deletedFirstName = "Utilisateur";
-    const deletedLastName = `supprim\xE9 ${nextDeletedNum}`;
-    const deletedHandle = `@deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const deletedFirstName = `Utilisateur supprim\xE9 ${nextDeletedNum}`;
+    const deletedLastName = "";
+    const deletedHandle = `deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${Math.random().toString(36).substring(2, 7)}`;
     const isRealUser = !userId.startsWith("user-virt-");
     if (isRealUser) {
       const userRes = await query(

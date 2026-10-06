@@ -263,9 +263,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             >
               {uniqueMembers.map((m) => {
                 const uid = m.userId || m.id;
+                const isSupprime = Boolean(
+                  m.isDeleted ||
+                  m.status === 'deleted' ||
+                  m.name?.toLowerCase().includes('utilisateur supprimé') ||
+                  m.firstName?.toLowerCase().includes('utilisateur supprimé')
+                );
                 return (
                   <option key={uid} value={uid}>
-                    {m.name || m.firstName || 'Membre'} {uid === currentUser.id ? '(Moi)' : m.isVirtual ? '(Sans compte)' : ''}
+                    {m.name || m.firstName || 'Membre'} {uid === currentUser.id ? '(Moi)' : (m.isVirtual && !isSupprime) ? '(Sans compte)' : ''}
                   </option>
                 );
               })}
@@ -290,6 +296,12 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 const isSelected = participantIds.includes(memberUid);
                 const memberShareCents = isSelected ? (liveAllocatedMap.get(memberUid) || 0) : 0;
                 const memberShare = memberShareCents / 100;
+                const isMemberSupprime = Boolean(
+                  member.isDeleted ||
+                  member.status === 'deleted' ||
+                  member.name?.toLowerCase().includes('utilisateur supprimé') ||
+                  member.firstName?.toLowerCase().includes('utilisateur supprimé')
+                );
 
                 return (
                   <div
@@ -323,7 +335,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         {member.name || member.firstName} {memberUid === currentUser.id ? '(Moi)' : ''}
                       </span>
 
-                      {member.isVirtual && (
+                      {member.isVirtual && !isMemberSupprime && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300/60 dark:border-amber-800">
                           Sans compte
                         </span>
