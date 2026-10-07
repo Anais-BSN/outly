@@ -469,7 +469,7 @@ export const sendNativeLocalNotification = async (
           title: title,
           body: body || '',
           channelId: 'outlys_notifications',
-          smallIcon: 'ic_launcher',
+          smallIcon: 'ic_stat_outlys',
           iconColor: '#5D0D18',
           extra: data || {},
           schedule: { at: new Date(Date.now() + 50), allowWhileIdle: true },

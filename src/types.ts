@@ -83,7 +83,9 @@ export interface ChatMessage {
   readBy: string[]; // userIds
   reactions: EmojiReaction[];
   isSystem?: boolean;
-  systemType?: 'event' | 'poll' | 'task' | 'settlement' | 'expense' | 'member_joined' | 'member_left';
+  systemType?: 'event' | 'poll' | 'task' | 'settlement' | 'expense' | 'member_joined' | 'member_left' | 'call';
+  callType?: 'audio' | 'video';
+  callId?: string;
 }
 
 export interface PollVote {
@@ -195,4 +197,27 @@ export interface AppNotification {
   read: boolean;
   groupId?: string;
   eventId?: string;
+}
+
+export type CallType = 'audio' | 'video';
+
+export interface CallParticipant {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  joinedAt: string;
+  muted?: boolean;
+  videoOff?: boolean;
+}
+
+export interface GroupCallSession {
+  callId: string;
+  groupId: string;
+  type: CallType;
+  initiatorId: string;
+  initiatorName: string;
+  initiatorAvatar: string;
+  startedAt: string;
+  participants: CallParticipant[];
+  active: boolean;
 }

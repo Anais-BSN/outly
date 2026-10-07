@@ -32,6 +32,7 @@ import { ResetPasswordModal } from './components/modals/ResetPasswordModal';
 import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
 import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { InviteReconcileModal } from './components/modals/InviteReconcileModal';
+import { GroupCallModal } from './components/modals/GroupCallModal';
 import { AppDownloadBanner } from './components/AppDownloadBanner';
 import { DownloadAppPage } from './components/DownloadAppPage';
 import { formatDateOnly } from './utils/formatters';
@@ -68,6 +69,7 @@ import {
   Friend,
   AppNotification,
   GroupMember,
+  GroupCallSession,
 } from './types';
 import { Loader2, RefreshCw, PlusCircle, UserPlus, Users } from 'lucide-react';
 
@@ -182,6 +184,10 @@ export default function App() {
   const [viewingImage, setViewingImage] = useState<GalleryItem | null>(null);
   const [viewingAvatar, setViewingAvatar] = useState<{ url: string; title?: string; subtitle?: string } | null>(null);
   const [initialEventDate, setInitialEventDate] = useState<string | undefined>(undefined);
+
+  // Group Call states (Audio & Vidéo)
+  const [activeCallSession, setActiveCallSession] = useState<GroupCallSession | null>(null);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
 
   // Deep-link & Reset Password states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -676,6 +682,30 @@ export default function App() {
         case 'friend:deleted':
           api.getFriends(currentUser.id).then(setFriends).catch(() => {});
           break;
+        case 'call:started':
+          if (event.data?.groupId === activeGroupId) {
+            setActiveCallSession(event.data);
+          }
+          if (event.data && event.data.startedBy !== currentUser.id) {
+            const callTypeLabel = event.data.type === 'video' ? 'Appel vidéo' : 'Appel audio';
+            sendNativeLocalNotification(
+              event.data.groupName || 'Appel de groupe',
+              `${event.data.startedByName || 'Un membre'} a démarré un ${callTypeLabel.toLowerCase()}`,
+              { type: 'group_call', groupId: event.data.groupId, callId: event.data.callId }
+            );
+          }
+          break;
+        case 'call:joined':
+          if (event.data?.groupId === activeGroupId) {
+            setActiveCallSession(event.data);
+          }
+          break;
+        case 'call:ended':
+          if (event.data?.groupId === activeGroupId) {
+            setActiveCallSession(null);
+            setIsCallModalOpen(false);
+          }
+          break;
       }
     });
 
@@ -683,7 +713,7 @@ export default function App() {
       unsubscribe();
       realtimeService.disconnect();
     };
-  }, [currentUser]);
+  }, [currentUser, activeGroupId]);
 
   useEffect(() => {
     loadData();
@@ -886,6 +916,17 @@ export default function App() {
   useEffect(() => {
     initLocalNotifications();
   }, []);
+
+  // Synchronisation de l'appel actif lors du changement de groupe
+  useEffect(() => {
+    if (activeGroupId) {
+      api.getActiveCall(activeGroupId)
+        .then((session) => setActiveCallSession(session))
+        .catch(() => setActiveCallSession(null));
+    } else {
+      setActiveCallSession(null);
+    }
+  }, [activeGroupId]);
 
   // Derived current group & active datasets
   const activeGroup: Group =
@@ -1115,6 +1156,38 @@ export default function App() {
       await api.deleteMessage(messageId);
     } catch (err) {
       console.error('Error deleting message in PostgreSQL:', err);
+    }
+  };
+
+  // Handlers: Appels Audio et Vidéo en temps réel
+  const handleStartCall = async (type: 'audio' | 'video') => {
+    if (!activeGroupId || !currentUser) return;
+    try {
+      const session = await api.startCall(activeGroupId, type, currentUser.id);
+      setActiveCallSession(session);
+      setIsCallModalOpen(true);
+    } catch (err) {
+      console.error('Erreur démarrage appel:', err);
+    }
+  };
+
+  const handleJoinCall = async () => {
+    if (!activeGroupId || !currentUser || !activeCallSession?.callId) return;
+    try {
+      const session = await api.joinCall(activeGroupId, activeCallSession.callId, currentUser.id);
+      setActiveCallSession(session);
+      setIsCallModalOpen(true);
+    } catch (err) {
+      console.error('Erreur rejoindre appel:', err);
+    }
+  };
+
+  const handleCloseCallModal = () => {
+    setIsCallModalOpen(false);
+    if (activeGroupId) {
+      api.getActiveCall(activeGroupId)
+        .then((session) => setActiveCallSession(session))
+        .catch(() => setActiveCallSession(null));
     }
   };
 
@@ -2487,11 +2560,15 @@ export default function App() {
                   messages={groupMessages}
                   currentUser={currentUser}
                   members={activeGroup.members}
+                  groupName={activeGroup.name}
                   onSendMessage={handleSendMessage}
                   onAddReaction={handleAddReaction}
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
                   onViewAvatar={(url, title, subtitle) => setViewingAvatar({ url, title, subtitle })}
+                  onStartCall={handleStartCall}
+                  activeCall={activeCallSession}
+                  onJoinCall={handleJoinCall}
                 />
               </div>
 
@@ -2844,6 +2921,17 @@ export default function App() {
           currentUser={currentUser}
           onConfirmMerge={handleConfirmInviteMerge}
           onContinueAsNew={handleContinueAsNewMember}
+        />
+      )}
+
+      {/* Group Call Modal (Appels Audio & Vidéo en direct) */}
+      {currentUser && isCallModalOpen && activeCallSession && (
+        <GroupCallModal
+          isOpen={isCallModalOpen}
+          onClose={handleCloseCallModal}
+          callSession={activeCallSession}
+          currentUser={currentUser}
+          groupName={activeGroup.name || 'Discussion de groupe'}
         />
       )}
     </div>

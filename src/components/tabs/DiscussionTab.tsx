@@ -18,9 +18,13 @@ import {
   Trash2,
   ChevronUp,
   Loader2,
-  FileText
+  FileText,
+  Phone,
+  PhoneCall,
+  Video,
+  Radio
 } from 'lucide-react';
-import { ChatMessage, UserProfile, GroupMember } from '../../types';
+import { ChatMessage, UserProfile, GroupMember, GroupCallSession } from '../../types';
 import { formatDateTime, formatTimeOnly } from '../../utils/formatters';
 import { triggerHaptic } from '../../services/nativeService';
 import { QUICK_REACTIONS } from '../../data/emojis';
@@ -30,11 +34,15 @@ interface DiscussionTabProps {
   messages?: ChatMessage[];
   currentUser: UserProfile;
   members?: GroupMember[];
+  groupName?: string;
   onSendMessage: (text: string, imageUrl?: string, imageUrls?: string[]) => void;
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
+  onStartCall?: (type: 'audio' | 'video') => void;
+  activeCall?: GroupCallSession | null;
+  onJoinCall?: () => void;
 }
 
 interface MessageItemProps {
@@ -46,6 +54,8 @@ interface MessageItemProps {
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   onViewAvatar?: (url: string, title?: string, subtitle?: string) => void;
+  activeCall?: GroupCallSession | null;
+  onJoinCall?: () => void;
 }
 
 const MessageItem = React.memo<MessageItemProps>(({
@@ -57,6 +67,8 @@ const MessageItem = React.memo<MessageItemProps>(({
   onEditMessage,
   onDeleteMessage,
   onViewAvatar,
+  activeCall,
+  onJoinCall,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -216,6 +228,40 @@ const MessageItem = React.memo<MessageItemProps>(({
 
   // System message
   if (message.isSystem) {
+    if (message.systemType === 'call') {
+      return (
+        <div
+          id={`chat-system-msg-${message.id}`}
+          className="flex items-center justify-center my-3 animate-fade-in"
+        >
+          <div className="flex flex-col sm:flex-row items-center gap-2 max-w-lg px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#5D0D18]/15 via-[#6D2932]/10 to-transparent dark:from-[#5D0D18]/40 dark:via-zinc-800 border border-[#5D0D18]/30 dark:border-[#5D0D18]/60 text-xs text-[#5D0D18] dark:text-[#FFF9EB] shadow-xs">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-[#5D0D18] text-white">
+                <PhoneCall className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-semibold">{message.text}</span>
+              <span className="text-[10px] opacity-60">
+                {formatTimeOnly(message.timestamp)}
+              </span>
+            </div>
+            {activeCall?.active && onJoinCall && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  onJoinCall();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto"
+              >
+                <Radio className="w-3 h-3 animate-pulse" />
+                <span>Rejoindre</span>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     const getSystemIcon = (type?: string) => {
       switch (type) {
         case 'event': return <Calendar className="w-4 h-4 text-[#6D2932] dark:text-amber-300 shrink-0" />;
@@ -682,11 +728,15 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   messages = [],
   currentUser,
   members = [],
+  groupName,
   onSendMessage,
   onAddReaction,
   onEditMessage,
   onDeleteMessage,
   onViewAvatar,
+  onStartCall,
+  activeCall,
+  onJoinCall,
 }) => {
   const [inputText, setInputText] = useState('');
   interface PendingAttachment {
@@ -846,6 +896,98 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
 
   return (
     <div className="flex flex-col h-[calc(100dvh-125px)] sm:h-[calc(100dvh-135px)] max-w-4xl mx-auto">
+      {/* En-tête de la discussion avec actions d'appels audio et vidéo */}
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+            {(members || []).slice(0, 3).map((m) => (
+              <img
+                key={m.userId || m.id}
+                src={m.avatar || '/Avatar_Herisson.jpg'}
+                alt={m.name}
+                className="inline-block h-6 w-6 rounded-full ring-2 ring-[#FFF9EB] dark:ring-[#18181B] object-cover"
+              />
+            ))}
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+              {groupName || 'Discussion du groupe'}
+            </h4>
+            <p className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 truncate">
+              {members.length} participant{members.length > 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* Boutons d'action pour appel audio et appel vidéo */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {onStartCall && (
+            <>
+              <button
+                type="button"
+                id="start-audio-call-btn"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onStartCall('audio');
+                }}
+                title="Démarrer un appel audio"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#E8D8C4]/80 dark:bg-zinc-800 hover:bg-[#E8D8C4] dark:hover:bg-zinc-750 text-[#5D0D18] dark:text-zinc-200 border border-[#C7B7A3]/40 dark:border-zinc-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <Phone className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
+                <span className="hidden md:inline">Appel audio</span>
+              </button>
+              <button
+                type="button"
+                id="start-video-call-btn"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onStartCall('video');
+                }}
+                title="Démarrer un appel vidéo"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#5D0D18] hover:bg-[#450912] text-[#FFF9EB] font-semibold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Video className="w-4 h-4 text-[#FFF9EB]" />
+                <span className="hidden md:inline">Appel vidéo</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Bannière d'appel en cours dans le groupe */}
+      {activeCall?.active && (
+        <div
+          id="active-call-group-banner"
+          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between gap-2 shadow-xs shrink-0 animate-fade-in"
+        >
+          <div className="flex items-center gap-2 text-xs font-bold min-w-0">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+            </span>
+            <span className="truncate">
+              {activeCall.type === 'video' ? 'Appel vidéo en cours' : 'Appel audio en cours'}
+            </span>
+            <span className="text-[11px] font-normal opacity-90 hidden sm:inline">
+              • {activeCall.participants?.length || 1} participant{(activeCall.participants?.length || 1) > 1 ? 's' : ''}
+            </span>
+          </div>
+          {onJoinCall && (
+            <button
+              type="button"
+              id="join-active-call-banner-btn"
+              onClick={() => {
+                triggerHaptic('medium');
+                onJoinCall();
+              }}
+              className="px-3 py-1 rounded-full bg-white text-emerald-800 font-bold text-xs hover:bg-zinc-100 shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
+            >
+              Rejoindre
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Messages Stream Container */}
       <div
         ref={messagesContainerRef}
@@ -906,6 +1048,8 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
               onEditMessage={onEditMessage}
               onDeleteMessage={onDeleteMessage}
               onViewAvatar={onViewAvatar}
+              activeCall={activeCall}
+              onJoinCall={onJoinCall}
             />
           );
         })}

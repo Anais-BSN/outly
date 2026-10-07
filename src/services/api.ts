@@ -719,4 +719,37 @@ export const api = {
       body: JSON.stringify({ userId, token, platform }),
     });
   },
+
+  // 12. Appels Audio & Vidéo
+  async getActiveCall(groupId: string): Promise<{ active: boolean; call: any }> {
+    return request(`/calls/active/${encodeURIComponent(groupId)}`);
+  },
+
+  async startCall(groupId: string, type: 'audio' | 'video', initiatorId: string): Promise<{ success: boolean; call: any }> {
+    return request('/calls/start', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, type, initiatorId }),
+    });
+  },
+
+  async joinCall(groupId: string, callId: string, user: any): Promise<{ success: boolean; call: any }> {
+    return request('/calls/join', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, callId, user }),
+    });
+  },
+
+  async sendCallSignal(data: { groupId: string; callId: string; fromUserId: string; toUserId?: string; signal: any }): Promise<any> {
+    return request('/calls/signal', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async leaveCall(groupId: string, callId: string, userId: string): Promise<any> {
+    return request('/calls/leave', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, callId, userId }),
+    });
+  },
 };
