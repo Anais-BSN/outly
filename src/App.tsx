@@ -47,6 +47,9 @@ import {
   triggerHaptic,
   triggerHapticNotification,
   setupAppUrlListener,
+  syncSystemBarsTheme,
+  initLocalNotifications,
+  sendNativeLocalNotification,
 } from './services/nativeService';
 import {
   TabType,
@@ -370,6 +373,11 @@ export default function App() {
             setInviteToast({ text: event.data.message || event.data.title, success: true });
             setTimeout(() => setInviteToast(null), 5000);
             triggerHapticNotification('success');
+            sendNativeLocalNotification(
+              event.data.title || 'Outlys',
+              event.data.message || 'Nouvelle notification',
+              event.data
+            );
           }
           break;
         case 'notification:read':
@@ -858,7 +866,12 @@ export default function App() {
       document.documentElement.classList.remove('dark');
       document.body.classList.remove('dark');
     }
+    syncSystemBarsTheme(isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    initLocalNotifications();
+  }, []);
 
   // Derived current group & active datasets
   const activeGroup: Group =

@@ -27,6 +27,7 @@ import { UserProfile } from '../../types';
 import { CARTOON_AVATARS } from '../../constants/avatars';
 import { api } from '../../services/api';
 import { compressImage } from '../../utils/imageCompressor';
+import { syncSystemBarsTheme } from '../../services/nativeService';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -166,7 +167,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Auto-save on Theme Toggle
   const handleThemeToggle = (newTheme: 'light' | 'dark') => {
     setThemePreference(newTheme);
-    if (newTheme === 'dark') {
+    const isDark = newTheme === 'dark';
+    if (isDark) {
       document.documentElement.classList.add('dark');
       document.body.classList.add('dark');
     } else {
@@ -174,6 +176,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       document.body.classList.remove('dark');
     }
     localStorage.setItem('outly_theme', newTheme);
+    syncSystemBarsTheme(isDark);
     onSaveProfile({
       ...currentUser,
       firstName: firstName.trim() || currentUser.firstName,

@@ -4,6 +4,8 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Preferences } from '@capacitor/preferences';
 import { Share } from '@capacitor/share';
 import { PushNotifications, Token, ActionPerformed } from '@capacitor/push-notifications';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { UserProfile } from '../types';
 import { api } from './api';
 
@@ -309,4 +311,140 @@ export const setupAppUrlListener = (onUrlOpen: (url: string) => void): (() => vo
   return () => {
     if (removeListener) removeListener();
   };
+};
+
+/* =========================================================================
+   6. HARMONISATION DES BARRES SYSTÈME ANDROID (Haut et Bas)
+   ========================================================================= */
+
+export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> => {
+  if (!isNativePlatform()) return;
+
+  try {
+    // 1. Barre d'état supérieure (heure, batterie, icônes)
+    if (isDarkMode) {
+      // Mode sombre : fond sombre #18181B / #121212 avec icônes claires (Style.Dark)
+      await StatusBar.setStyle({ style: Style.Dark });
+      await StatusBar.setBackgroundColor({ color: '#18181B' });
+    } else {
+      // Mode clair : fond crème/blanc #FFF9EB avec icônes foncées (Style.Light)
+      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setBackgroundColor({ color: '#FFF9EB' });
+    }
+  } catch (err) {
+    console.warn('[NativeService] Erreur lors de la synchronisation de la StatusBar:', err);
+  }
+
+  // 2. Barre de navigation inférieure Android (boutons retour, accueil)
+  try {
+    const navBar = (Capacitor as any).Plugins?.NavigationBar || (window as any).NavigationBar;
+    if (navBar) {
+      if (typeof navBar.setColor === 'function') {
+        await navBar.setColor({
+          color: isDarkMode ? '#18181B' : '#FFF9EB',
+          darkButtons: !isDarkMode,
+        });
+      } else if (typeof navBar.setNavigationBarColor === 'function') {
+        await navBar.setNavigationBarColor(isDarkMode ? '#18181B' : '#FFF9EB', !isDarkMode);
+      }
+    }
+  } catch (err) {
+    // Non bloquant
+  }
+};
+
+/* =========================================================================
+   7. NOTIFICATIONS LOCALES NATIVES (Sans dépendance Firebase)
+   ========================================================================= */
+
+let localNotificationsInitialized = false;
+
+export const initLocalNotifications = async (
+  onAction?: (notification: any) => void
+): Promise<void> => {
+  if (!isNativePlatform()) return;
+
+  try {
+    // 1. Vérification / Demande de permissions
+    const check = await LocalNotifications.checkPermissions();
+    if (check.display === 'prompt' || check.display === 'prompt-with-rationale') {
+      await LocalNotifications.requestPermissions();
+    }
+
+    // 2. Création du canal de notification Android (Channel) avec haute priorité
+    if (Capacitor.getPlatform() === 'android') {
+      await LocalNotifications.createChannel({
+        id: 'outlys_notifications',
+        name: 'Notifications Outlys',
+        description: 'Alertes en temps réel et activités des groupes Outlys',
+        importance: 5, // Haute importance -> déclenche la bannière déroulante (heads-up)
+        visibility: 1, // Visible sur l'écran de verrouillage
+        vibration: true,
+        lights: true,
+        lightColor: '#5D0D18',
+      });
+    }
+
+    // 3. Écouteur d'actions / clics sur notification
+    if (!localNotificationsInitialized) {
+      await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+        try {
+          console.log('[LocalNotifications] Clic utilisateur sur notification locale:', action);
+          triggerHaptic('light');
+          if (onAction) {
+            onAction(action);
+          }
+        } catch (err) {
+          console.warn('[LocalNotifications] Erreur lors du traitement du clic:', err);
+        }
+      });
+      localNotificationsInitialized = true;
+    }
+  } catch (err) {
+    console.warn('[LocalNotifications] Erreur lors de l\'initialisation des notifications locales:', err);
+  }
+};
+
+export const sendNativeLocalNotification = async (
+  title: string,
+  body: string,
+  data?: any
+): Promise<void> => {
+  if (!isNativePlatform() || !title) return;
+
+  try {
+    // 1. Vérification sécurisée des permissions
+    const permStatus = await LocalNotifications.checkPermissions();
+    if (permStatus.display !== 'granted') {
+      const reqStatus = await LocalNotifications.requestPermissions();
+      if (reqStatus.display !== 'granted') {
+        console.log('[LocalNotifications] Permission non accordée, notification native ignorée');
+        return;
+      }
+    }
+
+    // 2. Génération d'un identifiant entier positif 32-bit pour Android
+    const notifId = Math.floor(Math.random() * 2147483647);
+
+    // 3. Émission de l'alerte système avec bannière déroulante et vibration
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: notifId,
+          title: title,
+          body: body || '',
+          channelId: 'outlys_notifications',
+          smallIcon: 'ic_stat_icon_config_sample',
+          iconColor: '#5D0D18',
+          extra: data || {},
+          schedule: { at: new Date(Date.now() + 100) },
+          autoCancel: true,
+        },
+      ],
+    });
+
+    triggerHapticNotification('success');
+  } catch (err) {
+    console.warn('[LocalNotifications] Impossible d\'émettre la notification locale native:', err);
+  }
 };

@@ -11,6 +11,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { UserProfile, Group, AppNotification } from '../types';
+import { isNativePlatform } from '../services/nativeService';
 
 interface SidebarDrawerProps {
   isOpen: boolean;
@@ -211,8 +212,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               <ChevronRight className="w-4 h-4 text-[#C7B7A3] dark:text-zinc-600" />
             </button>
 
-            {/* 4. Installer l'application */}
-            {onOpenDownloadPage && (
+            {/* 4. Installer l'application (Masqué sur mobile natif Android / iOS) */}
+            {!isNativePlatform() && onOpenDownloadPage && (
               <button
                 id="drawer-nav-download-app"
                 onClick={() => {
