@@ -1803,10 +1803,12 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
 
     const isRealUser = !userId.startsWith('user-virt-');
 
-    // Notification au membre retiré (si c'est un compte réel et s'il ne quitte pas de lui-même)
-    if (isRealUser && userId !== authorId) {
+    const isVoluntaryLeave = (userId === authorId);
+
+    // Notification au membre retiré (si c'est un compte réel et en cas d'exclusion par un tiers)
+    if (isRealUser && !isVoluntaryLeave) {
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notifMessage = `Vous avez été supprimé du groupe ${groupName}`;
+      const notifMessage = `Vous avez été retiré du groupe ${groupName}`;
       await query(
         `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
          VALUES ($1, $2, 'group', 'Retrait du groupe', $3, NOW(), false, NULL)`,
@@ -1842,11 +1844,15 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
 
     for (const rm of remainingMembersToNotify.rows) {
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notifMessage = `${removedMemberName} a été supprimé du groupe ${groupName} par ${authorName}`;
+      const notifTitle = isVoluntaryLeave ? 'Départ du groupe' : 'Membre retiré';
+      const notifMessage = isVoluntaryLeave
+        ? `${authorName} a quitté le groupe ${groupName}`
+        : `${removedMemberName} a été retiré du groupe ${groupName}`;
+
       await query(
         `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
-         VALUES ($1, $2, 'group', 'Membre retiré', $3, NOW(), false, $4)`,
-        [notifId, rm.user_id, notifMessage, groupId]
+         VALUES ($1, $2, 'group', $3, $4, NOW(), false, $5)`,
+        [notifId, rm.user_id, notifTitle, notifMessage, groupId]
       );
       realtimeBroadcaster.broadcast({
         type: 'notification:created',
@@ -1855,7 +1861,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
           id: notifId,
           userId: rm.user_id,
           type: 'group',
-          title: 'Membre retiré',
+          title: notifTitle,
           message: notifMessage,
           timestamp: new Date().toISOString(),
           read: false,

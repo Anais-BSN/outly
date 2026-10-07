@@ -145,7 +145,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     groupId
   );
 
-  const myBalObj = userBalances[currentUser.id] || (currentUser.userId ? userBalances[currentUser.userId] : null);
+  const myBalObj = userBalances[currentUser?.id || ''] || (Boolean((currentUser as any)?.userId) ? userBalances[(currentUser as any).userId] : null);
   const myBalance = myBalObj?.net || 0;
   const isPositive = myBalance >= 0.01;
   const isNeutral = Math.abs(myBalance) < 0.01;
@@ -497,7 +497,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         ) : (
           <div className="space-y-3">
             {safeExpenses.slice(0, 3).map((expense) => {
-              const isPayerMe = expense.paidById === currentUser.id;
+              const isPayerMe = expense.paidById === currentUser?.id || (Boolean((currentUser as any)?.userId) && expense.paidById === (currentUser as any)?.userId);
 
               return (
                 <div
@@ -756,8 +756,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         expenses={safeExpenses}
         members={safeMembers}
         currentUser={currentUser}
+        currency="EUR"
         onSelectExpense={(exp) => setSelectedExpenseForDetail(exp)}
         onOpenAddExpense={onOpenAddExpense}
+        onEditExpense={onEditExpense}
+        onDeleteExpense={onDeleteExpense}
         onViewAvatar={onViewAvatar}
       />
 

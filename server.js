@@ -1971,9 +1971,10 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     const deletedLastName = "";
     const deletedHandle = `deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${Math.random().toString(36).substring(2, 7)}`;
     const isRealUser = !userId.startsWith("user-virt-");
-    if (isRealUser && userId !== authorId) {
+    const isVoluntaryLeave = userId === authorId;
+    if (isRealUser && !isVoluntaryLeave) {
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notifMessage = `Vous avez \xE9t\xE9 supprim\xE9 du groupe ${groupName}`;
+      const notifMessage = `Vous avez \xE9t\xE9 retir\xE9 du groupe ${groupName}`;
       await query(
         `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
          VALUES ($1, $2, 'group', 'Retrait du groupe', $3, NOW(), false, NULL)`,
@@ -2006,11 +2007,12 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     );
     for (const rm of remainingMembersToNotify.rows) {
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notifMessage = `${removedMemberName} a \xE9t\xE9 supprim\xE9 du groupe ${groupName} par ${authorName}`;
+      const notifTitle = isVoluntaryLeave ? "D\xE9part du groupe" : "Membre retir\xE9";
+      const notifMessage = isVoluntaryLeave ? `${authorName} a quitt\xE9 le groupe ${groupName}` : `${removedMemberName} a \xE9t\xE9 retir\xE9 du groupe ${groupName}`;
       await query(
         `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
-         VALUES ($1, $2, 'group', 'Membre retir\xE9', $3, NOW(), false, $4)`,
-        [notifId, rm.user_id, notifMessage, groupId]
+         VALUES ($1, $2, 'group', $3, $4, NOW(), false, $5)`,
+        [notifId, rm.user_id, notifTitle, notifMessage, groupId]
       );
       realtimeBroadcaster.broadcast({
         type: "notification:created",
@@ -2019,7 +2021,7 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
           id: notifId,
           userId: rm.user_id,
           type: "group",
-          title: "Membre retir\xE9",
+          title: notifTitle,
           message: notifMessage,
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
           read: false,

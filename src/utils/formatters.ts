@@ -1,10 +1,18 @@
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+export function formatCurrency(amount?: number | string | null, currency: string = 'EUR'): string {
+  if (amount === null || amount === undefined) {
+    return '0,00 €';
+  }
+  const num = typeof amount === 'number' ? (isNaN(amount) ? 0 : amount) : (Number(amount) || 0);
+  try {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: currency || 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  } catch {
+    return `${num.toFixed(2)} €`;
+  }
 }
 
 export function formatDateTime(isoString: string): string {

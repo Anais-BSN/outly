@@ -54,11 +54,23 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
   if (!isOpen || !expense) return null;
 
-  const isPayerMe = expense.paidById === currentUser.id;
+  const safeCurrentUser: UserProfile = currentUser || {
+    id: 'user-me',
+    firstName: 'Moi',
+    lastName: '',
+    email: '',
+    handle: 'moi',
+    avatar: '/Avatar_Herisson.jpg',
+  };
+
+  const isPayerMe =
+    expense.paidById === safeCurrentUser.id ||
+    (Boolean((safeCurrentUser as any).userId) && expense.paidById === (safeCurrentUser as any).userId);
 
   // Deduplicate members list
   const memberMap = new Map<string, GroupMember>();
-  members.forEach((m) => {
+  (members || []).forEach((m) => {
+    if (!m) return;
     const uid = m.userId || m.id;
     if (uid && !memberMap.has(uid)) {
       memberMap.set(uid, m);
@@ -66,7 +78,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   });
 
   // Calculate participant shares breakdown with exact integer cents
-  const participantIds = expense.participantIds || [];
+  const participantIds = Array.isArray(expense.participantIds) ? expense.participantIds : [];
   const sharesSnapshot = expense.sharesSnapshot || {};
 
   const participantDefs = participantIds.map((uid) => {
@@ -78,15 +90,17 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   });
 
   const totalShares = participantDefs.reduce((acc, p) => acc + p.shares, 0);
-  const allocatedCentsMap = allocateExpenseSharesInCents(expense.amount, participantDefs);
+  const allocatedCentsMap = allocateExpenseSharesInCents(Number(expense.amount) || 0, participantDefs);
 
   const breakdownList = participantIds.map((uid) => {
     const member = memberMap.get(uid);
     const shares = expense.splitMode === 'custom' && sharesSnapshot[uid] ? sharesSnapshot[uid] : 1;
     const shareCents = allocatedCentsMap.get(uid) || 0;
     const shareAmount = shareCents / 100;
-    const isMe = uid === currentUser.id;
-    const isVirtual = member?.isVirtual || uid.startsWith('user-virt-');
+    const isMe =
+      uid === safeCurrentUser.id ||
+      (Boolean((safeCurrentUser as any).userId) && uid === (safeCurrentUser as any).userId);
+    const isVirtual = member?.isVirtual || (typeof uid === 'string' && uid.startsWith('user-virt-'));
 
     const displayName = member
       ? member.name || member.firstName || (isMe ? 'Moi' : 'Utilisateur supprimé')
@@ -250,7 +264,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                   Réglé par
                 </span>
                 <span className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate block">
-                  {isPayerMe ? `${currentUser.firstName} (Moi)` : expense.paidByName}
+                  {isPayerMe ? `${safeCurrentUser.firstName} (Moi)` : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé')}
                 </span>
               </div>
             </div>
