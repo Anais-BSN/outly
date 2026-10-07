@@ -319,12 +319,21 @@ export const setupAppUrlListener = (onUrlOpen: (url: string) => void): (() => vo
 
 export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> => {
   // 1. Interface native Android directe (pour un contrôle immédiat de la barre d'état et de la barre de navigation)
-  try {
-    if (typeof (window as any).AndroidSystemBars?.setTheme === 'function') {
-      (window as any).AndroidSystemBars.setTheme(isDarkMode);
-    }
-  } catch (e) {
-    // Non bloquant
+  const invokeNativeBridge = () => {
+    try {
+      if (typeof (window as any).AndroidSystemBars?.setTheme === 'function') {
+        (window as any).AndroidSystemBars.setTheme(isDarkMode);
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  };
+
+  if (!invokeNativeBridge()) {
+    // Si l'interface native est en cours de liaison au démarrage de la WebView, réessaye après quelques ms
+    setTimeout(invokeNativeBridge, 100);
+    setTimeout(invokeNativeBridge, 300);
+    setTimeout(invokeNativeBridge, 800);
   }
 
   if (!isNativePlatform()) return;

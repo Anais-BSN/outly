@@ -4034,6 +4034,13 @@ apiRouter.post("/calls/join", async (req, res) => {
     if (!session || !session.active) {
       return res.status(404).json({ error: "Aucun appel actif dans ce groupe" });
     }
+    const alreadyInCall = session.participants.some((p) => p.userId === user.id);
+    if (!alreadyInCall && session.participants.length >= 2) {
+      return res.status(403).json({
+        error: "Ligne occup\xE9e. Cet appel est un appel direct limit\xE9 \xE0 2 participants.",
+        isBusy: true
+      });
+    }
     const participant = {
       userId: user.id,
       userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Membre",
@@ -4042,7 +4049,7 @@ apiRouter.post("/calls/join", async (req, res) => {
       muted: false,
       videoOff: session.type === "audio"
     };
-    if (!session.participants.some((p) => p.userId === user.id)) {
+    if (!alreadyInCall) {
       session.participants.push(participant);
     }
     realtimeBroadcaster.broadcast({

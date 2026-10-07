@@ -24,6 +24,7 @@ interface GroupCallModalProps {
   callSession: GroupCallSession | null;
   currentUser: UserProfile;
   groupName: string;
+  onCallTimeout?: (message: string) => void;
 }
 
 export const GroupCallModal: React.FC<GroupCallModalProps> = ({
@@ -32,12 +33,14 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
   callSession,
   currentUser,
   groupName,
+  onCallTimeout,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(callSession?.type === 'audio');
   const [isMinimized, setIsMinimized] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [callDuration, setCallDuration] = useState(0);
+  const [ringingCountdown, setRingingCountdown] = useState(30);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -62,6 +65,31 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
     }, 1000);
     return () => clearInterval(interval);
   }, [isOpen, callSession?.active]);
+
+  // Délai d'expiration de la sonnerie (30 secondes tant qu'aucun destinataire n'a décroché)
+  useEffect(() => {
+    if (!isOpen || !callSession?.active) return;
+    const participantsCount = (callSession.participants || []).length;
+    if (participantsCount >= 2) {
+      // Un correspondant a décroché -> on arrête le compte à rebours de sonnerie
+      return;
+    }
+
+    setRingingCountdown(30);
+    const ringInterval = setInterval(() => {
+      setRingingCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(ringInterval);
+          // 30 secondes écoulées sans réponse -> arrêt automatique de l'appel
+          handleHangUp("Le correspondant n'a pas répondu.");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(ringInterval);
+  }, [isOpen, callSession?.active, (callSession?.participants || []).length]);
 
   // Initialisation des flux médias (Microphone & Caméra)
   const initMedia = useCallback(async () => {
@@ -209,7 +237,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
   };
 
   // Raccrocher / Quitter l'appel
-  const handleHangUp = async () => {
+  const handleHangUp = async (reason?: string) => {
     triggerHaptic('medium');
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -219,6 +247,9 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
       await api.leaveCall(callSession.groupId, callSession.callId, currentUser.id).catch(() => {});
     }
     setCallDuration(0);
+    if (reason && onCallTimeout) {
+      onCallTimeout(reason);
+    }
     onClose();
   };
 
@@ -256,7 +287,9 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
             <span>{groupName}</span>
           </div>
-          <span className="text-[11px] text-zinc-400">{formatDuration(callDuration)}</span>
+          <span className="text-[11px] text-zinc-400">
+            {participants.length < 2 ? `Sonnerie (${ringingCountdown}s)` : formatDuration(callDuration)}
+          </span>
         </div>
         <div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
           <button
@@ -268,7 +301,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
           <button
-            onClick={handleHangUp}
+            onClick={() => handleHangUp()}
             className="p-2 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors"
           >
             <PhoneOff className="w-4 h-4" />
@@ -306,12 +339,18 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
                 <h3 className="text-sm sm:text-base font-bold text-white truncate max-w-[200px] sm:max-w-md">
                   {groupName}
                 </h3>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  En direct
-                </span>
+                {participants.length < 2 ? (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                    Sonnerie ({ringingCountdown}s)
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    En direct (2/2)
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
-                <span>{callSession.type === 'video' ? 'Appel vidéo' : 'Appel audio'}</span>
+                <span>{callSession.type === 'video' ? 'Appel vidéo direct' : 'Appel audio direct'}</span>
                 <span>•</span>
                 <span className="font-mono font-medium text-emerald-400">{formatDuration(callDuration)}</span>
               </div>
@@ -343,9 +382,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             className={`w-full h-full grid gap-3 sm:gap-4 items-center justify-center ${
               participants.length <= 1
                 ? 'grid-cols-1 max-w-lg mx-auto'
-                : participants.length === 2
-                ? 'grid-cols-1 sm:grid-cols-2'
-                : 'grid-cols-2 sm:grid-cols-3'
+                : 'grid-cols-1 sm:grid-cols-2'
             }`}
           >
             {/* Ma vignette / Mon flux */}
@@ -394,7 +431,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
               )}
             </div>
 
-            {/* Vignettes des autres participants */}
+            {/* Vignette de l'autre correspondant */}
             {otherParticipants.map((p) => (
               <div
                 key={p.userId}
@@ -418,10 +455,13 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
               </div>
             ))}
 
-            {/* Si l'utilisateur est seul dans l'appel : inviter les autres */}
+            {/* Si l'initiateur est seul dans l'appel : compte à rebours de sonnerie de 30 secondes */}
             {participants.length <= 1 && (
-              <div className="col-span-full text-center p-3 text-zinc-400 text-xs">
-                <span>En attente des autres membres du groupe... Une notification leur a été transmise !</span>
+              <div className="col-span-full text-center p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-xs animate-pulse max-w-md mx-auto">
+                <p className="font-bold text-sm mb-1 text-amber-300">Appel en attente de réponse...</p>
+                <p className="text-[11px] opacity-85">
+                  Sonnerie en cours. L'appel sera automatiquement interrompu dans <span className="font-bold text-amber-300 font-mono text-xs">{ringingCountdown}s</span> si le correspondant ne décroche pas.
+                </p>
               </div>
             )}
           </div>

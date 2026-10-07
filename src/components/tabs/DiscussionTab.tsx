@@ -215,8 +215,6 @@ const MessageItem = React.memo<MessageItemProps>(({
 
   const handleSelectFullEmoji = (emoji: string) => {
     onAddReaction(message.id, emoji);
-    setIsPickerOpen(false);
-    setIsMenuOpen(false);
   };
 
   const handleSaveEdit = () => {
@@ -229,6 +227,8 @@ const MessageItem = React.memo<MessageItemProps>(({
   // System message
   if (message.isSystem) {
     if (message.systemType === 'call') {
+      const isCallBusy = activeCall?.active && (activeCall.participants || []).length >= 2 && !(activeCall.participants || []).some(p => p.userId === currentUser.id);
+
       return (
         <div
           id={`chat-system-msg-${message.id}`}
@@ -251,10 +251,15 @@ const MessageItem = React.memo<MessageItemProps>(({
                   triggerHaptic('medium');
                   onJoinCall();
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto"
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
+                  isCallBusy
+                    ? 'bg-zinc-600 hover:bg-zinc-700 text-zinc-200'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                } font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto`}
+                title={isCallBusy ? 'Ligne occupée (2 participants max)' : 'Rejoindre l\'appel'}
               >
-                <Radio className="w-3 h-3 animate-pulse" />
-                <span>Rejoindre</span>
+                <Radio className={`w-3 h-3 ${isCallBusy ? '' : 'animate-pulse'}`} />
+                <span>{isCallBusy ? 'Ligne occupée' : 'Rejoindre'}</span>
               </button>
             )}
           </div>
@@ -374,8 +379,6 @@ const MessageItem = React.memo<MessageItemProps>(({
               onClick={() => {
                 triggerHaptic('light');
                 onAddReaction(message.id, emoji);
-                setIsMenuOpen(false);
-                setIsPickerOpen(false);
               }}
               className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm hover:scale-130 active:scale-95 transition-transform rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
               title={`Réagir avec ${emoji}`}
@@ -443,6 +446,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           onSelectEmoji={handleSelectFullEmoji}
           anchorRect={pickerAnchorRect}
           title="Ajouter une réaction"
+          closeOnSelect={false}
         />
 
         {/* Bulle de message */}
@@ -895,9 +899,9 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-125px)] sm:h-[calc(100dvh-135px)] max-w-4xl mx-auto">
+    <div className="flex flex-col flex-1 h-full max-h-full min-h-0 overflow-hidden w-full max-w-4xl mx-auto">
       {/* En-tête de la discussion avec actions d'appels audio et vidéo */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex -space-x-1.5 overflow-hidden shrink-0">
             {(members || []).slice(0, 3).map((m) => (
@@ -955,45 +959,62 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
       </div>
 
       {/* Bannière d'appel en cours dans le groupe */}
-      {activeCall?.active && (
-        <div
-          id="active-call-group-banner"
-          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between gap-2 shadow-xs shrink-0 animate-fade-in"
-        >
-          <div className="flex items-center gap-2 text-xs font-bold min-w-0">
-            <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
-            </span>
-            <span className="truncate">
-              {activeCall.type === 'video' ? 'Appel vidéo en cours' : 'Appel audio en cours'}
-            </span>
-            <span className="text-[11px] font-normal opacity-90 hidden sm:inline">
-              • {activeCall.participants?.length || 1} participant{(activeCall.participants?.length || 1) > 1 ? 's' : ''}
-            </span>
+      {activeCall?.active && (() => {
+        const participants = activeCall.participants || [];
+        const isUserInCall = participants.some((p) => p.userId === currentUser.id);
+        const isCallLocked = participants.length >= 2 && !isUserInCall;
+
+        return (
+          <div
+            id="active-call-group-banner"
+            className={`px-3 sm:px-4 py-2 ${
+              isCallLocked
+                ? 'bg-gradient-to-r from-amber-700 to-zinc-800'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-700'
+            } text-white flex items-center justify-between gap-2 shadow-xs shrink-0 animate-fade-in`}
+          >
+            <div className="flex items-center gap-2 text-xs font-bold min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                {!isCallLocked && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                )}
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+              </span>
+              <span className="truncate">
+                {activeCall.type === 'video' ? 'Appel vidéo en cours' : 'Appel audio en cours'}
+                {isCallLocked ? ' (Ligne occupée)' : ''}
+              </span>
+              <span className="text-[11px] font-normal opacity-90 hidden sm:inline">
+                • {participants.length} participant{participants.length > 1 ? 's' : ''} (max 2)
+              </span>
+            </div>
+            {onJoinCall && (
+              <button
+                type="button"
+                id="join-active-call-banner-btn"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  onJoinCall();
+                }}
+                className={`px-3 py-1 rounded-full ${
+                  isCallLocked
+                    ? 'bg-zinc-200 text-zinc-800 hover:bg-zinc-300'
+                    : 'bg-white text-emerald-800 hover:bg-zinc-100'
+                } font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0`}
+              >
+                {isCallLocked ? 'Ligne occupée' : 'Rejoindre'}
+              </button>
+            )}
           </div>
-          {onJoinCall && (
-            <button
-              type="button"
-              id="join-active-call-banner-btn"
-              onClick={() => {
-                triggerHaptic('medium');
-                onJoinCall();
-              }}
-              className="px-3 py-1 rounded-full bg-white text-emerald-800 font-bold text-xs hover:bg-zinc-100 shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
-            >
-              Rejoindre
-            </button>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Messages Stream Container */}
       <div
         ref={messagesContainerRef}
         id="discussion-messages-container"
         onScroll={handleContainerScroll}
-        className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-1 sm:space-y-1.5"
+        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-1 sm:space-y-1.5"
       >
         {/* Bouton de chargement des messages plus anciens */}
         {hasOlderMessages && (
@@ -1115,7 +1136,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
       )}
 
       {/* Barre de saisie de message */}
-      <div className="p-3 sm:p-4 bg-[#FFF9EB] dark:bg-[#18181B] border-t border-[#C7B7A3]/50 dark:border-zinc-800">
+      <div className="sticky bottom-0 z-10 shrink-0 p-3 sm:p-4 bg-[#FFF9EB] dark:bg-[#18181B] border-t border-[#C7B7A3]/50 dark:border-zinc-800">
         <form onSubmit={handleSend} className="flex items-center gap-2">
           <input
             type="file"

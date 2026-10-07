@@ -1177,8 +1177,15 @@ export default function App() {
       const session = await api.joinCall(activeGroupId, activeCallSession.callId, currentUser.id);
       setActiveCallSession(session);
       setIsCallModalOpen(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur rejoindre appel:', err);
+      const isBusy = err?.isBusy || err?.message?.includes('occupée') || (activeCallSession.participants && activeCallSession.participants.length >= 2);
+      if (isBusy) {
+        setInviteToast({ text: "La ligne est occupée (appel direct 1v1 en cours).", success: false });
+      } else {
+        setInviteToast({ text: "Impossible de rejoindre l'appel.", success: false });
+      }
+      setTimeout(() => setInviteToast(null), 5000);
     }
   };
 
@@ -2362,7 +2369,7 @@ export default function App() {
           />
 
           {/* Main Content Area */}
-          <main className="flex-1 flex flex-col pt-2 pb-24">
+          <main className={`flex-1 flex flex-col pt-2 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'pb-0 overflow-hidden h-[calc(100dvh-70px)]' : 'pb-24'}`}>
         {!currentUser ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-[#E8D8C4] flex items-center justify-center animate-pulse text-[#6D2932] mb-3">
@@ -2521,7 +2528,7 @@ export default function App() {
             <GroupTabs activeTab={activeTab} onTabChange={setActiveTab} badges={tabBadges} />
 
             {/* 5. Active Tab Views with Keep-Alive (0ms Instant Switching) */}
-            <div className="flex-1">
+            <div className={`flex-1 ${activeTab === 'discussion' ? 'flex flex-col min-h-0 overflow-hidden h-full' : ''}`}>
               <div className={activeTab === 'agenda' ? 'block' : 'hidden'}>
                 <AgendaTab
                   events={groupEvents}
@@ -2555,7 +2562,7 @@ export default function App() {
               </div>
 
               {/* Keep-Alive for DiscussionTab to preserve state and make tab switching instant (0ms) */}
-              <div className={activeTab === 'discussion' ? 'flex flex-col h-full' : 'hidden'}>
+              <div className={activeTab === 'discussion' ? 'flex flex-col flex-1 min-h-0 overflow-hidden h-full' : 'hidden'}>
                 <DiscussionTab
                   messages={groupMessages}
                   currentUser={currentUser}
@@ -2931,7 +2938,11 @@ export default function App() {
           onClose={handleCloseCallModal}
           callSession={activeCallSession}
           currentUser={currentUser}
-          groupName={activeGroup.name || 'Discussion de groupe'}
+          groupName={activeGroup?.name || 'Discussion de groupe'}
+          onCallTimeout={(msg) => {
+            setInviteToast({ text: msg, success: false });
+            setTimeout(() => setInviteToast(null), 5000);
+          }}
         />
       )}
     </div>

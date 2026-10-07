@@ -11,6 +11,7 @@ interface UniversalEmojiPickerProps {
   anchorRect?: DOMRect | null;
   mode?: 'popover' | 'bottomSheet' | 'auto';
   title?: string;
+  closeOnSelect?: boolean;
 }
 
 export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
@@ -20,6 +21,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   anchorRect,
   mode = 'auto',
   title = 'Choisir un émoji',
+  closeOnSelect = true,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('smileys');
@@ -161,7 +163,9 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   const handleEmojiClick = (emoji: string) => {
     triggerHaptic('light');
     onSelectEmoji(emoji);
-    onClose();
+    if (closeOnSelect) {
+      onClose();
+    }
   };
 
   const useBottomSheet = mode === 'bottomSheet' || (mode === 'auto' && isMobile);

@@ -14,6 +14,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
@@ -30,12 +31,26 @@ public class MainActivity extends BridgeActivity {
         // Harmonisation initiale des barres système au démarrage selon le mode système
         boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         applySystemBars(isSystemDark);
+        setupSystemBarsInterface();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        setupSystemBarsInterface();
     }
 
     @Override
     public void onResume() {
         super.onResume();
         setupSystemBarsInterface();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        boolean isNight = (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        applySystemBars(isNight);
     }
 
     /**
@@ -91,26 +106,31 @@ public class MainActivity extends BridgeActivity {
      * Applique les couleurs d'arrière-plan et le style des icônes
      * sur la barre d'état supérieure et la barre de navigation inférieure.
      */
-    public void applySystemBars(boolean isDark) {
-        Window window = getWindow();
-        if (window == null) return;
+    public void applySystemBars(final boolean isDark) {
+        runOnUiThread(() -> {
+            Window window = getWindow();
+            if (window == null) return;
 
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
 
-        int backgroundColor = isDark ? Color.parseColor("#18181B") : Color.parseColor("#FFF9EB");
-        window.setStatusBarColor(backgroundColor);
-        window.setNavigationBarColor(backgroundColor);
+            int backgroundColor = isDark ? Color.parseColor("#18181B") : Color.parseColor("#FFF9EB");
+            window.setStatusBarColor(backgroundColor);
+            window.setNavigationBarColor(backgroundColor);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.setNavigationBarContrastEnforced(false);
-            window.setStatusBarContrastEnforced(false);
-        }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.setNavigationBarContrastEnforced(false);
+                window.setStatusBarContrastEnforced(false);
+            }
 
-        View decorView = window.getDecorView();
-        WindowInsetsControllerCompat insetsController = new WindowInsetsControllerCompat(window, decorView);
-        // true pour des icônes sombres (fond clair), false pour des icônes claires (fond sombre)
-        insetsController.setAppearanceLightStatusBars(!isDark);
-        insetsController.setAppearanceLightNavigationBars(!isDark);
+            View decorView = window.getDecorView();
+            WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, decorView);
+            if (insetsController != null) {
+                // true pour des icônes sombres (fond clair), false pour des icônes claires (fond sombre)
+                insetsController.setAppearanceLightStatusBars(!isDark);
+                insetsController.setAppearanceLightNavigationBars(!isDark);
+            }
+        });
     }
 }
+

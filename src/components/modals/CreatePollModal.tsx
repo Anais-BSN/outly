@@ -6,7 +6,8 @@ import {
   Plus,
   Trash2,
   Clock,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { Poll, UserProfile } from '../../types';
 import {
@@ -52,6 +53,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
   const isEditing = Boolean(initialPoll);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [type, setType] = useState<'date' | 'choice'>(initialPoll?.type || 'date');
   const [title, setTitle] = useState(initialPoll?.title || '');
   const [description, setDescription] = useState(initialPoll?.description || '');
@@ -193,7 +195,8 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (isSubmitting || !title.trim()) return;
+    setIsSubmitting(true);
 
     if (type === 'date') {
       if (dateOptions.length < 2) return;
@@ -528,12 +531,20 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               type="submit"
               id="submit-create-poll-btn"
               disabled={
+                isSubmitting ||
                 !title.trim() ||
                 (type === 'date' ? dateOptions.length < 2 : choiceOptions.length < 2)
               }
-              className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
             >
-              Envoyer
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isEditing ? 'Modification...' : 'Création...'}</span>
+                </>
+              ) : (
+                <span>{isEditing ? 'Enregistrer' : 'Envoyer'}</span>
+              )}
             </button>
           </div>
         </form>
