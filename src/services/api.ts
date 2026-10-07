@@ -310,11 +310,12 @@ export const api = {
   async addGroupMember(
     groupId: string,
     userId: string,
-    role: string = 'member'
+    role: string = 'member',
+    authorId: string = 'user-me'
   ): Promise<any> {
     return request<any>(`/groups/${groupId}/members`, {
       method: 'POST',
-      body: JSON.stringify({ userId, role }),
+      body: JSON.stringify({ userId, role, authorId }),
     });
   },
 
@@ -340,26 +341,26 @@ export const api = {
     });
   },
 
-  async updateGroup(groupId: string, data: Partial<Group>): Promise<Group> {
+  async updateGroup(groupId: string, data: Partial<Group> & { authorId?: string }): Promise<Group> {
     return request<Group>(`/groups/${groupId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
-  async deleteGroup(groupId: string): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>(`/groups/${groupId}`, {
+  async deleteGroup(groupId: string, authorId: string = 'user-me'): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/groups/${groupId}?authorId=${encodeURIComponent(authorId)}`, {
       method: 'DELETE',
     });
   },
 
   async leaveGroup(groupId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}`, {
+    return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}?authorId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
   },
 
-  async removeGroupMember(groupId: string, userId: string): Promise<{
+  async removeGroupMember(groupId: string, userId: string, authorId: string = 'user-me'): Promise<{
     success: boolean;
     demotedToVirtual?: boolean;
     virtualMember?: GroupMember;
@@ -374,8 +375,9 @@ export const api = {
       group?: Group;
       expenses?: Expense[];
       settlements?: DebtSettlement[];
-    }>(`/groups/${groupId}/members/${userId}`, {
+    }>(`/groups/${groupId}/members/${userId}?authorId=${encodeURIComponent(authorId)}`, {
       method: 'DELETE',
+      body: JSON.stringify({ authorId }),
     });
   },
 

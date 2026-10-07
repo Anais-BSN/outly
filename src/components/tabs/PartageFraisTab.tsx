@@ -461,7 +461,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         })()}
       </div>
 
-      {/* Expenses History List (Affichage réduit aux 3 dépenses les plus récentes + Bouton Voir plus) */}
+      {/* Expenses History List (Affichage réduit aux 3 dépenses les plus récentes + Bouton Tout voir) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -471,15 +471,15 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
             </h4>
           </div>
 
-          {safeExpenses.length > 3 && (
+          {safeExpenses.length > 0 && (
             <button
               type="button"
-              id="frais-header-btn-view-more"
+              id="frais-header-btn-view-all"
               onClick={() => setIsExpenseHistoryOpen(true)}
-              className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
             >
-              <span>Tout voir ({safeExpenses.length})</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <Receipt className="w-3.5 h-3.5" />
+              <span>Tout voir</span>
             </button>
           )}
         </div>
@@ -556,21 +556,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 </div>
               );
             })}
-
-            {/* Bouton Voir plus (style visuel identique à l'historique d'activité) */}
-            {safeExpenses.length > 3 && (
-              <div className="flex justify-center pt-1">
-                <button
-                  type="button"
-                  id="frais-btn-view-more-expenses"
-                  onClick={() => setIsExpenseHistoryOpen(true)}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <History className="w-4 h-4 stroke-[2.2]" />
-                  <span>Voir plus ({safeExpenses.length} dépenses)</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

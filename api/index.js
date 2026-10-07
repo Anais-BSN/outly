@@ -1287,6 +1287,38 @@ apiRouter.post("/groups", async (req, res) => {
         [groupId, fId]
       );
     }
+    const creatorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [creatorId]
+    );
+    const creator = creatorRes.rows[0];
+    const authorName = creator ? `${creator.firstName} ${creator.lastName || ""}`.trim() : "Un ami";
+    const groupName = name || "Nouveau Groupe";
+    for (const fId of invitedFriendIds) {
+      if (fId && fId !== creatorId && !fId.startsWith("user-virt-")) {
+        const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const notifMessage = `${authorName} vous a ajout\xE9 au groupe ${groupName}`;
+        await query(
+          `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+           VALUES ($1, $2, 'group', 'Nouveau groupe', $3, NOW(), false, $4)`,
+          [notifId, fId, notifMessage, groupId]
+        );
+        realtimeBroadcaster.broadcast({
+          type: "notification:created",
+          userId: fId,
+          data: {
+            id: notifId,
+            userId: fId,
+            type: "group",
+            title: "Nouveau groupe",
+            message: notifMessage,
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            read: false,
+            groupId
+          }
+        });
+      }
+    }
     const membersRes = await query(
       `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
               concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
@@ -1317,7 +1349,7 @@ apiRouter.post("/groups", async (req, res) => {
 apiRouter.post("/groups/:id/members", async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, role = "member" } = req.body;
+    const { userId, role = "member", authorId = "user-me" } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
@@ -1336,6 +1368,77 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
       [id, userId]
     );
     const memberData = memberRes.rows[0] || { success: true, groupId: id, userId, role };
+    const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
+    const groupName = groupInfoRes.rows[0]?.name || "Groupe";
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un membre";
+    const newMemberUserRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [userId]
+    );
+    const newMemberUser = newMemberUserRes.rows[0];
+    const newMemberName = newMemberUser ? `${newMemberUser.firstName} ${newMemberUser.lastName || ""}`.trim() : "Un nouveau membre";
+    if (!userId.startsWith("user-virt-") && userId !== authorId) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Vous avez \xE9t\xE9 ajout\xE9 au groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Ajout au groupe', $3, NOW(), false, $4)`,
+        [notifId, userId, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId,
+        data: {
+          id: notifId,
+          userId,
+          type: "group",
+          title: "Ajout au groupe",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false,
+          groupId: id
+        }
+      });
+    }
+    const otherMembersRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND gm.user_id != $3
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, userId, authorId]
+    );
+    for (const om of otherMembersRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `${newMemberName} a \xE9t\xE9 ajout\xE9 au groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Nouveau membre', $3, NOW(), false, $4)`,
+        [notifId, om.user_id, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId: om.user_id,
+        data: {
+          id: notifId,
+          userId: om.user_id,
+          type: "group",
+          title: "Nouveau membre",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false,
+          groupId: id
+        }
+      });
+    }
     const updatedGroupRes = await query(
       `SELECT g.id, g.name, g.description, g.cover_image as "coverImage", g.created_at as "createdAt"
        FROM groups g WHERE g.id = $1`,
@@ -1609,7 +1712,7 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
 apiRouter.put("/groups/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, coverImage } = req.body;
+    const { name, description, coverImage, authorId = "user-me" } = req.body;
     const existingRes = await query(`SELECT id, name, description, cover_image FROM groups WHERE id = $1`, [id]);
     if (existingRes.rows.length === 0) {
       return res.status(404).json({ error: "Groupe introuvable" });
@@ -1624,6 +1727,45 @@ apiRouter.put("/groups/:id", async (req, res) => {
        WHERE id = $4`,
       [newName, newDesc, newCover, id]
     );
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un membre";
+    const membersToNotifyRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND gm.user_id != $2
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, authorId]
+    );
+    for (const m of membersToNotifyRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Le groupe ${newName} a \xE9t\xE9 modifi\xE9 par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Groupe modifi\xE9', $3, NOW(), false, $4)`,
+        [notifId, m.user_id, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId: m.user_id,
+        data: {
+          id: notifId,
+          userId: m.user_id,
+          type: "group",
+          title: "Groupe modifi\xE9",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false,
+          groupId: id
+        }
+      });
+    }
     const updatedRes = await query(
       `SELECT id, name, description, cover_image as "coverImage", created_at as "createdAt"
        FROM groups
@@ -1717,6 +1859,47 @@ apiRouter.post("/groups/:id/invite", async (req, res) => {
 apiRouter.delete("/groups/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const authorId = req.query.authorId || req.body?.authorId || req.query.userId || req.body?.userId || "user-me";
+    const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
+    const groupName = groupRes.rows[0]?.name || "Groupe";
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un administrateur";
+    const membersRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, authorId]
+    );
+    for (const m of membersRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Le groupe ${groupName} a \xE9t\xE9 supprim\xE9 par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Groupe supprim\xE9', $3, NOW(), false, NULL)`,
+        [notifId, m.user_id, notifMessage]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId: m.user_id,
+        data: {
+          id: notifId,
+          userId: m.user_id,
+          type: "group",
+          title: "Groupe supprim\xE9",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false
+        }
+      });
+    }
     await query(`DELETE FROM groups WHERE id = $1`, [id]);
     realtimeBroadcaster.broadcast({
       type: "group:deleted",
@@ -1732,6 +1915,21 @@ apiRouter.delete("/groups/:id", async (req, res) => {
 apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
   try {
     const { id: groupId, userId } = req.params;
+    const authorId = req.query.authorId || req.body?.authorId || req.query.userId || req.body?.userId || "user-me";
+    const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
+    const groupName = groupInfoRes.rows[0]?.name || "Groupe";
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un administrateur";
+    const removedUserInfoRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [userId]
+    );
+    const removedUser = removedUserInfoRes.rows[0];
+    const removedMemberName = removedUser ? `${removedUser.firstName} ${removedUser.lastName || ""}`.trim() : "Un membre";
     const memberRoleRes = await query(
       `SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2`,
       [groupId, userId]
@@ -1768,6 +1966,62 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     const deletedLastName = "";
     const deletedHandle = `deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${Math.random().toString(36).substring(2, 7)}`;
     const isRealUser = !userId.startsWith("user-virt-");
+    if (isRealUser && userId !== authorId) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Vous avez \xE9t\xE9 supprim\xE9 du groupe ${groupName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Retrait du groupe', $3, NOW(), false, NULL)`,
+        [notifId, userId, notifMessage]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId,
+        data: {
+          id: notifId,
+          userId,
+          type: "group",
+          title: "Retrait du groupe",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false
+        }
+      });
+    }
+    const remainingMembersToNotify = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND gm.user_id != $3
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [groupId, userId, authorId]
+    );
+    for (const rm of remainingMembersToNotify.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `${removedMemberName} a \xE9t\xE9 supprim\xE9 du groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Membre retir\xE9', $3, NOW(), false, $4)`,
+        [notifId, rm.user_id, notifMessage, groupId]
+      );
+      realtimeBroadcaster.broadcast({
+        type: "notification:created",
+        userId: rm.user_id,
+        data: {
+          id: notifId,
+          userId: rm.user_id,
+          type: "group",
+          title: "Membre retir\xE9",
+          message: notifMessage,
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          read: false,
+          groupId
+        }
+      });
+    }
     if (isRealUser) {
       const userRes = await query(
         `SELECT id, shares FROM users WHERE id = $1`,

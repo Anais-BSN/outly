@@ -45,6 +45,7 @@ import {
   clearNativeSession,
   initPushNotifications,
   triggerHaptic,
+  triggerHapticNotification,
   setupAppUrlListener,
 } from './services/nativeService';
 import {
@@ -365,6 +366,11 @@ export default function App() {
             if (exists) return prev;
             return [event.data, ...prev];
           });
+          if (event.data && (!event.data.userId || event.data.userId === currentUser.id)) {
+            setInviteToast({ text: event.data.message || event.data.title, success: true });
+            setTimeout(() => setInviteToast(null), 5000);
+            triggerHapticNotification('success');
+          }
           break;
         case 'notification:read':
           setNotifications((prev) =>
@@ -1677,7 +1683,7 @@ export default function App() {
 
   const handleUpdateGroup = async (groupId: string, data: Partial<Group>) => {
     try {
-      const updated = await api.updateGroup(groupId, data);
+      const updated = await api.updateGroup(groupId, { ...data, authorId: currentUser?.id });
       setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...updated } : g)));
     } catch (err) {
       console.error('Error updating group in PostgreSQL:', err);
@@ -1844,7 +1850,7 @@ export default function App() {
 
   const handleRemoveGroupMember = async (groupId: string, memberIdOrUserId: string) => {
     try {
-      const res = await api.removeGroupMember(groupId, memberIdOrUserId);
+      const res = await api.removeGroupMember(groupId, memberIdOrUserId, currentUser?.id);
       setGroups((prev) =>
         prev.map((g) => {
           if (g.id === groupId) {
@@ -1901,7 +1907,7 @@ export default function App() {
     setActiveGroupId(remaining.length > 0 ? remaining[0].id : '');
 
     try {
-      await api.deleteGroup(groupIdToDelete);
+      await api.deleteGroup(groupIdToDelete, currentUser?.id);
     } catch (err) {
       console.error('Error deleting group in PostgreSQL:', err);
     }

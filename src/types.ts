@@ -184,7 +184,7 @@ export interface DebtSettlement {
   updatedAt?: string;
 }
 
-export type NotificationType = 'reminder' | 'invite' | 'chat' | 'expense' | 'poll' | 'task' | 'rsvp';
+export type NotificationType = 'reminder' | 'invite' | 'chat' | 'expense' | 'poll' | 'task' | 'rsvp' | 'group' | 'friend';
 
 export interface AppNotification {
   id: string;

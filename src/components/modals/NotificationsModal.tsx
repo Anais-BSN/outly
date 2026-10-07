@@ -8,6 +8,7 @@ import {
   BarChart2,
   Receipt,
   UserPlus,
+  Users,
   Trash2,
   Sparkles
 } from 'lucide-react';
@@ -58,6 +59,8 @@ const NotificationItem = React.memo<NotificationItemProps>(({
       case 'invite':
       case 'friend':
         return <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+      case 'group':
+        return <Users className="w-5 h-5 text-[#6D2932] dark:text-amber-300" />;
       case 'poll':
         return <BarChart2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
       case 'expense':

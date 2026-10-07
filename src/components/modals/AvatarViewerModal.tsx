@@ -31,7 +31,7 @@ export const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({
   return (
     <div
       id="avatar-viewer-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div

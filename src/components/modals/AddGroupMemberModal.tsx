@@ -171,7 +171,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     setAddingFriendId(friend.id);
     setFeedbackMsg(null);
     try {
-      await api.addGroupMember(group.id, friend.id, 'member');
+      await api.addGroupMember(group.id, friend.id, 'member', currentUser?.id);
       onMemberAdded({
         id: friend.id,
         userId: friend.id,

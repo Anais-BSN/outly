@@ -990,6 +990,42 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
       );
     }
 
+    // Récupérer le nom de l'auteur (créateur)
+    const creatorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [creatorId]
+    );
+    const creator = creatorRes.rows[0];
+    const authorName = creator ? `${creator.firstName} ${creator.lastName || ''}`.trim() : 'Un ami';
+    const groupName = name || 'Nouveau Groupe';
+
+    // Générer une notification pour chaque membre invité
+    for (const fId of invitedFriendIds) {
+      if (fId && fId !== creatorId && !fId.startsWith('user-virt-')) {
+        const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const notifMessage = `${authorName} vous a ajouté au groupe ${groupName}`;
+        await query(
+          `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+           VALUES ($1, $2, 'group', 'Nouveau groupe', $3, NOW(), false, $4)`,
+          [notifId, fId, notifMessage, groupId]
+        );
+        realtimeBroadcaster.broadcast({
+          type: 'notification:created',
+          userId: fId,
+          data: {
+            id: notifId,
+            userId: fId,
+            type: 'group',
+            title: 'Nouveau groupe',
+            message: notifMessage,
+            timestamp: new Date().toISOString(),
+            read: false,
+            groupId,
+          },
+        });
+      }
+    }
+
     // Récupérer le groupe complet avec ses membres
     const membersRes = await query(
       `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
@@ -1026,7 +1062,7 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
 apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId, role = 'member' } = req.body;
+    const { userId, role = 'member', authorId = 'user-me' } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
@@ -1049,6 +1085,86 @@ apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
     );
 
     const memberData = memberRes.rows[0] || { success: true, groupId: id, userId, role };
+
+    // Récupérer le nom du groupe, de l'auteur et du nouveau membre
+    const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
+    const groupName = groupInfoRes.rows[0]?.name || 'Groupe';
+
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ''}`.trim() : 'Un membre';
+
+    const newMemberUserRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [userId]
+    );
+    const newMemberUser = newMemberUserRes.rows[0];
+    const newMemberName = newMemberUser ? `${newMemberUser.firstName} ${newMemberUser.lastName || ''}`.trim() : 'Un nouveau membre';
+
+    // 1. Notification au nouveau membre (si compte réel et différent de l'auteur)
+    if (!userId.startsWith('user-virt-') && userId !== authorId) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Vous avez été ajouté au groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Ajout au groupe', $3, NOW(), false, $4)`,
+        [notifId, userId, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: userId,
+        data: {
+          id: notifId,
+          userId: userId,
+          type: 'group',
+          title: 'Ajout au groupe',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+          groupId: id,
+        },
+      });
+    }
+
+    // 2. Notification à tous les autres membres déjà présents dans le groupe
+    const otherMembersRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND gm.user_id != $3
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, userId, authorId]
+    );
+
+    for (const om of otherMembersRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `${newMemberName} a été ajouté au groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Nouveau membre', $3, NOW(), false, $4)`,
+        [notifId, om.user_id, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: om.user_id,
+        data: {
+          id: notifId,
+          userId: om.user_id,
+          type: 'group',
+          title: 'Nouveau membre',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+          groupId: id,
+        },
+      });
+    }
 
     // Récupérer le groupe complet avec la liste des membres actifs pour diffusion temps réel
     const updatedGroupRes = await query(
@@ -1375,7 +1491,7 @@ apiRouter.post('/groups/:id/merge-member', async (req: Request, res: Response) =
 apiRouter.put('/groups/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, coverImage } = req.body;
+    const { name, description, coverImage, authorId = 'user-me' } = req.body;
 
     const existingRes = await query(`SELECT id, name, description, cover_image FROM groups WHERE id = $1`, [id]);
     if (existingRes.rows.length === 0) {
@@ -1393,6 +1509,50 @@ apiRouter.put('/groups/:id', async (req: Request, res: Response) => {
        WHERE id = $4`,
       [newName, newDesc, newCover, id]
     );
+
+    // Récupérer le nom de l'auteur de la modification
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ''}`.trim() : 'Un membre';
+
+    // Notifier tous les membres du groupe (sauf l'auteur)
+    const membersToNotifyRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1
+         AND gm.user_id != $2
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, authorId]
+    );
+
+    for (const m of membersToNotifyRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Le groupe ${newName} a été modifié par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Groupe modifié', $3, NOW(), false, $4)`,
+        [notifId, m.user_id, notifMessage, id]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: m.user_id,
+        data: {
+          id: notifId,
+          userId: m.user_id,
+          type: 'group',
+          title: 'Groupe modifié',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+          groupId: id,
+        },
+      });
+    }
 
     const updatedRes = await query(
       `SELECT id, name, description, cover_image as "coverImage", created_at as "createdAt"
@@ -1515,6 +1675,55 @@ apiRouter.post('/groups/:id/invite', async (req: Request, res: Response) => {
 apiRouter.delete('/groups/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const authorId = (req.query.authorId as string) || (req.body?.authorId as string) || (req.query.userId as string) || (req.body?.userId as string) || 'user-me';
+
+    // 1. Récupérer les informations du groupe, de l'auteur et des membres AVANT suppression
+    const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
+    const groupName = groupRes.rows[0]?.name || 'Groupe';
+
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ''}`.trim() : 'Un administrateur';
+
+    const membersRes = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [id, authorId]
+    );
+
+    // 2. Notifier tous les membres qui faisaient partie du groupe (group_id = NULL pour ne pas être purgé en cascade)
+    for (const m of membersRes.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Le groupe ${groupName} a été supprimé par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Groupe supprimé', $3, NOW(), false, NULL)`,
+        [notifId, m.user_id, notifMessage]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: m.user_id,
+        data: {
+          id: notifId,
+          userId: m.user_id,
+          type: 'group',
+          title: 'Groupe supprimé',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+        },
+      });
+    }
+
+    // 3. Purger le groupe de la base de données
     await query(`DELETE FROM groups WHERE id = $1`, [id]);
 
     realtimeBroadcaster.broadcast({
@@ -1533,6 +1742,25 @@ apiRouter.delete('/groups/:id', async (req: Request, res: Response) => {
 apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Response) => {
   try {
     const { id: groupId, userId } = req.params;
+    const authorId = (req.query.authorId as string) || (req.body?.authorId as string) || (req.query.userId as string) || (req.body?.userId as string) || 'user-me';
+
+    // 0. Récupérer les noms du groupe, de l'auteur et du membre retiré AVANT modification
+    const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
+    const groupName = groupInfoRes.rows[0]?.name || 'Groupe';
+
+    const authorRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [authorId]
+    );
+    const author = authorRes.rows[0];
+    const authorName = author ? `${author.firstName} ${author.lastName || ''}`.trim() : 'Un administrateur';
+
+    const removedUserInfoRes = await query(
+      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      [userId]
+    );
+    const removedUser = removedUserInfoRes.rows[0];
+    const removedMemberName = removedUser ? `${removedUser.firstName} ${removedUser.lastName || ''}`.trim() : 'Un membre';
 
     // 1. Vérifier le rôle du membre dans le groupe
     const memberRoleRes = await query(
@@ -1574,6 +1802,67 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
     const deletedHandle = `deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${Math.random().toString(36).substring(2, 7)}`;
 
     const isRealUser = !userId.startsWith('user-virt-');
+
+    // Notification au membre retiré (si c'est un compte réel et s'il ne quitte pas de lui-même)
+    if (isRealUser && userId !== authorId) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `Vous avez été supprimé du groupe ${groupName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Retrait du groupe', $3, NOW(), false, NULL)`,
+        [notifId, userId, notifMessage]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: userId,
+        data: {
+          id: notifId,
+          userId: userId,
+          type: 'group',
+          title: 'Retrait du groupe',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+        },
+      });
+    }
+
+    // Notification à tous les autres membres restants du groupe
+    const remainingMembersToNotify = await query(
+      `SELECT gm.user_id 
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = $1 
+         AND gm.user_id != $2
+         AND gm.user_id != $3
+         AND COALESCE(u.is_deleted, false) = false
+         AND NOT gm.user_id LIKE 'user-virt-%'`,
+      [groupId, userId, authorId]
+    );
+
+    for (const rm of remainingMembersToNotify.rows) {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const notifMessage = `${removedMemberName} a été supprimé du groupe ${groupName} par ${authorName}`;
+      await query(
+        `INSERT INTO notifications (id, user_id, type, title, message, timestamp, read, group_id)
+         VALUES ($1, $2, 'group', 'Membre retiré', $3, NOW(), false, $4)`,
+        [notifId, rm.user_id, notifMessage, groupId]
+      );
+      realtimeBroadcaster.broadcast({
+        type: 'notification:created',
+        userId: rm.user_id,
+        data: {
+          id: notifId,
+          userId: rm.user_id,
+          type: 'group',
+          title: 'Membre retiré',
+          message: notifMessage,
+          timestamp: new Date().toISOString(),
+          read: false,
+          groupId,
+        },
+      });
+    }
 
     // 3. Préserver l'historique comptable : réattribuer à un compte fantôme nommé « Utilisateur supprimé N »
     if (isRealUser) {
