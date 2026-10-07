@@ -758,9 +758,6 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         currentUser={currentUser}
         currency="EUR"
         onSelectExpense={(exp) => setSelectedExpenseForDetail(exp)}
-        onOpenAddExpense={onOpenAddExpense}
-        onEditExpense={onEditExpense}
-        onDeleteExpense={onDeleteExpense}
         onViewAvatar={onViewAvatar}
       />
 

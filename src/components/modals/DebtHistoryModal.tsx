@@ -7,8 +7,7 @@ import {
   Receipt,
   Clock,
   Calendar,
-  Sparkles,
-  ChevronLeft
+  Sparkles
 } from 'lucide-react';
 import { DebtSettlement, GroupMember, UserProfile } from '../../types';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -92,24 +91,14 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              id="debt-history-back-btn"
-              onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 transition-colors cursor-pointer active:scale-95"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Retour</span>
-            </button>
-            <button
-              id="debt-history-close-btn"
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            id="debt-history-close-btn"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Content List */}

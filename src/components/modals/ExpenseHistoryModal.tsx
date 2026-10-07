@@ -1,15 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   X,
   Receipt,
   Clock,
   Tag,
-  ChevronLeft,
   ChevronRight,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Users,
 } from 'lucide-react';
 import { Expense, GroupMember, UserProfile } from '../../types';
 import { formatCurrency, formatDateOnly } from '../../utils/formatters';
@@ -22,8 +17,6 @@ interface ExpenseHistoryModalProps {
   currentUser?: UserProfile;
   currency?: string;
   onSelectExpense?: (expense: Expense) => void;
-  onEditExpense?: (expense: Expense) => void;
-  onDeleteExpense?: (expenseId: string) => void;
   onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
 }
 
@@ -93,26 +86,8 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
   currentUser,
   currency = 'EUR',
   onSelectExpense,
-  onEditExpense,
-  onDeleteExpense,
   onViewAvatar,
 }) => {
-  const [activeMenuExpenseId, setActiveMenuExpenseId] = useState<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement>(null);
-
-  // Close context menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(event.target as Node)) {
-        setActiveMenuExpenseId(null);
-      }
-    };
-    if (activeMenuExpenseId) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeMenuExpenseId]);
-
   if (!isOpen) return null;
 
   // Safe members list
@@ -166,10 +141,9 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
       {/* Modal Card */}
       <div
         id="expense-history-modal-card"
-        ref={menuContainerRef}
         className="relative w-full max-w-xl bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[85vh] flex flex-col animate-scale-in"
       >
-        {/* Header with clear « ‹ Retour » and ✕ buttons */}
+        {/* Header - Croix de fermeture uniquement */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#C7B7A3]/40 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300">
@@ -184,25 +158,15 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              id="expense-history-back-btn"
-              onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 transition-colors cursor-pointer active:scale-95"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Retour</span>
-            </button>
-            <button
-              type="button"
-              id="expense-history-close-btn"
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            id="expense-history-close-btn"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Fermer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Content List */}
@@ -220,7 +184,6 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
           ) : (
             sortedExpenses.map((expense) => {
               const payerInfo = getPayerInfo(expense);
-              const isMenuOpen = activeMenuExpenseId === expense.id;
               const participantCount = Array.isArray(expense.participantIds)
                 ? expense.participantIds.length
                 : 0;
@@ -275,7 +238,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Amount & Actions */}
+                    {/* Amount & Arrow */}
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right">
                         <span className="text-sm sm:text-base font-extrabold text-[#5D0D18] dark:text-amber-300 font-serif block">
@@ -287,65 +250,6 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                             : `${participantCount} pers.`}
                         </span>
                       </div>
-
-                      {/* 3-dots Context Menu Button */}
-                      {(onEditExpense || onDeleteExpense) && (
-                        <div className="relative">
-                          <button
-                            type="button"
-                            id={`expense-history-item-menu-${expense.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuExpenseId(isMenuOpen ? null : expense.id);
-                            }}
-                            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#FFF9EB] dark:hover:bg-zinc-700 border border-transparent hover:border-[#C7B7A3]/50 transition-colors cursor-pointer"
-                            title="Options"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-
-                          {isMenuOpen && (
-                            <div
-                              className="absolute right-0 mt-1 top-full w-36 bg-[#FFF9EB] dark:bg-[#18181B] rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 py-1.5 z-50 animate-fade-in"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {onEditExpense && (
-                                <button
-                                  type="button"
-                                  id={`expense-history-edit-${expense.id}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMenuExpenseId(null);
-                                    onClose();
-                                    onEditExpense(expense);
-                                  }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <Edit className="w-3.5 h-3.5 text-[#5D0D18] dark:text-zinc-400" />
-                                  <span>Modifier</span>
-                                </button>
-                              )}
-                              {onDeleteExpense && (
-                                <button
-                                  type="button"
-                                  id={`expense-history-delete-${expense.id}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMenuExpenseId(null);
-                                    if (window.confirm(`Êtes-vous sûr de vouloir supprimer la dépense "${expense.title || 'Dépense'}" ?`)) {
-                                      onDeleteExpense(expense.id);
-                                    }
-                                  }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Supprimer</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
 
                       <ChevronRight className="w-4 h-4 text-[#6D2932]/40 dark:text-zinc-500 group-hover:text-[#6D2932] dark:group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
