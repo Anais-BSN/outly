@@ -318,12 +318,25 @@ export const setupAppUrlListener = (onUrlOpen: (url: string) => void): (() => vo
    ========================================================================= */
 
 export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> => {
+  // 1. Interface native Android directe (pour un contrôle immédiat de la barre d'état et de la barre de navigation)
+  try {
+    if (typeof (window as any).AndroidSystemBars?.setTheme === 'function') {
+      (window as any).AndroidSystemBars.setTheme(isDarkMode);
+    }
+  } catch (e) {
+    // Non bloquant
+  }
+
   if (!isNativePlatform()) return;
 
   try {
-    // 1. Barre d'état supérieure (heure, batterie, icônes)
+    // 2. Configuration StatusBar via le plugin Capacitor
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: false });
+    } catch (_) {}
+
     if (isDarkMode) {
-      // Mode sombre : fond sombre #18181B / #121212 avec icônes claires (Style.Dark)
+      // Mode sombre : fond sombre #18181B avec icônes claires (Style.Dark)
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: '#18181B' });
     } else {
@@ -335,7 +348,7 @@ export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> =>
     console.warn('[NativeService] Erreur lors de la synchronisation de la StatusBar:', err);
   }
 
-  // 2. Barre de navigation inférieure Android (boutons retour, accueil)
+  // 3. Barre de navigation inférieure Android (fallback plugin)
   try {
     const navBar = (Capacitor as any).Plugins?.NavigationBar || (window as any).NavigationBar;
     if (navBar) {
@@ -371,18 +384,23 @@ export const initLocalNotifications = async (
       await LocalNotifications.requestPermissions();
     }
 
-    // 2. Création du canal de notification Android (Channel) avec haute priorité
+    // 2. Création / Configuration du canal de notification Android avec haute priorité
     if (Capacitor.getPlatform() === 'android') {
-      await LocalNotifications.createChannel({
-        id: 'outlys_notifications',
-        name: 'Notifications Outlys',
-        description: 'Alertes en temps réel et activités des groupes Outlys',
-        importance: 5, // Haute importance -> déclenche la bannière déroulante (heads-up)
-        visibility: 1, // Visible sur l'écran de verrouillage
-        vibration: true,
-        lights: true,
-        lightColor: '#5D0D18',
-      });
+      try {
+        await LocalNotifications.createChannel({
+          id: 'outlys_notifications',
+          name: 'Notifications Outlys',
+          description: 'Alertes en temps réel, messages et activités des groupes Outlys',
+          importance: 5, // Haute importance -> déclenche la bannière déroulante (heads-up)
+          visibility: 1, // Visible sur l'écran de verrouillage
+          vibration: true,
+          lights: true,
+          lightColor: '#5D0D18',
+          sound: 'default',
+        });
+      } catch (cErr) {
+        console.warn('[LocalNotifications] Création canal (déjà existant ou non supporté):', cErr);
+      }
     }
 
     // 3. Écouteur d'actions / clics sur notification
@@ -414,19 +432,36 @@ export const sendNativeLocalNotification = async (
 
   try {
     // 1. Vérification sécurisée des permissions
-    const permStatus = await LocalNotifications.checkPermissions();
+    let permStatus = await LocalNotifications.checkPermissions();
     if (permStatus.display !== 'granted') {
-      const reqStatus = await LocalNotifications.requestPermissions();
-      if (reqStatus.display !== 'granted') {
+      permStatus = await LocalNotifications.requestPermissions();
+      if (permStatus.display !== 'granted') {
         console.log('[LocalNotifications] Permission non accordée, notification native ignorée');
         return;
       }
     }
 
-    // 2. Génération d'un identifiant entier positif 32-bit pour Android
+    // 2. S'assurer que le canal de notification Android existe
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await LocalNotifications.createChannel({
+          id: 'outlys_notifications',
+          name: 'Notifications Outlys',
+          description: 'Alertes en temps réel, messages et activités des groupes Outlys',
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+          lightColor: '#5D0D18',
+          sound: 'default',
+        });
+      } catch (_) {}
+    }
+
+    // 3. Génération d'un identifiant entier positif 32-bit pour Android
     const notifId = Math.floor(Math.random() * 2147483647);
 
-    // 3. Émission de l'alerte système avec bannière déroulante et vibration
+    // 4. Émission immédiate de l'alerte système avec bannière déroulante et vibration
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -434,10 +469,10 @@ export const sendNativeLocalNotification = async (
           title: title,
           body: body || '',
           channelId: 'outlys_notifications',
-          smallIcon: 'ic_stat_icon_config_sample',
+          smallIcon: 'ic_launcher',
           iconColor: '#5D0D18',
           extra: data || {},
-          schedule: { at: new Date(Date.now() + 100) },
+          schedule: { at: new Date(Date.now() + 50), allowWhileIdle: true },
           autoCancel: true,
         },
       ],

@@ -273,7 +273,9 @@ export default function App() {
       initPushNotifications(userRes.id);
       
       const themeFromDb = userRes.themePreference || (localStorage.getItem('outly_theme') as any) || 'light';
-      setIsDarkMode(themeFromDb === 'dark');
+      const isDark = themeFromDb === 'dark';
+      setIsDarkMode(isDark);
+      syncSystemBarsTheme(isDark);
 
       setGroups(groupsRes);
       if (groupsRes.length > 0) {
@@ -330,6 +332,18 @@ export default function App() {
             if (exists) return prev;
             return [...prev, event.data];
           });
+          if (event.data && event.data.senderId !== currentUser.id) {
+            const senderName = event.data.senderName || 'Nouveau message';
+            let messageBody = event.data.text || '';
+            if (!messageBody && (event.data.imageUrl || (event.data.imageUrls && event.data.imageUrls.length > 0))) {
+              messageBody = '📷 Photo';
+            }
+            sendNativeLocalNotification(senderName, messageBody, {
+              type: 'chat_message',
+              groupId: event.data.groupId,
+              messageId: event.data.id,
+            });
+          }
           break;
         case 'message:updated':
           setMessages((prev) =>
