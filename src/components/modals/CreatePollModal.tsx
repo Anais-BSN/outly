@@ -193,13 +193,20 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
     return `Du ${startFmt} (${opt.startTime}) au ${endFmt} (${opt.endTime})`;
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || !title.trim()) return;
+    if (isSubmittingRef.current || isSubmitting || !title.trim()) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     if (type === 'date') {
-      if (dateOptions.length < 2) return;
+      if (dateOptions.length < 2) {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+        return;
+      }
 
       const formattedOptions = dateOptions.map((opt, i) => {
         const startIso = createIsoFromLocalDateAndTime(opt.startDate, opt.startTime);
@@ -238,8 +245,17 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         });
       }
     } else {
-      const validChoices = choiceOptions.map(c => c.trim()).filter(Boolean);
-      if (validChoices.length < 2) return;
+      // Inclure les options existantes + la saisie en cours si non vide
+      const allChoices = [...choiceOptions];
+      if (newChoiceInput.trim()) {
+        allChoices.push(newChoiceInput.trim());
+      }
+      const validChoices = allChoices.map(c => c.trim()).filter(Boolean);
+      if (validChoices.length < 2) {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+        return;
+      }
 
       const pollData: Partial<Poll> = {
         groupId: initialPoll?.groupId || groupId,

@@ -746,6 +746,20 @@ export const api = {
     });
   },
 
+  async declineCall(groupId: string, callId: string, userId: string): Promise<any> {
+    return request('/calls/decline', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, callId, userId }),
+    });
+  },
+
+  async timeoutCall(groupId: string, callId: string): Promise<any> {
+    return request('/calls/timeout', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, callId }),
+    });
+  },
+
   async leaveCall(groupId: string, callId: string, userId: string): Promise<any> {
     return request('/calls/leave', {
       method: 'POST',

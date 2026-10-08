@@ -85,6 +85,12 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        setupSystemBarsInterface();
+    }
+
     /**
      * Enregistre l'interface JavaScript native "AndroidSystemBars"
      * pour permettre à l'application web de piloter instantanément les couleurs des barres.
@@ -129,6 +135,22 @@ public class MainActivity extends BridgeActivity {
                 // true pour des icônes sombres (fond clair), false pour des icônes claires (fond sombre)
                 insetsController.setAppearanceLightStatusBars(!isDark);
                 insetsController.setAppearanceLightNavigationBars(!isDark);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                int flags = decorView.getSystemUiVisibility();
+                if (!isDark) {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    }
+                } else {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    }
+                }
+                decorView.setSystemUiVisibility(flags);
             }
         });
     }

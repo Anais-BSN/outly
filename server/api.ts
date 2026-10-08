@@ -4137,10 +4137,18 @@ apiRouter.post('/reminders/send-email', async (req: Request, res: Response) => {
 });
 
 // ==========================================
-// 10. APPELS AUDIO & VIDÉO TEMPS RÉEL (WebRTC)
-// ==========================================
+// 10. APPELS AUDIO & VIDÉO TEMPS RÉEL (WebRTC - Modèle Salon de discussion Ouvert)
+// =================================================================================
 
 const activeCallsMap = new Map<string, any>();
+
+function formatDurationHuman(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (secs === 0) return `${mins} min`;
+  return `${mins} min ${secs}s`;
+}
 
 apiRouter.get('/calls/active/:groupId', async (req: Request, res: Response) => {
   try {
@@ -4166,26 +4174,35 @@ apiRouter.post('/calls/start', async (req: Request, res: Response) => {
     const user = userRes.rows[0] || { first_name: 'Membre', last_name: '', avatar: '' };
     const initiatorName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Membre';
 
+    const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
+    const groupName = groupRes.rows[0]?.name || 'Groupe';
+
     const callId = `call-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const nowIso = new Date().toISOString();
+
     const callSession = {
       callId,
       groupId,
+      groupName,
       type,
       initiatorId,
       initiatorName,
       initiatorAvatar: user.avatar || '',
-      startedAt: new Date().toISOString(),
+      startedAt: nowIso,
       participants: [
         {
           userId: initiatorId,
           userName: initiatorName,
           userAvatar: user.avatar || '',
-          joinedAt: new Date().toISOString(),
+          joinedAt: nowIso,
           muted: false,
           videoOff: type === 'audio',
         },
       ],
+      allJoinedUserIds: [initiatorId],
+      declinedUserIds: [],
       active: true,
+      status: 'ringing', // 'ringing' | 'connected' | 'ended'
     };
 
     activeCallsMap.set(groupId, callSession);
@@ -4197,8 +4214,8 @@ apiRouter.post('/calls/start', async (req: Request, res: Response) => {
       data: callSession,
     });
 
-    // 2. Notification de groupe pour les membres connectés
-    const notifTitle = type === 'video' ? '📹 Appel vidéo de groupe' : '📞 Appel audio de groupe';
+    // 2. Notification d'appel prioritaire pour les membres
+    const notifTitle = type === 'video' ? `📹 Appel vidéo • ${groupName}` : `📞 Appel audio • ${groupName}`;
     const notifBody = `${initiatorName} a lancé un ${type === 'video' ? 'appel vidéo' : 'appel audio'}`;
 
     realtimeBroadcaster.broadcast({
@@ -4210,29 +4227,29 @@ apiRouter.post('/calls/start', async (req: Request, res: Response) => {
         title: notifTitle,
         message: notifBody,
         groupId,
-        timestamp: new Date().toISOString(),
+        timestamp: nowIso,
         read: false,
+        isCall: true,
+        callId,
+        callType: type,
+        initiatorName,
       },
     });
 
-    // 3. Message système inséré dans le fil de discussion
+    // 3. Message interactif inséré dans le fil de discussion : « Appel en cours • Rejoindre »
     const msgId = `msg-${Date.now()}`;
     const msgText = `${type === 'video' ? '📹' : '📞'} ${initiatorName} a démarré un ${type === 'video' ? 'appel vidéo' : 'appel audio'}`;
 
     await query(
-      `INSERT INTO messages (id, group_id, sender_id, sender_name, sender_avatar, timestamp, text, read_by, reactions, is_system, system_type, call_type, call_id)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, true, 'call', $9, $10)`,
+      `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, is_system, system_type, read_by, reactions)
+       VALUES ($1, $2, $3, NOW(), $4, true, 'call', $5, $6)`,
       [
         msgId,
         groupId,
         initiatorId,
-        initiatorName,
-        user.avatar || '',
         msgText,
         JSON.stringify([initiatorId]),
         JSON.stringify([]),
-        type,
-        callId,
       ]
     );
 
@@ -4245,7 +4262,7 @@ apiRouter.post('/calls/start', async (req: Request, res: Response) => {
         senderId: initiatorId,
         senderName: initiatorName,
         senderAvatar: user.avatar || '',
-        timestamp: new Date().toISOString(),
+        timestamp: nowIso,
         text: msgText,
         readBy: [initiatorId],
         reactions: [],
@@ -4271,18 +4288,16 @@ apiRouter.post('/calls/join', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Aucun appel actif dans ce groupe' });
     }
 
-    const alreadyInCall = session.participants.some((p: any) => p.userId === user.id);
-    if (!alreadyInCall && session.participants.length >= 2) {
-      return res.status(403).json({
-        error: 'Ligne occupée. Cet appel est un appel direct limité à 2 participants.',
-        isBusy: true,
-      });
-    }
+    const userId = user.id || user.userId;
+    const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || 'Membre';
+    const userAvatar = user.avatar || '';
+
+    const alreadyInCall = session.participants.some((p: any) => p.userId === userId);
 
     const participant = {
-      userId: user.id,
-      userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Membre',
-      userAvatar: user.avatar || '',
+      userId,
+      userName,
+      userAvatar,
       joinedAt: new Date().toISOString(),
       muted: false,
       videoOff: session.type === 'audio',
@@ -4290,7 +4305,14 @@ apiRouter.post('/calls/join', async (req: Request, res: Response) => {
 
     if (!alreadyInCall) {
       session.participants.push(participant);
+      if (!session.allJoinedUserIds.includes(userId)) {
+        session.allJoinedUserIds.push(userId);
+      }
     }
+
+    // Retirer de la liste des refusés si l'utilisateur décide finalement de rejoindre
+    session.declinedUserIds = (session.declinedUserIds || []).filter((id: string) => id !== userId);
+    session.status = 'connected';
 
     realtimeBroadcaster.broadcast({
       type: 'call:joined',
@@ -4306,6 +4328,83 @@ apiRouter.post('/calls/join', async (req: Request, res: Response) => {
     res.json({ success: true, call: session });
   } catch (err: any) {
     console.error('Error in POST /calls/join:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/calls/decline', async (req: Request, res: Response) => {
+  try {
+    const { groupId, callId, userId } = req.body;
+    let session = activeCallsMap.get(groupId);
+    if (session && session.active) {
+      if (!session.declinedUserIds) session.declinedUserIds = [];
+      if (!session.declinedUserIds.includes(userId)) {
+        session.declinedUserIds.push(userId);
+      }
+      realtimeBroadcaster.broadcast({
+        type: 'call:declined',
+        groupId,
+        data: { callId, groupId, userId },
+      });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/calls/timeout', async (req: Request, res: Response) => {
+  try {
+    const { groupId, callId } = req.body;
+    let session = activeCallsMap.get(groupId);
+    if (session && session.active && session.participants.length <= 1) {
+      session.active = false;
+      activeCallsMap.delete(groupId);
+
+      // Inscription automatique dans le chat : « Appel manqué »
+      const msgId = `msg-${Date.now()}`;
+      const msgText = `${session.type === 'video' ? '📹' : '📞'} Appel manqué`;
+      const nowIso = new Date().toISOString();
+
+      await query(
+        `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, is_system, system_type, read_by, reactions)
+         VALUES ($1, $2, $3, NOW(), $4, true, 'call', $5, $6)`,
+        [
+          msgId,
+          groupId,
+          session.initiatorId,
+          msgText,
+          JSON.stringify([session.initiatorId]),
+          JSON.stringify([]),
+        ]
+      );
+
+      realtimeBroadcaster.broadcast({
+        type: 'message:created',
+        groupId,
+        data: {
+          id: msgId,
+          groupId,
+          senderId: session.initiatorId,
+          senderName: session.initiatorName,
+          senderAvatar: session.initiatorAvatar,
+          timestamp: nowIso,
+          text: msgText,
+          readBy: [session.initiatorId],
+          reactions: [],
+          isSystem: true,
+          systemType: 'call',
+        },
+      });
+
+      realtimeBroadcaster.broadcast({
+        type: 'call:ended',
+        groupId,
+        data: { callId, groupId, reason: 'missed' },
+      });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -4337,13 +4436,55 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
     const session = activeCallsMap.get(groupId);
     if (session) {
       session.participants = session.participants.filter((p: any) => p.userId !== userId);
+
       if (session.participants.length === 0) {
         session.active = false;
         activeCallsMap.delete(groupId);
+
+        // Clôture complète : insertion du message récapitulatif dans le chat
+        const durationSecs = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000));
+        const participantsCount = Math.max(1, (session.allJoinedUserIds || []).length);
+        const durationStr = formatDurationHuman(durationSecs);
+
+        const summaryText = `${session.type === 'video' ? '📹' : '📞'} Appel terminé • ${durationStr} • ${participantsCount} participant${participantsCount > 1 ? 's' : ''}`;
+        const msgId = `msg-${Date.now()}`;
+        const nowIso = new Date().toISOString();
+
+        await query(
+          `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, is_system, system_type, read_by, reactions)
+           VALUES ($1, $2, $3, NOW(), $4, true, 'call', $5, $6)`,
+          [
+            msgId,
+            groupId,
+            session.initiatorId,
+            summaryText,
+            JSON.stringify([]),
+            JSON.stringify([]),
+          ]
+        );
+
+        realtimeBroadcaster.broadcast({
+          type: 'message:created',
+          groupId,
+          data: {
+            id: msgId,
+            groupId,
+            senderId: session.initiatorId,
+            senderName: session.initiatorName,
+            senderAvatar: session.initiatorAvatar,
+            timestamp: nowIso,
+            text: summaryText,
+            readBy: [],
+            reactions: [],
+            isSystem: true,
+            systemType: 'call',
+          },
+        });
+
         realtimeBroadcaster.broadcast({
           type: 'call:ended',
           groupId,
-          data: { callId, groupId },
+          data: { callId, groupId, durationStr, participantsCount },
         });
       } else {
         realtimeBroadcaster.broadcast({
@@ -4351,6 +4492,14 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
           groupId,
           data: { callId, groupId, userId, participants: session.participants },
         });
+
+        if (session.participants.length === 1) {
+          realtimeBroadcaster.broadcast({
+            type: 'call:solitary_participant',
+            groupId,
+            data: { callId, groupId, remainingParticipantId: session.participants[0].userId },
+          });
+        }
       }
     }
     res.json({ success: true });
@@ -4358,3 +4507,4 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+

@@ -227,8 +227,6 @@ const MessageItem = React.memo<MessageItemProps>(({
   // System message
   if (message.isSystem) {
     if (message.systemType === 'call') {
-      const isCallBusy = activeCall?.active && (activeCall.participants || []).length >= 2 && !(activeCall.participants || []).some(p => p.userId === currentUser.id);
-
       return (
         <div
           id={`chat-system-msg-${message.id}`}
@@ -247,19 +245,16 @@ const MessageItem = React.memo<MessageItemProps>(({
             {activeCall?.active && onJoinCall && (
               <button
                 type="button"
+                id={`join-call-sys-btn-${message.id}`}
                 onClick={() => {
                   triggerHaptic('medium');
                   onJoinCall();
                 }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
-                  isCallBusy
-                    ? 'bg-zinc-600 hover:bg-zinc-700 text-zinc-200'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                } font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto`}
-                title={isCallBusy ? 'Ligne occupée (2 participants max)' : 'Rejoindre l\'appel'}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto"
+                title="Rejoindre le salon d'appel"
               >
-                <Radio className={`w-3 h-3 ${isCallBusy ? '' : 'animate-pulse'}`} />
-                <span>{isCallBusy ? 'Ligne occupée' : 'Rejoindre'}</span>
+                <Radio className="w-3 h-3 animate-pulse" />
+                <span>Rejoindre</span>
               </button>
             )}
           </div>
@@ -958,37 +953,29 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
         </div>
       </div>
 
-      {/* Bannière d'appel en cours dans le groupe */}
+      {/* Bannière d'appel en cours dans le groupe : « Appel en cours • Rejoindre » */}
       {activeCall?.active && (() => {
         const participants = activeCall.participants || [];
         const isUserInCall = participants.some((p) => p.userId === currentUser.id);
-        const isCallLocked = participants.length >= 2 && !isUserInCall;
 
         return (
           <div
             id="active-call-group-banner"
-            className={`px-3 sm:px-4 py-2 ${
-              isCallLocked
-                ? 'bg-gradient-to-r from-amber-700 to-zinc-800'
-                : 'bg-gradient-to-r from-emerald-600 to-teal-700'
-            } text-white flex items-center justify-between gap-2 shadow-xs shrink-0 animate-fade-in`}
+            className="px-3 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between gap-2 shadow-sm shrink-0 animate-fade-in border-b border-emerald-500/30"
           >
-            <div className="flex items-center gap-2 text-xs font-bold min-w-0">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                {!isCallLocked && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                )}
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+            <div className="flex items-center gap-2.5 text-xs font-bold min-w-0">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
               </span>
-              <span className="truncate">
-                {activeCall.type === 'video' ? 'Appel vidéo en cours' : 'Appel audio en cours'}
-                {isCallLocked ? ' (Ligne occupée)' : ''}
-              </span>
-              <span className="text-[11px] font-normal opacity-90 hidden sm:inline">
-                • {participants.length} participant{participants.length > 1 ? 's' : ''} (max 2)
-              </span>
+              <div className="flex items-center gap-1.5 truncate">
+                <span>{activeCall.type === 'video' ? '📹 Appel vidéo en cours' : '📞 Appel audio en cours'}</span>
+                <span className="text-[11px] font-medium opacity-90">
+                  • {participants.length} participant{participants.length > 1 ? 's' : ''}
+                </span>
+              </div>
             </div>
-            {onJoinCall && (
+            {onJoinCall && !isUserInCall && (
               <button
                 type="button"
                 id="join-active-call-banner-btn"
@@ -996,13 +983,10 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                   triggerHaptic('medium');
                   onJoinCall();
                 }}
-                className={`px-3 py-1 rounded-full ${
-                  isCallLocked
-                    ? 'bg-zinc-200 text-zinc-800 hover:bg-zinc-300'
-                    : 'bg-white text-emerald-800 hover:bg-zinc-100'
-                } font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0`}
+                className="px-3.5 py-1 rounded-full bg-white hover:bg-zinc-100 text-emerald-800 font-bold text-xs shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0 animate-pulse flex items-center gap-1"
               >
-                {isCallLocked ? 'Ligne occupée' : 'Rejoindre'}
+                <Radio className="w-3 h-3" />
+                <span>Rejoindre</span>
               </button>
             )}
           </div>

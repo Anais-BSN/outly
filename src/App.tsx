@@ -33,6 +33,7 @@ import { AvatarViewerModal } from './components/modals/AvatarViewerModal';
 import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { InviteReconcileModal } from './components/modals/InviteReconcileModal';
 import { GroupCallModal } from './components/modals/GroupCallModal';
+import { IncomingCallAlertModal } from './components/modals/IncomingCallAlertModal';
 import { AppDownloadBanner } from './components/AppDownloadBanner';
 import { DownloadAppPage } from './components/DownloadAppPage';
 import { formatDateOnly } from './utils/formatters';
@@ -188,6 +189,7 @@ export default function App() {
   // Group Call states (Audio & Vidéo)
   const [activeCallSession, setActiveCallSession] = useState<GroupCallSession | null>(null);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [incomingCallAlert, setIncomingCallAlert] = useState<GroupCallSession | null>(null);
 
   // Deep-link & Reset Password states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -686,25 +688,56 @@ export default function App() {
           if (event.data?.groupId === activeGroupId) {
             setActiveCallSession(event.data);
           }
-          if (event.data && event.data.startedBy !== currentUser.id) {
+          if (event.data && event.data.initiatorId !== currentUser.id) {
+            // Afficher l'alerte d'appel entrant si l'utilisateur n'est pas déjà dans le modal d'appel
+            if (!isCallModalOpen) {
+              setIncomingCallAlert(event.data);
+            }
             const callTypeLabel = event.data.type === 'video' ? 'Appel vidéo' : 'Appel audio';
             sendNativeLocalNotification(
               event.data.groupName || 'Appel de groupe',
-              `${event.data.startedByName || 'Un membre'} a démarré un ${callTypeLabel.toLowerCase()}`,
+              `${event.data.initiatorName || 'Un membre'} vous invite à un ${callTypeLabel.toLowerCase()}`,
               { type: 'group_call', groupId: event.data.groupId, callId: event.data.callId }
             );
           }
           break;
         case 'call:joined':
           if (event.data?.groupId === activeGroupId) {
-            setActiveCallSession(event.data);
+            setActiveCallSession((prev) => {
+              if (prev && prev.callId === event.data?.callId) {
+                return { ...prev, participants: event.data.participants || prev.participants };
+              }
+              return event.data?.call || event.data;
+            });
+          }
+          if (incomingCallAlert && incomingCallAlert.callId === event.data?.callId) {
+            const hasJoined = (event.data?.participants || []).some((p: any) => p.userId === currentUser.id);
+            if (hasJoined) {
+              setIncomingCallAlert(null);
+            }
+          }
+          break;
+        case 'call:declined':
+          if (event.data?.userId === currentUser.id) {
+            setIncomingCallAlert(null);
+          }
+          break;
+        case 'call:participant_left':
+          if (event.data?.groupId === activeGroupId) {
+            setActiveCallSession((prev) => {
+              if (prev && prev.callId === event.data?.callId) {
+                return { ...prev, participants: event.data.participants || [] };
+              }
+              return prev;
+            });
           }
           break;
         case 'call:ended':
-          if (event.data?.groupId === activeGroupId) {
+          if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession(null);
             setIsCallModalOpen(false);
           }
+          setIncomingCallAlert(null);
           break;
       }
     });
@@ -1159,11 +1192,12 @@ export default function App() {
     }
   };
 
-  // Handlers: Appels Audio et Vidéo en temps réel
+  // Handlers: Appels Audio et Vidéo en temps réel (Salon ouvert)
   const handleStartCall = async (type: 'audio' | 'video') => {
     if (!activeGroupId || !currentUser) return;
     try {
-      const session = await api.startCall(activeGroupId, type, currentUser.id);
+      const res = await api.startCall(activeGroupId, type, currentUser.id);
+      const session = res.call || res;
       setActiveCallSession(session);
       setIsCallModalOpen(true);
     } catch (err) {
@@ -1174,26 +1208,47 @@ export default function App() {
   const handleJoinCall = async () => {
     if (!activeGroupId || !currentUser || !activeCallSession?.callId) return;
     try {
-      const session = await api.joinCall(activeGroupId, activeCallSession.callId, currentUser.id);
+      const res = await api.joinCall(activeGroupId, activeCallSession.callId, currentUser);
+      const session = res.call || res;
       setActiveCallSession(session);
       setIsCallModalOpen(true);
     } catch (err: any) {
       console.error('Erreur rejoindre appel:', err);
-      const isBusy = err?.isBusy || err?.message?.includes('occupée') || (activeCallSession.participants && activeCallSession.participants.length >= 2);
-      if (isBusy) {
-        setInviteToast({ text: "La ligne est occupée (appel direct 1v1 en cours).", success: false });
-      } else {
-        setInviteToast({ text: "Impossible de rejoindre l'appel.", success: false });
-      }
+      setInviteToast({ text: "Impossible de rejoindre le salon d'appel.", success: false });
       setTimeout(() => setInviteToast(null), 5000);
     }
+  };
+
+  const handleAcceptIncomingCall = async () => {
+    if (!incomingCallAlert || !currentUser) return;
+    try {
+      const targetGroupId = incomingCallAlert.groupId;
+      const targetCallId = incomingCallAlert.callId;
+      setActiveGroupId(targetGroupId);
+      const res = await api.joinCall(targetGroupId, targetCallId, currentUser);
+      const session = res.call || res;
+      setActiveCallSession(session);
+      setIsCallModalOpen(true);
+      setIncomingCallAlert(null);
+    } catch (err) {
+      console.error('Erreur acceptation appel entrant:', err);
+      setIncomingCallAlert(null);
+    }
+  };
+
+  const handleDeclineIncomingCall = async () => {
+    if (!incomingCallAlert || !currentUser) return;
+    try {
+      await api.declineCall(incomingCallAlert.groupId, incomingCallAlert.callId, currentUser.id);
+    } catch (_) {}
+    setIncomingCallAlert(null);
   };
 
   const handleCloseCallModal = () => {
     setIsCallModalOpen(false);
     if (activeGroupId) {
       api.getActiveCall(activeGroupId)
-        .then((session) => setActiveCallSession(session))
+        .then((res) => setActiveCallSession(res.call || res))
         .catch(() => setActiveCallSession(null));
     }
   };
@@ -2288,7 +2343,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col font-sans transition-colors duration-200">
+    <div className={`bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col font-sans transition-colors duration-200 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
       {/* 2. Menu Burger / Lateral Drawer */}
       <SidebarDrawer
         isOpen={isDrawerOpen}
@@ -2931,7 +2986,7 @@ export default function App() {
         />
       )}
 
-      {/* Group Call Modal (Appels Audio & Vidéo en direct) */}
+      {/* Group Call Modal (Appels Audio & Vidéo en direct - Salon ouvert) */}
       {currentUser && isCallModalOpen && activeCallSession && (
         <GroupCallModal
           isOpen={isCallModalOpen}
@@ -2939,10 +2994,22 @@ export default function App() {
           callSession={activeCallSession}
           currentUser={currentUser}
           groupName={activeGroup?.name || 'Discussion de groupe'}
+          groupMembers={activeGroup?.members || []}
           onCallTimeout={(msg) => {
             setInviteToast({ text: msg, success: false });
             setTimeout(() => setInviteToast(null), 5000);
           }}
+        />
+      )}
+
+      {/* Incoming Call In-App Alert Modal */}
+      {currentUser && incomingCallAlert && !isCallModalOpen && (
+        <IncomingCallAlertModal
+          isOpen={Boolean(incomingCallAlert)}
+          callSession={incomingCallAlert}
+          currentUser={currentUser}
+          onAccept={handleAcceptIncomingCall}
+          onDecline={handleDeclineIncomingCall}
         />
       )}
     </div>
