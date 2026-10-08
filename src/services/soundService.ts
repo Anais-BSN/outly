@@ -177,6 +177,64 @@ class SoundService {
     osc.start(now);
     osc.stop(now + 0.3);
   }
+
+  /**
+   * Tonalité d'échec / appel non répondu (3 bips graves de fin de tentative)
+   */
+  public playFailureSound(): void {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    const playBeep = (delay: number) => {
+      const now = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(380, now);
+      osc.frequency.linearRampToValueAtTime(280, now + 0.15);
+
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    };
+
+    playBeep(0);
+    playBeep(0.22);
+    playBeep(0.44);
+  }
+
+  /**
+   * Signal sonore discret de double appel (2 bips doux en arrière-plan)
+   */
+  public playCallWaitingBeep(): void {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    const playGentleTone = (delay: number) => {
+      const now = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(640, now);
+
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    };
+
+    playGentleTone(0);
+    playGentleTone(0.12);
+  }
 }
 
 export const soundService = new SoundService();

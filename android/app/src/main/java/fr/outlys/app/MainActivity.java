@@ -22,11 +22,12 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
 
     public static final String NOTIFICATION_CHANNEL_ID = "outlys_notifications";
+    public static final String CALL_CHANNEL_ID = "outlys_calls";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        createNotificationChannel();
+        createNotificationChannels();
 
         // Récupération de la préférence enregistrée ou du mode sombre système
         boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
@@ -62,13 +63,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Création du canal de notification Android avec haute importance,
-     * son, vibration, et bannières déroulantes pour les alertes en temps réel.
+     * Création des canaux de notification Android (Général et Appels de groupe)
+     * avec haute importance, sonnerie, vibration et bannières déroulantes.
      */
-    private void createNotificationChannel() {
+    private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             if (notificationManager != null) {
+                // 1. Canal général (Messages, sondages, dépenses)
                 NotificationChannel channel = new NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
                     "Notifications Outlys",
@@ -82,13 +84,33 @@ public class MainActivity extends BridgeActivity {
                 channel.setShowBadge(true);
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
-                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                AudioAttributes notifAudioAttributes = new AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build();
-                channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audioAttributes);
-
+                channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), notifAudioAttributes);
                 notificationManager.createNotificationChannel(channel);
+
+                // 2. Canal d'appels entrants (Sonnerie de téléphone par défaut, vibration rythmée)
+                NotificationChannel callChannel = new NotificationChannel(
+                    CALL_CHANNEL_ID,
+                    "Appels Outlys",
+                    NotificationManager.IMPORTANCE_HIGH
+                );
+                callChannel.setDescription("Alertes sonores et sonneries des appels audio et vidéo de groupe");
+                callChannel.enableLights(true);
+                callChannel.setLightColor(Color.parseColor("#5D0D18"));
+                callChannel.enableVibration(true);
+                callChannel.setVibrationPattern(new long[]{0, 800, 500, 800, 500, 800});
+                callChannel.setShowBadge(true);
+                callChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
+                AudioAttributes callAudioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build();
+                callChannel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), callAudioAttributes);
+                notificationManager.createNotificationChannel(callChannel);
             }
         }
     }
@@ -118,9 +140,11 @@ public class MainActivity extends BridgeActivity {
      * pour permettre à l'application web de piloter instantanément les couleurs des barres.
      */
     private void setupSystemBarsInterface() {
-        if (getBridge() != null && getBridge().getWebView() != null) {
-            getBridge().getWebView().addJavascriptInterface(new SystemBarsBridge(), "AndroidSystemBars");
-        }
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().addJavascriptInterface(new SystemBarsBridge(), "AndroidSystemBars");
+            }
+        } catch (Exception ignored) {}
     }
 
     public class SystemBarsBridge {
@@ -159,27 +183,14 @@ public class MainActivity extends BridgeActivity {
             }
 
             View decorView = window.getDecorView();
-            WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, decorView);
-            if (insetsController != null) {
-                // true pour des icônes sombres (fond clair), false pour des icônes claires (fond sombre)
-                insetsController.setAppearanceLightStatusBars(!isDark);
-                insetsController.setAppearanceLightNavigationBars(!isDark);
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                int flags = decorView.getSystemUiVisibility();
-                if (!isDark) {
-                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
-                } else {
-                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
+            if (decorView != null) {
+                decorView.setBackgroundColor(backgroundColor);
+                WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, decorView);
+                if (insetsController != null) {
+                    // true pour des icônes sombres (fond clair), false pour des icônes claires/blanches (fond sombre)
+                    insetsController.setAppearanceLightStatusBars(!isDark);
+                    insetsController.setAppearanceLightNavigationBars(!isDark);
                 }
-                decorView.setSystemUiVisibility(flags);
             }
         });
     }

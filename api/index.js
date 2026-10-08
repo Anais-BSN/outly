@@ -4113,7 +4113,7 @@ apiRouter.post("/calls/timeout", async (req, res) => {
       session.active = false;
       activeCallsMap.delete(groupId);
       const msgId = `msg-${Date.now()}`;
-      const msgText = "Appel manqu\xE9";
+      const msgText = session.type === "video" ? "Appel vid\xE9o manqu\xE9" : "Appel audio manqu\xE9";
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       await query(
         `INSERT INTO chat_messages (id, group_id, sender_id, timestamp, text, is_system, system_type, read_by, reactions)
@@ -4185,9 +4185,9 @@ apiRouter.post("/calls/leave", async (req, res) => {
         session.active = false;
         activeCallsMap.delete(groupId);
         const durationSecs = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1e3));
-        const participantsCount = Math.max(1, (session.allJoinedUserIds || []).length);
+        const participantsCount = (session.allJoinedUserIds || []).length;
         const durationStr = formatDurationHuman(durationSecs);
-        const summaryText = `Appel termin\xE9 \u2022 ${durationStr} \u2022 ${participantsCount} participant${participantsCount > 1 ? "s" : ""}`;
+        const summaryText = participantsCount <= 1 ? session.type === "video" ? "Appel vid\xE9o manqu\xE9" : "Appel audio manqu\xE9" : session.type === "video" ? `Appel vid\xE9o termin\xE9 \u2022 ${durationStr}` : `Appel audio termin\xE9 \u2022 ${durationStr}`;
         const msgId = `msg-${Date.now()}`;
         const nowIso = (/* @__PURE__ */ new Date()).toISOString();
         await query(

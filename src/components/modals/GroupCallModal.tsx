@@ -114,9 +114,12 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
       setRingingCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(ringInterval);
-          // Expiration du délai sans réponse -> clôture et enregistrement « Appel manqué »
-          if (isInitiator && callSession?.groupId && callSession?.callId) {
-            api.timeoutCall(callSession.groupId, callSession.callId).catch(() => {});
+          // Expiration du délai sans réponse -> son d'échec et clôture « Appel manqué »
+          if (isInitiator) {
+            soundService.playFailureSound();
+            if (callSession?.groupId && callSession?.callId) {
+              api.timeoutCall(callSession.groupId, callSession.callId).catch(() => {});
+            }
           }
           handleHangUp("Aucun membre n'a répondu à l'appel.");
           return 0;
@@ -310,7 +313,17 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
   // Raccrocher / Quitter le salon
   const handleHangUp = async (reason?: string) => {
     triggerHaptic('medium');
-    soundService.playLeaveSound();
+    
+    // Si l'initiateur raccroche alors que personne n'a encore rejoint
+    if (isInitiator && isAloneInRoom) {
+      soundService.playFailureSound();
+      if (callSession?.groupId && callSession?.callId) {
+        api.timeoutCall(callSession.groupId, callSession.callId).catch(() => {});
+      }
+    } else {
+      soundService.playLeaveSound();
+    }
+    
     soundService.stopRingtone();
 
     if (localStreamRef.current) {

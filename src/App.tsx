@@ -41,6 +41,7 @@ import { formatDateOnly } from './utils/formatters';
 // API Client & Types
 import { api } from './services/api';
 import { realtimeService } from './services/realtime';
+import { soundService } from './services/soundService';
 import {
   saveNativeSession,
   getNativeSession,
@@ -52,6 +53,8 @@ import {
   syncSystemBarsTheme,
   initLocalNotifications,
   sendNativeLocalNotification,
+  sendNativeIncomingCallAlert,
+  requestAllAppPermissions,
 } from './services/nativeService';
 import {
   TabType,
@@ -402,6 +405,27 @@ export default function App() {
             );
           }
           break;
+        case 'connection:restored':
+          if (currentUser) {
+            Promise.all([
+              api.getMessages(),
+              api.getPolls(),
+              api.getEvents(undefined, currentUser.id),
+              api.getTasks(),
+              api.getExpenses(),
+              api.getSettlements(),
+              api.getGallery(),
+            ]).then(([mRes, pRes, eRes, tRes, expRes, sRes, gRes]) => {
+              setMessages(mRes);
+              setPolls(pRes);
+              setEvents(eRes);
+              setTasks(tRes);
+              setExpenses(expRes);
+              setSettlements(sRes);
+              setGalleryItems(gRes);
+            }).catch(() => {});
+          }
+          break;
         case 'notification:created':
           setNotifications((prev) => {
             const exists = prev.some((n) => n.id === event.data?.id);
@@ -409,14 +433,24 @@ export default function App() {
             return [event.data, ...prev];
           });
           if (event.data && (!event.data.userId || event.data.userId === currentUser.id)) {
-            setInviteToast({ text: event.data.message || event.data.title, success: true });
-            setTimeout(() => setInviteToast(null), 5000);
-            triggerHapticNotification('success');
-            sendNativeLocalNotification(
-              event.data.title || 'Outlys',
-              event.data.message || 'Nouvelle notification',
-              event.data
-            );
+            const isChatMessage = event.data.type === 'chat';
+            const isViewingCurrentConversation =
+              isChatMessage &&
+              activeTabRef.current === 'discussion' &&
+              activeGroupIdRef.current === event.data.groupId &&
+              typeof document !== 'undefined' &&
+              document.visibilityState === 'visible';
+
+            if (!isViewingCurrentConversation) {
+              setInviteToast({ text: event.data.message || event.data.title, success: true });
+              setTimeout(() => setInviteToast(null), 5000);
+              triggerHapticNotification('success');
+              sendNativeLocalNotification(
+                event.data.title || 'Outlys',
+                event.data.message || 'Nouvelle notification',
+                event.data
+              );
+            }
           }
           break;
         case 'notification:read':
@@ -706,16 +740,14 @@ export default function App() {
             setActiveCallSession(event.data);
           }
           if (event.data && event.data.initiatorId !== currentUser.id) {
-            // Afficher l'alerte d'appel entrant si l'utilisateur n'est pas déjà dans le modal d'appel
-            if (!isCallModalOpen) {
+            // Cas 4 : Déjà en ligne dans un appel
+            if (isCallModalOpen) {
+              soundService.playCallWaitingBeep();
+            } else {
+              // Cas 3 & Cas 1/2 : Afficher la modale d'alerte et émettre la notification native d'appel
               setIncomingCallAlert(event.data);
+              sendNativeIncomingCallAlert(event.data);
             }
-            const callTypeLabel = event.data.type === 'video' ? 'Appel vidéo' : 'Appel audio';
-            sendNativeLocalNotification(
-              event.data.groupName || 'Appel de groupe',
-              `${event.data.initiatorName || 'Un membre'} vous invite à un ${callTypeLabel.toLowerCase()}`,
-              { type: 'group_call', groupId: event.data.groupId, callId: event.data.callId }
-            );
           }
           break;
         case 'call:joined':
@@ -763,7 +795,33 @@ export default function App() {
       unsubscribe();
       realtimeService.disconnect();
     };
-  }, [currentUser, activeGroupId]);
+  }, [currentUser, activeGroupId, isCallModalOpen, incomingCallAlert, activeCallSession]);
+
+  // Initialisation des notifications locales natives
+  useEffect(() => {
+    initLocalNotifications((action) => {
+      if (action?.notification?.extra?.groupId) {
+        setActiveGroupId(action.notification.extra.groupId);
+        if (action.actionId === 'accept' && action.notification.extra.callId) {
+          setIsCallModalOpen(true);
+        }
+      }
+    });
+  }, []);
+
+  // Demande groupée des autorisations (Notifications, Micro, Caméra) dès l'ouverture / connexion
+  useEffect(() => {
+    if (currentUser) {
+      const hasPrompted = localStorage.getItem('outlys_initial_permissions_prompted');
+      if (!hasPrompted) {
+        localStorage.setItem('outlys_initial_permissions_prompted', 'true');
+        const timer = setTimeout(() => {
+          requestAllAppPermissions().catch(() => {});
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     loadData();

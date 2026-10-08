@@ -4361,9 +4361,9 @@ apiRouter.post('/calls/timeout', async (req: Request, res: Response) => {
       session.active = false;
       activeCallsMap.delete(groupId);
 
-      // Inscription automatique dans le chat : « Appel manqué »
+      // Inscription automatique dans le chat : « Appel audio manqué » ou « Appel vidéo manqué »
       const msgId = `msg-${Date.now()}`;
-      const msgText = 'Appel manqué';
+      const msgText = session.type === 'video' ? 'Appel vidéo manqué' : 'Appel audio manqué';
       const nowIso = new Date().toISOString();
 
       await query(
@@ -4443,10 +4443,18 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
 
         // Clôture complète : insertion du message récapitulatif dans le chat
         const durationSecs = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000));
-        const participantsCount = Math.max(1, (session.allJoinedUserIds || []).length);
+        const participantsCount = (session.allJoinedUserIds || []).length;
         const durationStr = formatDurationHuman(durationSecs);
 
-        const summaryText = `Appel terminé • ${durationStr} • ${participantsCount} participant${participantsCount > 1 ? 's' : ''}`;
+        const summaryText =
+          participantsCount <= 1
+            ? session.type === 'video'
+              ? 'Appel vidéo manqué'
+              : 'Appel audio manqué'
+            : session.type === 'video'
+            ? `Appel vidéo terminé • ${durationStr}`
+            : `Appel audio terminé • ${durationStr}`;
+
         const msgId = `msg-${Date.now()}`;
         const nowIso = new Date().toISOString();
 

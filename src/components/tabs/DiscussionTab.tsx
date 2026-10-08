@@ -454,6 +454,11 @@ const MessageItem = React.memo<MessageItemProps>(({
           anchorRect={pickerAnchorRect}
           title="Ajouter une réaction"
           closeOnSelect={true}
+          messagePreview={{
+            senderName: isMe ? 'Moi' : (message.senderName || 'Membre'),
+            text: message.text,
+            imageUrl: message.imageUrl || (message.imageUrls && message.imageUrls.length > 0 ? message.imageUrls[0] : undefined),
+          }}
         />
 
         {/* Bulle de message */}

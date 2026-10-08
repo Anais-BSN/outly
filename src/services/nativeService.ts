@@ -355,11 +355,11 @@ export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> =>
     } catch (_) {}
 
     if (isDark) {
-      // Mode sombre : fond sombre #18181B avec icônes claires (Style.Dark)
+      // Mode sombre : fond sombre #18181B avec texte et icônes blancs (Style.Dark)
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: '#18181B' });
     } else {
-      // Mode clair : fond crème/blanc #FFF9EB avec icônes foncées (Style.Light)
+      // Mode clair : fond crème/blanc #FFF9EB avec texte et icônes foncés (Style.Light)
       await StatusBar.setStyle({ style: Style.Light });
       await StatusBar.setBackgroundColor({ color: '#FFF9EB' });
     }
@@ -392,7 +392,81 @@ if (typeof window !== 'undefined') {
 }
 
 /* =========================================================================
-   7. NOTIFICATIONS LOCALES NATIVES (Sans dépendance Firebase)
+   7. DEMANDE GROUPÉE DES AUTORISATIONS (Au démarrage / connexion)
+   ========================================================================= */
+
+export const requestAllAppPermissions = async (): Promise<{
+  notifications: boolean;
+  microphone: boolean;
+  camera: boolean;
+}> => {
+  const result = {
+    notifications: false,
+    microphone: false,
+    camera: false,
+  };
+
+  // 1. Notifications système (Bannières & Alertes locales)
+  try {
+    if (isNativePlatform()) {
+      try {
+        const localStatus = await LocalNotifications.requestPermissions();
+        result.notifications = localStatus.display === 'granted';
+      } catch (_) {}
+
+      try {
+        if (PushNotifications && typeof PushNotifications.requestPermissions === 'function') {
+          const pushStatus = await PushNotifications.requestPermissions();
+          if (pushStatus.receive === 'granted') {
+            result.notifications = true;
+          }
+        }
+      } catch (_) {}
+    } else if (typeof Notification !== 'undefined') {
+      try {
+        const notifStatus = await Notification.requestPermission();
+        result.notifications = notifStatus === 'granted';
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.warn('[Permissions] Erreur demande notifications:', err);
+  }
+
+  // 2. Microphone & Caméra (Demande groupée pour les appels avec libération immédiate)
+  try {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true,
+        });
+        result.microphone = true;
+        result.camera = true;
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err) {
+        // Tentative individuelle si la demande combinée échoue
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          result.microphone = true;
+          audioStream.getTracks().forEach((track) => track.stop());
+        } catch (_) {}
+
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          result.camera = true;
+          videoStream.getTracks().forEach((track) => track.stop());
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    console.warn('[Permissions] Erreur demande micro/caméra:', err);
+  }
+
+  return result;
+};
+
+/* =========================================================================
+   8. NOTIFICATIONS LOCALES ET ALERTES D'APPELS NATIVES
    ========================================================================= */
 
 let localNotificationsInitialized = false;
@@ -409,30 +483,66 @@ export const initLocalNotifications = async (
       await LocalNotifications.requestPermissions();
     }
 
-    // 2. Création / Configuration du canal de notification Android avec haute priorité
+    // 2. Configuration des types d'actions pour les appels natifs
+    try {
+      await LocalNotifications.registerActionTypes({
+        types: [
+          {
+            id: 'CALL_NOTIFICATION_ACTIONS',
+            actions: [
+              {
+                id: 'accept',
+                title: 'Rejoindre',
+                foreground: true,
+              },
+              {
+                id: 'decline',
+                title: 'Ignorer',
+                destructive: true,
+                foreground: false,
+              },
+            ],
+          },
+        ],
+      });
+    } catch (_) {}
+
+    // 3. Création des canaux de notification Android (Général et Appels)
     if (Capacitor.getPlatform() === 'android') {
       try {
         await LocalNotifications.createChannel({
           id: 'outlys_notifications',
           name: 'Notifications Outlys',
           description: 'Alertes en temps réel, messages et activités des groupes Outlys',
-          importance: 5, // Haute importance -> déclenche la bannière déroulante (heads-up)
-          visibility: 1, // Visible sur l'écran de verrouillage
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+          lightColor: '#5D0D18',
+          sound: 'default',
+        });
+
+        await LocalNotifications.createChannel({
+          id: 'outlys_calls',
+          name: 'Appels Outlys',
+          description: 'Alertes sonores et sonneries des appels audio et vidéo de groupe',
+          importance: 5,
+          visibility: 1,
           vibration: true,
           lights: true,
           lightColor: '#5D0D18',
           sound: 'default',
         });
       } catch (cErr) {
-        console.warn('[LocalNotifications] Création canal (déjà existant ou non supporté):', cErr);
+        console.warn('[LocalNotifications] Création canaux ignorée:', cErr);
       }
     }
 
-    // 3. Écouteur d'actions / clics sur notification
+    // 4. Écouteur d'actions / clics sur notification
     if (!localNotificationsInitialized) {
       await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
         try {
-          console.log('[LocalNotifications] Clic utilisateur sur notification locale:', action);
+          console.log('[LocalNotifications] Action sur notification locale:', action);
           triggerHaptic('light');
           if (onAction) {
             onAction(action);
@@ -444,7 +554,7 @@ export const initLocalNotifications = async (
       localNotificationsInitialized = true;
     }
   } catch (err) {
-    console.warn('[LocalNotifications] Erreur lors de l\'initialisation des notifications locales:', err);
+    console.warn('[LocalNotifications] Erreur initialisation notifications locales:', err);
   }
 };
 
@@ -456,17 +566,12 @@ export const sendNativeLocalNotification = async (
   if (!isNativePlatform() || !title) return;
 
   try {
-    // 1. Vérification sécurisée des permissions
     let permStatus = await LocalNotifications.checkPermissions();
     if (permStatus.display !== 'granted') {
       permStatus = await LocalNotifications.requestPermissions();
-      if (permStatus.display !== 'granted') {
-        console.log('[LocalNotifications] Permission non accordée, notification native ignorée');
-        return;
-      }
+      if (permStatus.display !== 'granted') return;
     }
 
-    // 2. S'assurer que le canal de notification Android existe
     if (Capacitor.getPlatform() === 'android') {
       try {
         await LocalNotifications.createChannel({
@@ -483,10 +588,8 @@ export const sendNativeLocalNotification = async (
       } catch (_) {}
     }
 
-    // 3. Génération d'un identifiant entier positif 32-bit pour Android
     const notifId = Math.floor(Math.random() * 2147483647);
 
-    // 4. Émission immédiate de l'alerte système avec bannière déroulante et vibration
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -505,6 +608,67 @@ export const sendNativeLocalNotification = async (
 
     triggerHapticNotification('success');
   } catch (err) {
-    console.warn('[LocalNotifications] Impossible d\'émettre la notification locale native:', err);
+    console.warn('[LocalNotifications] Impossible d\'émettre la notification locale:', err);
+  }
+};
+
+export const sendNativeIncomingCallAlert = async (callSession: any): Promise<void> => {
+  if (!isNativePlatform() || !callSession) return;
+
+  try {
+    let permStatus = await LocalNotifications.checkPermissions();
+    if (permStatus.display !== 'granted') {
+      permStatus = await LocalNotifications.requestPermissions();
+      if (permStatus.display !== 'granted') return;
+    }
+
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await LocalNotifications.createChannel({
+          id: 'outlys_calls',
+          name: 'Appels Outlys',
+          description: 'Alertes sonores et sonneries des appels audio et vidéo de groupe',
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+          lightColor: '#5D0D18',
+          sound: 'default',
+        });
+      } catch (_) {}
+    }
+
+    const notifId = Math.floor(Math.random() * 2147483647);
+    const isVideo = callSession.type === 'video';
+    const title = `${isVideo ? '📹 Appel vidéo' : '📞 Appel audio'} • ${callSession.groupName || 'Groupe Outlys'}`;
+    const body = `${callSession.initiatorName || 'Un membre'} vous invite à rejoindre l'appel`;
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: notifId,
+          title,
+          body,
+          channelId: 'outlys_calls',
+          actionTypeId: 'CALL_NOTIFICATION_ACTIONS',
+          smallIcon: 'ic_stat_outlys',
+          iconColor: '#5D0D18',
+          extra: {
+            type: 'group_call',
+            groupId: callSession.groupId,
+            callId: callSession.callId,
+            callType: callSession.type,
+            initiatorName: callSession.initiatorName,
+          },
+          schedule: { at: new Date(Date.now() + 50), allowWhileIdle: true },
+          autoCancel: true,
+          ongoing: true,
+        },
+      ],
+    });
+
+    triggerHapticNotification('warning');
+  } catch (err) {
+    console.warn('[LocalNotifications] Impossible d\'émettre l\'alerte d\'appel:', err);
   }
 };

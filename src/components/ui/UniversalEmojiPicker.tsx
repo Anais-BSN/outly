@@ -12,6 +12,11 @@ interface UniversalEmojiPickerProps {
   mode?: 'popover' | 'bottomSheet' | 'auto';
   title?: string;
   closeOnSelect?: boolean;
+  messagePreview?: {
+    senderName?: string;
+    text?: string;
+    imageUrl?: string;
+  };
 }
 
 export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
@@ -22,6 +27,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   mode = 'auto',
   title = 'Choisir un émoji',
   closeOnSelect = true,
+  messagePreview,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('smileys');
@@ -227,13 +233,13 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         style={!useBottomSheet ? getPopoverStyle() : undefined}
         className={`${
           useBottomSheet
-            ? 'w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-t-3xl border-t border-[#C7B7A3] dark:border-zinc-800 shadow-2xl max-h-[85vh] h-[500px] flex flex-col p-4 pb-6 animate-slide-up'
-            : 'bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl border border-[#C7B7A3] dark:border-zinc-700 shadow-2xl flex flex-col p-3.5 overflow-hidden h-[440px]'
+            ? 'w-full max-w-lg bg-[#FFF9EB] dark:bg-[#18181B] rounded-t-3xl border-t border-[#C7B7A3] dark:border-zinc-800 shadow-2xl max-h-[85vh] h-[520px] flex flex-col p-4 pb-6 animate-slide-up'
+            : 'bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl border border-[#C7B7A3] dark:border-zinc-700 shadow-2xl flex flex-col p-3.5 overflow-hidden h-[460px]'
         } text-[#27272A] dark:text-[#FFF9EB]`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête avec titre et bouton fermer */}
-        <div className="flex items-center justify-between gap-2 mb-3 px-1 shrink-0">
+        <div className="flex items-center justify-between gap-2 mb-2 px-1 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-xl bg-[#5D0D18] text-amber-200 flex items-center justify-center text-sm shadow-xs">
               <Smile className="w-4 h-4" />
@@ -252,6 +258,29 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Aperçu du message sélectionné (Rappel contextuel clair) */}
+        {messagePreview && (messagePreview.text || messagePreview.senderName || messagePreview.imageUrl) && (
+          <div className="mb-2.5 px-3 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/80 border-l-4 border-l-[#5D0D18] border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs shrink-0 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {messagePreview.senderName && (
+                <p className="font-bold text-[11px] text-[#5D0D18] dark:text-amber-200 truncate">
+                  {messagePreview.senderName}
+                </p>
+              )}
+              <p className="text-[#27272A]/80 dark:text-zinc-300 truncate text-[11px] mt-0.5">
+                {messagePreview.text || (messagePreview.imageUrl ? '📷 Photo' : 'Message')}
+              </p>
+            </div>
+            {messagePreview.imageUrl && (
+              <img
+                src={messagePreview.imageUrl}
+                alt="Aperçu"
+                className="w-8 h-8 rounded-lg object-cover shrink-0 ring-1 ring-black/10"
+              />
+            )}
+          </div>
+        )}
 
         {/* Barre de recherche d'émojis */}
         <div className="relative mb-2.5 shrink-0">
