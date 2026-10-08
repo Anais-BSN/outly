@@ -104,6 +104,17 @@ export default function App() {
     }
   }, [activeTab]);
 
+  const activeTabRef = useRef<TabType>(activeTab);
+  const activeGroupIdRef = useRef<string>(activeGroupId);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    activeGroupIdRef.current = activeGroupId;
+  }, [activeGroupId]);
+
   // Local Saved Sessions (Isolement strict des sessions locales mémorisées sur cet appareil)
   const [savedSessions, setSavedSessions] = useState<UserProfile[]>(() => {
     try {
@@ -340,7 +351,13 @@ export default function App() {
             if (exists) return prev;
             return [...prev, event.data];
           });
-          if (event.data && event.data.senderId !== currentUser.id) {
+          const isViewingCurrentConversation =
+            activeTabRef.current === 'discussion' &&
+            activeGroupIdRef.current === event.data?.groupId &&
+            typeof document !== 'undefined' &&
+            document.visibilityState === 'visible';
+
+          if (event.data && event.data.senderId !== currentUser.id && !isViewingCurrentConversation) {
             const senderName = event.data.senderName || 'Nouveau message';
             let messageBody = event.data.text || '';
             if (!messageBody && (event.data.imageUrl || (event.data.imageUrls && event.data.imageUrls.length > 0))) {
@@ -1290,6 +1307,16 @@ export default function App() {
 
     try {
       await api.votePoll(pollId, optionId, status, currentUser.id);
+      if (activeGroupId) {
+        api.getPolls(activeGroupId).then((freshPolls) => {
+          if (Array.isArray(freshPolls)) {
+            setPolls((prev) => {
+              const others = prev.filter((p) => p.groupId !== activeGroupId);
+              return [...freshPolls, ...others];
+            });
+          }
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error('Error voting in PostgreSQL:', err);
     }
@@ -2119,18 +2146,51 @@ export default function App() {
   };
 
   // Handlers: Polls
+  const isCreatingPollRef = useRef(false);
+  const lastCreatedPollTimestampRef = useRef<number>(0);
+  const lastCreatedPollTitleRef = useRef<string>('');
+
   const handleCreatePoll = async (pollData: Partial<Poll>) => {
     if (!currentUser) return;
+    const now = Date.now();
+    const pollTitle = (pollData.title || '').trim();
+    if (
+      isCreatingPollRef.current ||
+      (now - lastCreatedPollTimestampRef.current < 2500 && lastCreatedPollTitleRef.current === pollTitle)
+    ) {
+      return;
+    }
+    isCreatingPollRef.current = true;
+    lastCreatedPollTimestampRef.current = now;
+    lastCreatedPollTitleRef.current = pollTitle;
+
     try {
       const newPoll = await api.createPoll({
         ...pollData,
         groupId: activeGroupId,
         createdBy: currentUser.id,
       });
-      setPolls((prev) => [newPoll, ...prev]);
+      setPolls((prev) => {
+        const filtered = prev.filter((p) => p.id !== newPoll.id);
+        return [newPoll, ...filtered];
+      });
       handleSendMessage(`Nouveau sondage ouvert : "${newPoll.title}".`);
+      if (activeGroupId) {
+        api.getPolls(activeGroupId).then((freshPolls) => {
+          if (Array.isArray(freshPolls)) {
+            setPolls((prev) => {
+              const others = prev.filter((p) => p.groupId !== activeGroupId);
+              return [...freshPolls, ...others];
+            });
+          }
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error('Error creating poll in PostgreSQL:', err);
+    } finally {
+      setTimeout(() => {
+        isCreatingPollRef.current = false;
+      }, 1000);
     }
   };
 
@@ -2424,7 +2484,7 @@ export default function App() {
           />
 
           {/* Main Content Area */}
-          <main className={`flex-1 flex flex-col min-h-0 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'overflow-hidden p-0' : 'pb-24 pt-2'}`}>
+          <main className={`flex-1 flex flex-col min-h-0 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'overflow-hidden p-0 pb-16' : 'pb-24 pt-2'}`}>
         {!currentUser ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-[#E8D8C4] flex items-center justify-center animate-pulse text-[#6D2932] mb-3">

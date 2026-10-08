@@ -48,10 +48,6 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const handleSelect = onTabChange || onSelectTab || (() => {});
 
-  if (activeTab === 'discussion') {
-    return null;
-  }
-
   return (
     <nav
       id="bottom-group-navigation-bar"

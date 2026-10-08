@@ -28,9 +28,10 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         createNotificationChannel();
 
-        // Harmonisation initiale des barres système au démarrage selon le mode système
+        // Récupération de la préférence enregistrée ou du mode sombre système
         boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        applySystemBars(isSystemDark);
+        boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isSystemDark);
+        applySystemBars(isDark);
         setupSystemBarsInterface();
     }
 
@@ -38,19 +39,26 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         setupSystemBarsInterface();
+        boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isSystemDark);
+        applySystemBars(isDark);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         setupSystemBarsInterface();
+        boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isSystemDark);
+        applySystemBars(isDark);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         boolean isNight = (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        applySystemBars(isNight);
+        boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isNight);
+        applySystemBars(isDark);
     }
 
     /**
@@ -89,6 +97,9 @@ public class MainActivity extends BridgeActivity {
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
         setupSystemBarsInterface();
+        boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isSystemDark);
+        applySystemBars(isDark);
     }
 
     @Override
@@ -96,6 +107,9 @@ public class MainActivity extends BridgeActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             setupSystemBarsInterface();
+            boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+            boolean isDark = getSharedPreferences("outlys_prefs", MODE_PRIVATE).getBoolean("is_dark_mode", isSystemDark);
+            applySystemBars(isDark);
         }
     }
 
@@ -112,11 +126,13 @@ public class MainActivity extends BridgeActivity {
     public class SystemBarsBridge {
         @JavascriptInterface
         public void setTheme(final boolean isDark) {
+            getSharedPreferences("outlys_prefs", MODE_PRIVATE).edit().putBoolean("is_dark_mode", isDark).apply();
             runOnUiThread(() -> applySystemBars(isDark));
         }
 
         @JavascriptInterface
         public void setDarkMode(final boolean isDark) {
+            getSharedPreferences("outlys_prefs", MODE_PRIVATE).edit().putBoolean("is_dark_mode", isDark).apply();
             runOnUiThread(() -> applySystemBars(isDark));
         }
     }

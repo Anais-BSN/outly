@@ -217,6 +217,8 @@ const MessageItem = React.memo<MessageItemProps>(({
 
   const handleSelectFullEmoji = (emoji: string) => {
     onAddReaction(message.id, emoji);
+    setIsPickerOpen(false);
+    setIsMenuOpen(false);
   };
 
   const handleSaveEdit = () => {
@@ -234,14 +236,19 @@ const MessageItem = React.memo<MessageItemProps>(({
         (message.text.includes('Appel') || message.text.includes('appel')));
 
     if (isCallMsg) {
+      const rawText = message.text || '';
+      const cleanCallText = rawText.replace(/^[\s\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}📞📹☎️📱]+/u, '').trim();
+      const isVideoCall = rawText.includes('📹') || rawText.toLowerCase().includes('vidéo');
+      const CallIcon = isVideoCall ? Video : PhoneCall;
+
       return (
         <div
           id={`chat-system-msg-${message.id}`}
           className="flex flex-col sm:flex-row items-center justify-center gap-1.5 my-2.5 py-1 px-4 text-center select-none text-[11px] sm:text-xs font-medium text-[#27272A]/70 dark:text-zinc-400 tracking-wide animate-fade-in"
         >
           <div className="flex items-center gap-1.5">
-            <PhoneCall className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 opacity-80 shrink-0" />
-            <span className="font-semibold text-[#5D0D18] dark:text-[#FFF9EB]/90">{message.text}</span>
+            <CallIcon className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 opacity-80 shrink-0" />
+            <span className="font-semibold text-[#5D0D18] dark:text-[#FFF9EB]/90">{cleanCallText || rawText}</span>
             <span className="text-[10px] opacity-60">
               • {formatTimeOnly(message.timestamp)}
             </span>
@@ -377,6 +384,8 @@ const MessageItem = React.memo<MessageItemProps>(({
               onClick={() => {
                 triggerHaptic('light');
                 onAddReaction(message.id, emoji);
+                setIsMenuOpen(false);
+                setIsPickerOpen(false);
               }}
               className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm hover:scale-130 active:scale-95 transition-transform rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 cursor-pointer"
               title={`Réagir avec ${emoji}`}
@@ -444,7 +453,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           onSelectEmoji={handleSelectFullEmoji}
           anchorRect={pickerAnchorRect}
           title="Ajouter une réaction"
-          closeOnSelect={false}
+          closeOnSelect={true}
         />
 
         {/* Bulle de message */}
@@ -1206,6 +1215,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           }}
           anchorRect={inputEmojiAnchorRect}
           title="Insérer un émoji"
+          closeOnSelect={false}
         />
       </div>
     </div>

@@ -301,12 +301,12 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         });
       }
     } else {
-      // Inclure les options existantes + la saisie en cours si non vide
+      // Inclure les options existantes + la saisie en cours si non vide (avec déduplication)
       const allChoices = [...choiceOptions];
-      if (newChoiceInput.trim()) {
+      if (newChoiceInput.trim() && !allChoices.includes(newChoiceInput.trim())) {
         allChoices.push(newChoiceInput.trim());
       }
-      const validChoices = allChoices.map(c => c.trim()).filter(Boolean);
+      const validChoices = Array.from(new Set(allChoices.map(c => c.trim()).filter(Boolean)));
       if (validChoices.length < 2) {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
@@ -339,6 +339,10 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
     }
 
     onClose();
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }, 1500);
   };
 
   return (

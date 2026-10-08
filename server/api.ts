@@ -4363,7 +4363,7 @@ apiRouter.post('/calls/timeout', async (req: Request, res: Response) => {
 
       // Inscription automatique dans le chat : « Appel manqué »
       const msgId = `msg-${Date.now()}`;
-      const msgText = `${session.type === 'video' ? '📹' : '📞'} Appel manqué`;
+      const msgText = 'Appel manqué';
       const nowIso = new Date().toISOString();
 
       await query(
@@ -4446,7 +4446,7 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
         const participantsCount = Math.max(1, (session.allJoinedUserIds || []).length);
         const durationStr = formatDurationHuman(durationSecs);
 
-        const summaryText = `${session.type === 'video' ? '📹' : '📞'} Appel terminé • ${durationStr} • ${participantsCount} participant${participantsCount > 1 ? 's' : ''}`;
+        const summaryText = `Appel terminé • ${durationStr} • ${participantsCount} participant${participantsCount > 1 ? 's' : ''}`;
         const msgId = `msg-${Date.now()}`;
         const nowIso = new Date().toISOString();
 
