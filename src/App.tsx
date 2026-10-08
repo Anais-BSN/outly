@@ -2424,7 +2424,7 @@ export default function App() {
           />
 
           {/* Main Content Area */}
-          <main className={`flex-1 flex flex-col pt-2 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'pb-0 overflow-hidden h-[calc(100dvh-70px)]' : 'pb-24'}`}>
+          <main className={`flex-1 flex flex-col min-h-0 ${activeTab === 'discussion' && activeGroupId && isUserInActiveGroup ? 'overflow-hidden p-0' : 'pb-24 pt-2'}`}>
         {!currentUser ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-[#E8D8C4] flex items-center justify-center animate-pulse text-[#6D2932] mb-3">
@@ -2631,6 +2631,7 @@ export default function App() {
                   onStartCall={handleStartCall}
                   activeCall={activeCallSession}
                   onJoinCall={handleJoinCall}
+                  onBackToTabs={() => setActiveTab('agenda')}
                 />
               </div>
 
@@ -2853,7 +2854,7 @@ export default function App() {
             setEditingPoll(null);
           }}
           currentUser={currentUser}
-          groupId={activeGroupId}
+          groupId={activeGroupId || activeGroup?.id || 'default'}
           onCreatePoll={handleCreatePoll}
           initialPoll={editingPoll}
           onUpdatePoll={handleUpdatePoll}

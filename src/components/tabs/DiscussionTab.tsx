@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   ChevronUp,
+  ChevronLeft,
   Loader2,
   FileText,
   Phone,
@@ -43,6 +44,7 @@ interface DiscussionTabProps {
   onStartCall?: (type: 'audio' | 'video') => void;
   activeCall?: GroupCallSession | null;
   onJoinCall?: () => void;
+  onBackToTabs?: () => void;
 }
 
 interface MessageItemProps {
@@ -226,38 +228,39 @@ const MessageItem = React.memo<MessageItemProps>(({
 
   // System message
   if (message.isSystem) {
-    if (message.systemType === 'call') {
+    const isCallMsg =
+      message.systemType === 'call' ||
+      (typeof message.text === 'string' &&
+        (message.text.includes('Appel') || message.text.includes('appel')));
+
+    if (isCallMsg) {
       return (
         <div
           id={`chat-system-msg-${message.id}`}
-          className="flex items-center justify-center my-3 animate-fade-in"
+          className="flex flex-col sm:flex-row items-center justify-center gap-1.5 my-2.5 py-1 px-4 text-center select-none text-[11px] sm:text-xs font-medium text-[#27272A]/70 dark:text-zinc-400 tracking-wide animate-fade-in"
         >
-          <div className="flex flex-col sm:flex-row items-center gap-2 max-w-lg px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#5D0D18]/15 via-[#6D2932]/10 to-transparent dark:from-[#5D0D18]/40 dark:via-zinc-800 border border-[#5D0D18]/30 dark:border-[#5D0D18]/60 text-xs text-[#5D0D18] dark:text-[#FFF9EB] shadow-xs">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-full bg-[#5D0D18] text-white">
-                <PhoneCall className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-semibold">{message.text}</span>
-              <span className="text-[10px] opacity-60">
-                {formatTimeOnly(message.timestamp)}
-              </span>
-            </div>
-            {activeCall?.active && onJoinCall && (
-              <button
-                type="button"
-                id={`join-call-sys-btn-${message.id}`}
-                onClick={() => {
-                  triggerHaptic('medium');
-                  onJoinCall();
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-transform active:scale-95 cursor-pointer ml-auto"
-                title="Rejoindre le salon d'appel"
-              >
-                <Radio className="w-3 h-3 animate-pulse" />
-                <span>Rejoindre</span>
-              </button>
-            )}
+          <div className="flex items-center gap-1.5">
+            <PhoneCall className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 opacity-80 shrink-0" />
+            <span className="font-semibold text-[#5D0D18] dark:text-[#FFF9EB]/90">{message.text}</span>
+            <span className="text-[10px] opacity-60">
+              • {formatTimeOnly(message.timestamp)}
+            </span>
           </div>
+          {activeCall?.active && onJoinCall && (
+            <button
+              type="button"
+              id={`join-call-sys-btn-${message.id}`}
+              onClick={() => {
+                triggerHaptic('medium');
+                onJoinCall();
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-transform active:scale-95 cursor-pointer ml-1.5"
+              title="Rejoindre le salon d'appel"
+            >
+              <Radio className="w-2.5 h-2.5 animate-pulse" />
+              <span>Rejoindre</span>
+            </button>
+          )}
         </div>
       );
     }
@@ -736,6 +739,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   onStartCall,
   activeCall,
   onJoinCall,
+  onBackToTabs,
 }) => {
   const [inputText, setInputText] = useState('');
   interface PendingAttachment {
@@ -895,9 +899,24 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
 
   return (
     <div className="flex flex-col flex-1 h-full max-h-full min-h-0 overflow-hidden w-full max-w-4xl mx-auto">
-      {/* En-tête de la discussion avec actions d'appels audio et vidéo */}
+      {/* En-tête de la discussion (Bannière 2) avec nom du groupe et actions d'appels audio et vidéo */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBackToTabs && (
+            <button
+              type="button"
+              id="discussion-back-to-tabs-btn"
+              onClick={() => {
+                triggerHaptic('light');
+                onBackToTabs();
+              }}
+              className="p-1 -ml-1 rounded-full text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+              title="Retour aux onglets du groupe"
+              aria-label="Retour"
+            >
+              <ChevronLeft className="w-5 h-5 stroke-[2.2]" />
+            </button>
+          )}
           <div className="flex -space-x-1.5 overflow-hidden shrink-0">
             {(members || []).slice(0, 3).map((m) => (
               <img

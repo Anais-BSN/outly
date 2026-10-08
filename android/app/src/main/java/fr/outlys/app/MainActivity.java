@@ -91,6 +91,14 @@ public class MainActivity extends BridgeActivity {
         setupSystemBarsInterface();
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            setupSystemBarsInterface();
+        }
+    }
+
     /**
      * Enregistre l'interface JavaScript native "AndroidSystemBars"
      * pour permettre à l'application web de piloter instantanément les couleurs des barres.
@@ -104,6 +112,11 @@ public class MainActivity extends BridgeActivity {
     public class SystemBarsBridge {
         @JavascriptInterface
         public void setTheme(final boolean isDark) {
+            runOnUiThread(() -> applySystemBars(isDark));
+        }
+
+        @JavascriptInterface
+        public void setDarkMode(final boolean isDark) {
             runOnUiThread(() -> applySystemBars(isDark));
         }
     }

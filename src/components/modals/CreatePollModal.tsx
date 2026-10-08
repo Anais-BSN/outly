@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   BarChart2,
@@ -19,7 +19,7 @@ import {
 interface CreatePollModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
   groupId: string;
   onCreatePoll: (pollData: Partial<Poll>) => void;
   initialPoll?: Poll | null;
@@ -43,12 +43,14 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   initialPoll,
   onUpdatePoll,
 }) => {
-  if (!isOpen) return null;
-
   const getTomorrowDateStr = (daysAhead: number = 1) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysAhead);
-    return getLocalDateString(d);
+    try {
+      const d = new Date();
+      d.setDate(d.getDate() + daysAhead);
+      return getLocalDateString(d);
+    } catch {
+      return '2026-10-09';
+    }
   };
 
   const isEditing = Boolean(initialPoll);
@@ -57,6 +59,30 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   const [type, setType] = useState<'date' | 'choice'>(initialPoll?.type || 'date');
   const [title, setTitle] = useState(initialPoll?.title || '');
   const [description, setDescription] = useState(initialPoll?.description || '');
+
+  const getDefaultDateOptions = (): DateOptionItem[] => [
+    {
+      id: `dopt-1`,
+      startDate: getTomorrowDateStr(1),
+      startTime: '09:00',
+      endDate: getTomorrowDateStr(1),
+      endTime: '18:00',
+    },
+    {
+      id: `dopt-2`,
+      startDate: getTomorrowDateStr(6),
+      startTime: '09:00',
+      endDate: getTomorrowDateStr(7),
+      endTime: '18:00',
+    },
+    {
+      id: `dopt-3`,
+      startDate: getTomorrowDateStr(13),
+      startTime: '09:00',
+      endDate: getTomorrowDateStr(14),
+      endTime: '18:00',
+    },
+  ];
 
   // Options pour sondage de type "date" (date de début ET date de fin obligatoires)
   const [dateOptions, setDateOptions] = useState<DateOptionItem[]>(() => {
@@ -73,39 +99,57 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         };
       });
     }
-    return [
-      {
-        id: `dopt-1`,
-        startDate: getTomorrowDateStr(1),
-        startTime: '09:00',
-        endDate: getTomorrowDateStr(1),
-        endTime: '18:00',
-      },
-      {
-        id: `dopt-2`,
-        startDate: getTomorrowDateStr(6),
-        startTime: '09:00',
-        endDate: getTomorrowDateStr(7),
-        endTime: '18:00',
-      },
-      {
-        id: `dopt-3`,
-        startDate: getTomorrowDateStr(13),
-        startTime: '09:00',
-        endDate: getTomorrowDateStr(14),
-        endTime: '18:00',
-      },
-    ];
+    return getDefaultDateOptions();
   });
 
   // Options pour sondage de type "choice"
   const [choiceOptions, setChoiceOptions] = useState<string[]>(() => {
     if (initialPoll?.type === 'choice' && initialPoll.options && initialPoll.options.length > 0) {
-      return initialPoll.options.map((opt) => opt.text);
+      return initialPoll.options.map((opt) => opt?.text || '');
     }
     return ['', ''];
   });
   const [newChoiceInput, setNewChoiceInput] = useState('');
+
+  const isSubmittingRef = useRef(false);
+
+  // Réinitialisation sécurisée à chaque ouverture de la modale
+  useEffect(() => {
+    if (isOpen) {
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+      setType(initialPoll?.type || 'date');
+      setTitle(initialPoll?.title || '');
+      setDescription(initialPoll?.description || '');
+      setNewChoiceInput('');
+
+      if (initialPoll?.type === 'date' && initialPoll.options && initialPoll.options.length > 0) {
+        setDateOptions(
+          initialPoll.options.map((opt, i) => {
+            const parsedStart = parseIsoToLocalDate(opt.startDate || opt.dateValue);
+            const parsedEnd = parseIsoToLocalDate(opt.endDate || opt.endDateValue || opt.startDate || opt.dateValue);
+            return {
+              id: opt.id || `dopt-${i}`,
+              startDate: parsedStart.date || getTomorrowDateStr(i + 1),
+              startTime: parsedStart.time || '09:00',
+              endDate: parsedEnd.date || parsedStart.date || getTomorrowDateStr(i + 1),
+              endTime: parsedEnd.time || '18:00',
+            };
+          })
+        );
+      } else if (!initialPoll) {
+        setDateOptions(getDefaultDateOptions());
+      }
+
+      if (initialPoll?.type === 'choice' && initialPoll.options && initialPoll.options.length > 0) {
+        setChoiceOptions(initialPoll.options.map((opt) => opt?.text || ''));
+      } else if (!initialPoll) {
+        setChoiceOptions(['', '']);
+      }
+    }
+  }, [isOpen, initialPoll]);
+
+  if (!isOpen) return null;
 
   // Mise à jour d'une option de date avec validation chronologique stricte
   const handleDateOptionChange = (
@@ -115,6 +159,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   ) => {
     setDateOptions((prev) => {
       const updated = [...prev];
+      if (!updated[index]) return prev;
       const opt = { ...updated[index], [field]: value };
 
       // Validation chronologique : si date début > date fin
@@ -167,39 +212,50 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   };
 
   const formatDateDisplay = (opt: DateOptionItem) => {
-    if (!opt.startDate) return '';
-    const [sYear, sMonth, sDay] = opt.startDate.split('-').map(Number);
-    const [sHour, sMin] = (opt.startTime || '00:00').split(':').map(Number);
-    const startD = new Date(sYear, sMonth - 1, sDay, sHour, sMin);
+    if (!opt || !opt.startDate) return '';
+    try {
+      const [sYear, sMonth, sDay] = (opt.startDate || '').split('-').map(Number);
+      const [sHour, sMin] = (opt.startTime || '00:00').split(':').map(Number);
+      const startD = new Date(sYear, sMonth - 1, sDay, sHour || 0, sMin || 0);
 
-    const [eYear, eMonth, eDay] = (opt.endDate || opt.startDate).split('-').map(Number);
-    const [eHour, eMin] = (opt.endTime || '00:00').split(':').map(Number);
-    const endD = new Date(eYear, eMonth - 1, eDay, eHour, eMin);
+      const [eYear, eMonth, eDay] = (opt.endDate || opt.startDate || '').split('-').map(Number);
+      const [eHour, eMin] = (opt.endTime || '00:00').split(':').map(Number);
+      const endD = new Date(eYear, eMonth - 1, eDay, eHour || 0, eMin || 0);
 
-    const startFmt = startD.toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    const endFmt = endD.toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
+      if (isNaN(startD.getTime()) || isNaN(endD.getTime())) {
+        return opt.startDate || '';
+      }
 
-    if (opt.startDate === opt.endDate) {
-      return `${startFmt} (${opt.startTime} - ${opt.endTime})`;
+      const startFmt = startD.toLocaleDateString('fr-FR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+      const endFmt = endD.toLocaleDateString('fr-FR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+
+      if (opt.startDate === opt.endDate) {
+        return `${startFmt} (${opt.startTime || '09:00'} - ${opt.endTime || '18:00'})`;
+      }
+      return `Du ${startFmt} (${opt.startTime || '09:00'}) au ${endFmt} (${opt.endTime || '18:00'})`;
+    } catch {
+      return opt.startDate || '';
     }
-    return `Du ${startFmt} (${opt.startTime}) au ${endFmt} (${opt.endTime})`;
   };
-
-  const isSubmittingRef = useRef(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingRef.current || isSubmitting || !title.trim()) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+
+    const safeUserId = currentUser?.id || 'user-current';
+    const safeUserName = currentUser?.firstName || 'Moi';
+    const safeUserAvatar = currentUser?.avatar || '/Avatar_Herisson.jpg';
+    const targetGroupId = initialPoll?.groupId || groupId || 'default';
 
     if (type === 'date') {
       if (dateOptions.length < 2) {
@@ -226,7 +282,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       });
 
       const pollData: Partial<Poll> = {
-        groupId: initialPoll?.groupId || groupId,
+        groupId: targetGroupId,
         title: title.trim(),
         type: 'date',
         description: description.trim(),
@@ -238,9 +294,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       } else {
         onCreatePoll({
           ...pollData,
-          createdBy: currentUser.id,
-          creatorName: currentUser.firstName,
-          creatorAvatar: currentUser.avatar,
+          createdBy: safeUserId,
+          creatorName: safeUserName,
+          creatorAvatar: safeUserAvatar,
           createdAt: new Date().toISOString(),
         });
       }
@@ -258,7 +314,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       }
 
       const pollData: Partial<Poll> = {
-        groupId: initialPoll?.groupId || groupId,
+        groupId: targetGroupId,
         title: title.trim(),
         type: 'choice',
         description: description.trim(),
@@ -274,9 +330,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       } else {
         onCreatePoll({
           ...pollData,
-          createdBy: currentUser.id,
-          creatorName: currentUser.firstName,
-          creatorAvatar: currentUser.avatar,
+          createdBy: safeUserId,
+          creatorName: safeUserName,
+          creatorAvatar: safeUserAvatar,
           createdAt: new Date().toISOString(),
         });
       }

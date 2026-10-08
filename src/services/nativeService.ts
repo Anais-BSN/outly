@@ -318,12 +318,21 @@ export const setupAppUrlListener = (onUrlOpen: (url: string) => void): (() => vo
    ========================================================================= */
 
 export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> => {
+  const isDark = Boolean(isDarkMode);
+
   // 1. Interface native Android directe (pour un contrôle immédiat de la barre d'état et de la barre de navigation)
   const invokeNativeBridge = () => {
     try {
-      if (typeof (window as any).AndroidSystemBars?.setTheme === 'function') {
-        (window as any).AndroidSystemBars.setTheme(isDarkMode);
-        return true;
+      const bridge = (window as any).AndroidSystemBars;
+      if (bridge) {
+        if (typeof bridge.setTheme === 'function') {
+          bridge.setTheme(isDark);
+          return true;
+        }
+        if (typeof bridge.setDarkMode === 'function') {
+          bridge.setDarkMode(isDark);
+          return true;
+        }
       }
     } catch (e) {}
     return false;
@@ -331,7 +340,8 @@ export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> =>
 
   if (!invokeNativeBridge()) {
     // Si l'interface native est en cours de liaison au démarrage de la WebView, réessaye après quelques ms
-    setTimeout(invokeNativeBridge, 100);
+    setTimeout(invokeNativeBridge, 50);
+    setTimeout(invokeNativeBridge, 150);
     setTimeout(invokeNativeBridge, 300);
     setTimeout(invokeNativeBridge, 800);
   }
@@ -344,7 +354,7 @@ export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> =>
       await StatusBar.setOverlaysWebView({ overlay: false });
     } catch (_) {}
 
-    if (isDarkMode) {
+    if (isDark) {
       // Mode sombre : fond sombre #18181B avec icônes claires (Style.Dark)
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: '#18181B' });
@@ -363,17 +373,23 @@ export const syncSystemBarsTheme = async (isDarkMode: boolean): Promise<void> =>
     if (navBar) {
       if (typeof navBar.setColor === 'function') {
         await navBar.setColor({
-          color: isDarkMode ? '#18181B' : '#FFF9EB',
-          darkButtons: !isDarkMode,
+          color: isDark ? '#18181B' : '#FFF9EB',
+          darkButtons: !isDark,
         });
       } else if (typeof navBar.setNavigationBarColor === 'function') {
-        await navBar.setNavigationBarColor(isDarkMode ? '#18181B' : '#FFF9EB', !isDarkMode);
+        await navBar.setNavigationBarColor(isDark ? '#18181B' : '#FFF9EB', !isDark);
       }
     }
   } catch (err) {
     // Non bloquant
   }
 };
+
+// Initialisation immédiate au chargement du script si exécuté dans la WebView native
+if (typeof window !== 'undefined') {
+  const initialIsDark = localStorage.getItem('outly_theme') === 'dark';
+  syncSystemBarsTheme(initialIsDark);
+}
 
 /* =========================================================================
    7. NOTIFICATIONS LOCALES NATIVES (Sans dépendance Firebase)
