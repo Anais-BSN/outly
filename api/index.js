@@ -2875,7 +2875,8 @@ apiRouter.get("/polls", async (req, res) => {
       optionsRes = await query(
         `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
          FROM poll_options
-         WHERE poll_id = ANY($1)`,
+         WHERE poll_id = ANY($1)
+         ORDER BY id ASC`,
         [pollIds]
       );
     }
@@ -3034,7 +3035,8 @@ apiRouter.put("/polls/:id", async (req, res) => {
     const updatedOptionsRes = await query(
       `SELECT id, text, date_value as "dateValue", end_date_value as "endDateValue", votes
        FROM poll_options
-       WHERE poll_id = $1`,
+       WHERE poll_id = $1
+       ORDER BY id ASC`,
       [id]
     );
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [poll.created_by]);
@@ -4209,6 +4211,36 @@ apiRouter.post("/calls/timeout", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+apiRouter.post("/calls/update-state", async (req, res) => {
+  try {
+    const { groupId, callId, userId, muted, isSpeaking, videoOff } = req.body;
+    const session = activeCallsMap.get(groupId);
+    if (session && session.active) {
+      const p = session.participants.find((part) => part.userId === userId);
+      if (p) {
+        if (muted !== void 0) p.muted = muted;
+        if (isSpeaking !== void 0) p.isSpeaking = isSpeaking;
+        if (videoOff !== void 0) p.videoOff = videoOff;
+      }
+      realtimeBroadcaster.broadcast({
+        type: "call:state_updated",
+        groupId,
+        data: {
+          callId,
+          groupId,
+          userId,
+          muted,
+          isSpeaking,
+          videoOff,
+          participants: session.participants
+        }
+      });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 apiRouter.post("/calls/signal", async (req, res) => {
   try {
     const { groupId, callId, fromUserId, toUserId, signal } = req.body;
@@ -4235,7 +4267,9 @@ apiRouter.post("/calls/leave", async (req, res) => {
     const session = activeCallsMap.get(groupId);
     if (session) {
       session.participants = session.participants.filter((p) => p.userId !== userId);
-      if (session.participants.length === 0) {
+      const hadMultipleJoined = (session.allJoinedUserIds || []).length >= 2;
+      const shouldAutoClose = session.participants.length === 0 || hadMultipleJoined && session.participants.length <= 1;
+      if (shouldAutoClose) {
         session.active = false;
         activeCallsMap.delete(groupId);
         const durationSecs = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1e3));

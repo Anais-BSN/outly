@@ -2853,7 +2853,8 @@ apiRouter.get('/polls', async (req: Request, res: Response) => {
       optionsRes = await query(
         `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
          FROM poll_options
-         WHERE poll_id = ANY($1)`,
+         WHERE poll_id = ANY($1)
+         ORDER BY id ASC`,
         [pollIds]
       );
     }
@@ -3043,7 +3044,8 @@ apiRouter.put('/polls/:id', async (req: Request, res: Response) => {
     const updatedOptionsRes = await query(
       `SELECT id, text, date_value as "dateValue", end_date_value as "endDateValue", votes
        FROM poll_options
-       WHERE poll_id = $1`,
+       WHERE poll_id = $1
+       ORDER BY id ASC`,
       [id]
     );
 
@@ -4417,6 +4419,37 @@ apiRouter.post('/calls/timeout', async (req: Request, res: Response) => {
   }
 });
 
+apiRouter.post('/calls/update-state', async (req: Request, res: Response) => {
+  try {
+    const { groupId, callId, userId, muted, isSpeaking, videoOff } = req.body;
+    const session = activeCallsMap.get(groupId);
+    if (session && session.active) {
+      const p = session.participants.find((part: any) => part.userId === userId);
+      if (p) {
+        if (muted !== undefined) p.muted = muted;
+        if (isSpeaking !== undefined) p.isSpeaking = isSpeaking;
+        if (videoOff !== undefined) p.videoOff = videoOff;
+      }
+      realtimeBroadcaster.broadcast({
+        type: 'call:state_updated',
+        groupId,
+        data: {
+          callId,
+          groupId,
+          userId,
+          muted,
+          isSpeaking,
+          videoOff,
+          participants: session.participants,
+        },
+      });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.post('/calls/signal', async (req: Request, res: Response) => {
   try {
     const { groupId, callId, fromUserId, toUserId, signal } = req.body;
@@ -4445,7 +4478,10 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
     if (session) {
       session.participants = session.participants.filter((p: any) => p.userId !== userId);
 
-      if (session.participants.length === 0) {
+      const hadMultipleJoined = (session.allJoinedUserIds || []).length >= 2;
+      const shouldAutoClose = session.participants.length === 0 || (hadMultipleJoined && session.participants.length <= 1);
+
+      if (shouldAutoClose) {
         session.active = false;
         activeCallsMap.delete(groupId);
 

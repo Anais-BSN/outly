@@ -392,18 +392,44 @@ if (typeof window !== 'undefined') {
 }
 
 /* =========================================================================
-   7. DEMANDE GROUPÉE DES AUTORISATIONS (Au démarrage / connexion)
+   7. DEMANDE GROUPÉE DES AUTORISATIONS & ALARMES EXACTES ANDROID
    ========================================================================= */
+
+export const checkAndRequestExactAlarmPermission = async (): Promise<boolean> => {
+  if (!isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+    return true;
+  }
+
+  try {
+    const bridge = (window as any).AndroidAlarmBridge || (window as any).AndroidSystemBars;
+    if (bridge && typeof bridge.requestExactAlarmPermission === 'function') {
+      return Boolean(bridge.requestExactAlarmPermission());
+    }
+
+    // Vérification via le plugin LocalNotifications
+    const exactStatus = await LocalNotifications.checkPermissions();
+    if (exactStatus.display !== 'granted') {
+      const req = await LocalNotifications.requestPermissions();
+      return req.display === 'granted';
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Permissions] Vérification alarme et rappels exacts:', err);
+    return true;
+  }
+};
 
 export const requestAllAppPermissions = async (): Promise<{
   notifications: boolean;
   microphone: boolean;
   camera: boolean;
+  exactAlarms: boolean;
 }> => {
   const result = {
     notifications: false,
     microphone: false,
     camera: false,
+    exactAlarms: false,
   };
 
   // 1. Notifications système (Bannières & Alertes locales)
@@ -461,6 +487,9 @@ export const requestAllAppPermissions = async (): Promise<{
   } catch (err) {
     console.warn('[Permissions] Erreur demande micro/caméra:', err);
   }
+
+  // 3. Autorisation « Alarmes et rappels exacts » Android
+  result.exactAlarms = await checkAndRequestExactAlarmPermission();
 
   return result;
 };

@@ -128,10 +128,7 @@ const MessageItem = React.memo<MessageItemProps>(({
 
   const isReadByEveryone =
     otherGroupMembers.length > 0 &&
-    otherGroupMembers.every((om) => {
-      const omId = om.userId || om.id;
-      return (message.readBy || []).includes(omId);
-    });
+    readOtherMembers.length === otherGroupMembers.length;
 
   // Détection appui long sur smartphone avec maintien permanent de la barre (>2s ou relâchement)
   const isTouchingRef = useRef(false);

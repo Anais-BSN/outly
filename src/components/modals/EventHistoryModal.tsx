@@ -72,7 +72,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                 Historique des événements
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
-                {events.length} sortie{events.length > 1 ? 's' : ''} passée{events.length > 1 ? 's' : ''}
+                {events.length} sortie{events.length > 1 ? 's' : ''} archivée{events.length > 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -149,10 +149,6 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                         </span>
                       </div>
                     </div>
-
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 border border-[#C7B7A3]/50 shrink-0">
-                      Terminé
-                    </span>
                   </div>
 
                   {/* Date & Time */}
@@ -179,18 +175,23 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                     </div>
                   )}
 
-                  {/* Footer Attendance */}
+                  {/* Footer Attendance - Clickable participant count */}
                   <div className="pt-2 border-t border-[#C7B7A3]/40 dark:border-zinc-700 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-[#6D2932] dark:text-amber-200">
+                    <button
+                      type="button"
+                      onClick={() => onViewAttendees && onViewAttendees(event)}
+                      className="flex items-center gap-1.5 font-bold text-[#6D2932] dark:text-amber-200 hover:underline cursor-pointer"
+                      title="Voir la liste détaillée des participants"
+                    >
                       <Users className="w-3.5 h-3.5" />
-                      <span>{goingCount} participant{goingCount > 1 ? 's' : ''}</span>
-                    </div>
+                      <span>{goingCount} participant{goingCount > 1 ? 's' : ''} (voir le détail)</span>
+                    </button>
 
                     <div className="flex items-center gap-1">
                       {userRsvp === 'going' && (
                         <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Vous y étiez</span>
+                          <span>Inscrit</span>
                         </span>
                       )}
                       {userRsvp === 'maybe' && (
@@ -202,7 +203,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                       {userRsvp === 'declined' && (
                         <span className="text-[11px] font-bold text-zinc-500 flex items-center gap-1">
                           <XCircle className="w-3.5 h-3.5" />
-                          <span>Absent</span>
+                          <span>Décliné</span>
                         </span>
                       )}
                     </div>

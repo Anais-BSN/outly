@@ -58,24 +58,24 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
-      {/* 1. Header with Clean Title & Subtitle (No decorative box frame or icon) */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      {/* 1. Header: Titre 'Organisation & Matériel' et Bouton 'Ajouter un élément' alignés sur la même ligne */}
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
-            Logistique
+            Organisation & Matériel
           </h3>
-          <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
-            Attribuez les tâches et les objets à ramener pour ne rien oublier.
+          <p className="text-xs sm:text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
+            Attribuez les tâches et le matériel à apporter pour ne rien oublier.
           </p>
         </div>
 
         <button
           id="logistique-btn-add-task-top"
           onClick={onOpenAddTask}
-          className="px-4 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+          className="px-4 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Ajouter une tâche</span>
+          <span>Ajouter un élément</span>
         </button>
       </div>
 

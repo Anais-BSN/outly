@@ -764,6 +764,26 @@ export default function App() {
             });
           }
           break;
+        case 'call:state_updated':
+          if (event.data?.groupId === activeGroupId) {
+            setActiveCallSession((prev) => {
+              if (prev && prev.callId === event.data?.callId) {
+                const participants = (prev.participants || []).map((p: any) => {
+                  if (p.userId === event.data.userId) {
+                    return {
+                      ...p,
+                      ...(event.data.isMuted !== undefined ? { isMuted: event.data.isMuted, muted: event.data.isMuted } : {}),
+                      ...(event.data.isSpeaking !== undefined ? { isSpeaking: event.data.isSpeaking } : {}),
+                    };
+                  }
+                  return p;
+                });
+                return { ...prev, participants };
+              }
+              return prev;
+            });
+          }
+          break;
         case 'call:ended':
           if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession(null);

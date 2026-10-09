@@ -87,16 +87,14 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
   // Séparation dynamique entre événements à venir et historique des événements passés
   const { upcomingEvents, pastEvents } = useMemo(() => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayMs = todayStart.getTime();
+    const nowMs = Date.now();
 
     const upcoming: EventItem[] = [];
     const past: EventItem[] = [];
 
     for (const ev of safeEvents) {
       const endMs = ev.endDateTime ? new Date(ev.endDateTime).getTime() : new Date(ev.startDateTime).getTime();
-      if (endMs >= todayMs) {
+      if (endMs >= nowMs) {
         upcoming.push(ev);
       } else {
         past.push(ev);
@@ -767,9 +765,6 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           <h5 className="text-xs sm:text-sm font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] truncate">
                             {event.title}
                           </h5>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 border border-[#C7B7A3]/40 shrink-0">
-                            Passé
-                          </span>
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
                           <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300 shrink-0" />
@@ -788,9 +783,10 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           type="button"
                           onClick={() => setViewingAttendeesEvent(event)}
                           className="font-bold text-[#6D2932] dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Voir la liste détaillée des présences"
                         >
                           <Users className="w-3 h-3" />
-                          <span>{goingCount} participant{goingCount > 1 ? 's' : ''}</span>
+                          <span>{goingCount} participant{goingCount > 1 ? 's' : ''} (voir le détail)</span>
                         </button>
                         {userRsvp === 'going' && (
                           <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-0.5">
@@ -905,6 +901,11 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                               <span>Confirmé</span>
+                            </span>
+                          ) : rsvpStatus === 'maybe' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                              <span>Peut-être</span>
                             </span>
                           ) : rsvpStatus === 'declined' ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-300/60 dark:border-zinc-700 flex items-center gap-1">

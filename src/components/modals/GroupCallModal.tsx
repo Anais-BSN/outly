@@ -9,10 +9,9 @@ import {
   Maximize2,
   Volume2,
   VolumeX,
-  AlertCircle,
-  Radio,
   PhoneCall,
-  Loader2
+  Radio,
+  Users
 } from 'lucide-react';
 import { UserProfile, GroupCallSession, GroupMember } from '../../types';
 import { api } from '../../services/api';
@@ -27,12 +26,6 @@ interface GroupCallModalProps {
   groupName: string;
   groupMembers?: GroupMember[];
   onCallTimeout?: (message: string) => void;
-}
-
-declare global {
-  interface Window {
-    JitsiMeetExternalAPI?: any;
-  }
 }
 
 export const GroupCallModal: React.FC<GroupCallModalProps> = ({
@@ -50,23 +43,40 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [ringingCountdown, setRingingCountdown] = useState(35);
-  const [isJitsiLoading, setIsJitsiLoading] = useState(true);
-  const [jitsiError, setJitsiError] = useState<string | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [activeSpeakerId, setActiveSpeakerId] = useState<string>(currentUser.id);
+  const [localSpeaking, setLocalSpeaking] = useState(false);
 
-  const jitsiContainerRef = useRef<HTMLDivElement>(null);
-  const jitsiApiRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const maxJoinedCountRef = useRef<number>(1);
   const isTerminatedRef = useRef<boolean>(false);
+  const lastSpeakingStateRef = useRef<boolean>(false);
+  const lastSpeakingSendTimeRef = useRef<number>(0);
 
   const participants = callSession?.participants || [];
   const isInitiator = callSession?.initiatorId === currentUser.id;
   const isAloneInRoom = participants.length <= 1;
+
+  // Track the highest number of participants who joined
+  useEffect(() => {
+    if (participants.length > maxJoinedCountRef.current) {
+      maxJoinedCountRef.current = participants.length;
+      if (participants.length >= 2) {
+        soundService.playJoinSound();
+        triggerHapticNotification('success');
+      }
+    }
+  }, [participants.length]);
+
+  // Fermeture automatique stricte : dès qu'il ne reste qu'une seule personne après qu'au moins 2 ont rejoint
+  useEffect(() => {
+    if (!isOpen || !callSession?.active) return;
+    if (maxJoinedCountRef.current >= 2 && participants.length <= 1 && !isTerminatedRef.current) {
+      handleHangUp("Tous les autres participants ont quitté l'appel.");
+    }
+  }, [isOpen, callSession?.active, participants.length]);
 
   // Décompte de la durée de l'appel
   useEffect(() => {
@@ -77,7 +87,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
     return () => clearInterval(interval);
   }, [isOpen, callSession?.active]);
 
-  // Sonnerie / Tonalité d'attente pour l'initiateur tant que personne n'a décroché
+  // Tonalité d'attente pour l'initiateur tant que personne d'autre n'a rejoint
   useEffect(() => {
     let stopTone: (() => void) | null = null;
     if (isOpen && isInitiator && isAloneInRoom) {
@@ -135,15 +145,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
 
     soundService.stopRingtone();
 
-    // Nettoyage Jitsi API
-    if (jitsiApiRef.current) {
-      try {
-        jitsiApiRef.current.dispose();
-      } catch (_) {}
-      jitsiApiRef.current = null;
-    }
-
-    // Nettoyage flux audio local
+    // Nettoyage flux audio/vidéo local
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
@@ -166,20 +168,33 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
     onClose();
   }, [isInitiator, isAloneInRoom, callSession?.groupId, callSession?.callId, currentUser.id, onClose, onCallTimeout]);
 
-  // Initialisation de l'analyseur de voix local pour le halo dynamique
+  // Initialisation du flux multimédia et détection de prise de parole (analyseur audio Web Audio)
   useEffect(() => {
     if (!isOpen) return;
+    isTerminatedRef.current = false;
 
-    let localStream: MediaStream | null = null;
-    const startAudioDetection = async () => {
+    let mounted = true;
+    const startMedia = async () => {
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        localStreamRef.current = localStream;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: callSession?.type === 'video' && !isVideoOff,
+        });
+        if (!mounted) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        localStreamRef.current = stream;
+
+        if (localVideoRef.current && callSession?.type === 'video' && !isVideoOff) {
+          localVideoRef.current.srcObject = stream;
+        }
+
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
           const audioCtx = new AudioContextClass();
           audioContextRef.current = audioCtx;
-          const source = audioCtx.createMediaStreamSource(localStream);
+          const source = audioCtx.createMediaStreamSource(stream);
           const analyser = audioCtx.createAnalyser();
           analyser.fftSize = 256;
           source.connect(analyser);
@@ -187,7 +202,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
 
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
           const checkVolume = () => {
-            if (!analyserRef.current) return;
+            if (!analyserRef.current || !mounted) return;
             analyserRef.current.getByteFrequencyData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) {
@@ -195,24 +210,37 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             }
             const avg = sum / dataArray.length;
             const speakingNow = avg > 16 && !isMuted;
-            setIsSpeaking(speakingNow);
-            if (speakingNow) {
-              setActiveSpeakerId(currentUser.id);
+            setLocalSpeaking(speakingNow);
+
+            const now = Date.now();
+            if (
+              speakingNow !== lastSpeakingStateRef.current &&
+              now - lastSpeakingSendTimeRef.current > 300 &&
+              callSession?.groupId &&
+              callSession?.callId
+            ) {
+              lastSpeakingStateRef.current = speakingNow;
+              lastSpeakingSendTimeRef.current = now;
+              api.updateCallState(callSession.groupId, callSession.callId, currentUser.id, {
+                isSpeaking: speakingNow,
+              }).catch(() => {});
             }
+
             animationFrameRef.current = requestAnimationFrame(checkVolume);
           };
           checkVolume();
         }
-      } catch (_) {
-        // Détection audio
+      } catch (err) {
+        console.warn('[Call] Accès micro/caméra:', err);
       }
     };
 
-    startAudioDetection();
+    startMedia();
 
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop());
+      mounted = false;
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
       }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -221,167 +249,39 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
         audioContextRef.current.close().catch(() => {});
       }
     };
-  }, [isOpen, isMuted, currentUser.id]);
+  }, [isOpen, callSession?.type, callSession?.groupId, callSession?.callId, currentUser.id, isMuted, isVideoOff]);
 
-  // Chargement dynamique du script Jitsi Meet External API et instanciation du salon
-  useEffect(() => {
-    if (!isOpen || !callSession) return;
-    isTerminatedRef.current = false;
-    maxJoinedCountRef.current = 1;
-    setIsJitsiLoading(true);
-    setJitsiError(null);
-
-    const isAudioOnly = callSession.type === 'audio';
-    setIsVideoOff(isAudioOnly);
-
-    const initJitsiRoom = () => {
-      if (!jitsiContainerRef.current || !window.JitsiMeetExternalAPI) return;
-
-      if (jitsiApiRef.current) {
-        try {
-          jitsiApiRef.current.dispose();
-        } catch (_) {}
-      }
-
-      const domain = 'meet.jit.si';
-      const cleanGroupId = (callSession.groupId || 'default').replace(/[^a-zA-Z0-9]/g, '');
-      const cleanCallId = (callSession.callId || 'call').replace(/[^a-zA-Z0-9]/g, '');
-      const roomName = `Outlys_${cleanGroupId}_${cleanCallId}`;
-
-      const displayName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Membre Outlys';
-
-      const toolbarButtons = isAudioOnly
-        ? ['microphone', 'hangup', 'tileview', 'fullscreen', 'chat', 'raisehand', 'participants-pane']
-        : ['microphone', 'camera', 'hangup', 'tileview', 'fullscreen', 'chat', 'raisehand', 'participants-pane', 'select-background'];
-
-      const options = {
-        roomName,
-        width: '100%',
-        height: '100%',
-        parentNode: jitsiContainerRef.current,
-        userInfo: {
-          displayName,
-          email: currentUser.email || `${currentUser.id}@outlys.app`,
-        },
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: isAudioOnly,
-          startAudioOnly: isAudioOnly,
-          disableDeepLinking: true,
-          prejoinPageEnabled: false,
-          prejoinConfig: { enabled: false },
-          enableWelcomePage: false,
-          enableClosePage: false,
-          disableThirdPartyRequests: true,
-          toolbarButtons,
-        },
-        interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS: toolbarButtons,
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-          SHOW_BRAND_WATERMARK: false,
-          SHOW_POWERED_BY: false,
-          DEFAULT_REMOTE_DISPLAY_NAME: 'Membre Outlys',
-          DEFAULT_LOCAL_DISPLAY_NAME: `${currentUser.firstName || 'Moi'} (Vous)`,
-          MOBILE_APP_PROMO: false,
-          HIDE_DEEP_LINKING_LOGO: true,
-        },
-      };
-
-      try {
-        const apiInstance = new window.JitsiMeetExternalAPI(domain, options);
-        jitsiApiRef.current = apiInstance;
-        setIsJitsiLoading(false);
-
-        apiInstance.addEventListener('videoMuteStatusChanged', (e: any) => {
-          setIsVideoOff(Boolean(e.muted));
-        });
-
-        apiInstance.addEventListener('audioMuteStatusChanged', (e: any) => {
-          setIsMuted(Boolean(e.muted));
-        });
-
-        apiInstance.addEventListener('dominantSpeakerChanged', (e: any) => {
-          if (e.id) {
-            setActiveSpeakerId(e.id);
-          }
-        });
-
-        apiInstance.addEventListener('participantJoined', (e: any) => {
-          soundService.playJoinSound();
-          triggerHapticNotification('success');
-          try {
-            const count = apiInstance.getNumberOfParticipants();
-            if (count > maxJoinedCountRef.current) {
-              maxJoinedCountRef.current = count;
-            }
-          } catch (_) {
-            maxJoinedCountRef.current = Math.max(maxJoinedCountRef.current, 2);
-          }
-        });
-
-        // Règle de fermeture automatique dès que le dernier correspondant raccroche
-        apiInstance.addEventListener('participantLeft', () => {
-          try {
-            const remainingCount = apiInstance.getNumberOfParticipants();
-            if (remainingCount <= 1 && maxJoinedCountRef.current >= 2) {
-              handleHangUp("Tous les participants ont quitté le salon.");
-            }
-          } catch (_) {}
-        });
-
-        apiInstance.addEventListener('readyToClose', () => {
-          handleHangUp();
-        });
-      } catch (err: any) {
-        console.error('Erreur initialisation Jitsi Meet:', err);
-        setJitsiError("Impossible de charger le salon d'appel Jitsi Meet.");
-        setIsJitsiLoading(false);
-      }
-    };
-
-    if (window.JitsiMeetExternalAPI) {
-      initJitsiRoom();
-    } else {
-      const existingScript = document.getElementById('jitsi-external-api-script');
-      if (existingScript) {
-        existingScript.onload = () => initJitsiRoom();
-      } else {
-        const script = document.createElement('script');
-        script.id = 'jitsi-external-api-script';
-        script.src = 'https://meet.jit.si/external_api.js';
-        script.async = true;
-        script.onload = () => initJitsiRoom();
-        script.onerror = () => {
-          setJitsiError("Impossible de charger le moteur d'appel vidéo Jitsi.");
-          setIsJitsiLoading(false);
-        };
-        document.body.appendChild(script);
-      }
-    }
-
-    return () => {
-      if (jitsiApiRef.current) {
-        try {
-          jitsiApiRef.current.dispose();
-        } catch (_) {}
-        jitsiApiRef.current = null;
-      }
-    };
-  }, [isOpen, callSession?.groupId, callSession?.callId, callSession?.type, currentUser, handleHangUp]);
-
+  // Basculer Micro (Coupé / Actif)
   const toggleMute = () => {
     triggerHaptic('light');
-    if (jitsiApiRef.current) {
-      jitsiApiRef.current.executeCommand('toggleAudio');
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = !nextMuted;
+      });
+    }
+
+    if (callSession?.groupId && callSession?.callId) {
+      api.updateCallState(callSession.groupId, callSession.callId, currentUser.id, {
+        isMuted: nextMuted,
+        isSpeaking: false,
+      }).catch(() => {});
     }
   };
 
+  // Basculer Caméra (uniquement en appel vidéo)
   const toggleVideo = () => {
     if (callSession?.type === 'audio') return;
     triggerHaptic('light');
-    if (jitsiApiRef.current) {
-      jitsiApiRef.current.executeCommand('toggleVideo');
+    const nextVideoOff = !isVideoOff;
+    setIsVideoOff(nextVideoOff);
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = !nextVideoOff;
+      });
     }
   };
 
@@ -398,12 +298,13 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
 
   if (!isOpen || !callSession) return null;
 
+  // Liste des membres du groupe en attente si appel non rejoint par d'autres
   const waitingMembers = groupMembers.filter((m) => {
     const uid = m.userId || m.id;
-    return uid && uid !== currentUser.id;
+    return uid && uid !== currentUser.id && !participants.some((p) => p.userId === uid);
   });
 
-  // 1. Vue Flottante Réduite (Picture-in-Picture)
+  // Vue Flottante Réduite (Picture-in-Picture)
   if (isMinimized) {
     return (
       <div
@@ -415,11 +316,11 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           <img
             src={currentUser.avatar || '/Avatar_Herisson.jpg'}
             alt="Avatar"
-            className={`w-10 h-10 rounded-full object-cover ring-2 ${
-              isSpeaking ? 'ring-emerald-400' : 'ring-[#5D0D18]'
+            className={`w-10 h-10 rounded-full object-cover ring-2 transition-all ${
+              localSpeaking ? 'ring-emerald-400 scale-105' : 'ring-[#5D0D18]'
             }`}
           />
-          {isSpeaking && (
+          {localSpeaking && (
             <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
           )}
         </div>
@@ -436,7 +337,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           <button
             type="button"
             onClick={toggleMute}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-2 rounded-full transition-colors cursor-pointer ${
               isMuted ? 'bg-red-500/20 text-red-400' : 'bg-zinc-800 text-zinc-300'
             }`}
             title={isMuted ? 'Activer le micro' : 'Couper le micro'}
@@ -446,7 +347,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           <button
             type="button"
             onClick={() => handleHangUp()}
-            className="p-2 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors"
+            className="p-2 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer"
             title="Quitter l'appel"
           >
             <PhoneOff className="w-4 h-4" />
@@ -454,7 +355,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           <button
             type="button"
             onClick={() => setIsMinimized(false)}
-            className="p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+            className="p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer"
             title="Agrandir"
           >
             <Maximize2 className="w-4 h-4" />
@@ -464,7 +365,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
     );
   }
 
-  // 2. Vue Plein Écran du Salon Jitsi Meet
+  // Vue Plein Écran du Salon Intégré Outlys
   return (
     <div
       id="group-call-modal"
@@ -492,6 +393,11 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
                 <span>{callSession.type === 'video' ? 'Salon vidéo' : 'Salon audio'}</span>
                 <span>•</span>
                 <span className="font-mono font-medium text-emerald-400">{formatDuration(callDuration)}</span>
+                <span>•</span>
+                <span className="flex items-center gap-1 text-zinc-400">
+                  <Users className="w-3.5 h-3.5" />
+                  {participants.length} participant{participants.length > 1 ? 's' : ''}
+                </span>
               </div>
             </div>
           </div>
@@ -508,57 +414,131 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           </div>
         </div>
 
-        {/* Message d'erreur Jitsi si échec de chargement */}
-        {jitsiError && (
-          <div className="mx-4 mt-3 p-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center gap-2 text-rose-200 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-            <span>{jitsiError}</span>
+        {/* Grille Intégrée des Participants Outlys */}
+        <div className="relative flex-1 w-full h-full min-h-0 bg-zinc-950 p-4 sm:p-6 overflow-y-auto flex flex-col items-center justify-center">
+          <div
+            className={`w-full max-w-3xl grid gap-4 place-items-center ${
+              participants.length <= 1
+                ? 'grid-cols-1 max-w-sm'
+                : participants.length === 2
+                ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl'
+                : participants.length <= 4
+                ? 'grid-cols-2 max-w-2xl'
+                : 'grid-cols-2 sm:grid-cols-3 max-w-3xl'
+            }`}
+          >
+            {/* Carte de chaque participant présent */}
+            {participants.map((p) => {
+              const isMe = p.userId === currentUser.id;
+              const participantMuted = isMe ? isMuted : Boolean(p.isMuted || p.muted);
+              const participantSpeaking = isMe ? localSpeaking : Boolean(p.isSpeaking);
+
+              return (
+                <div
+                  key={p.userId}
+                  className={`relative w-full aspect-square max-w-[240px] rounded-3xl bg-zinc-900/90 border transition-all duration-300 flex flex-col items-center justify-center p-4 shadow-xl overflow-hidden ${
+                    participantSpeaking
+                      ? 'border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.35)] scale-[1.02]'
+                      : 'border-zinc-800'
+                  }`}
+                >
+                  {/* Flux vidéo local si vidéo activée */}
+                  {isMe && callSession.type === 'video' && !isVideoOff ? (
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover -scale-x-100"
+                    />
+                  ) : null}
+
+                  {/* Avatar & Halo Vocal */}
+                  <div className="relative flex items-center justify-center my-auto">
+                    {/* Halo vocal rayonnant animé */}
+                    {participantSpeaking && (
+                      <>
+                        <span className="absolute -inset-3 rounded-full bg-emerald-500/30 animate-ping pointer-events-none" />
+                        <span className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-pulse pointer-events-none" />
+                      </>
+                    )}
+
+                    <img
+                      src={p.userAvatar || '/Avatar_Herisson.jpg'}
+                      alt={p.userName}
+                      className={`relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover ring-4 transition-all duration-200 ${
+                        participantSpeaking
+                          ? 'ring-emerald-400 shadow-lg shadow-emerald-500/50'
+                          : 'ring-zinc-700'
+                      }`}
+                    />
+
+                    {/* Badge Micro barré ou actif */}
+                    <div
+                      className={`absolute -bottom-1 -right-1 z-20 p-1.5 rounded-full border-2 border-zinc-900 shadow-md ${
+                        participantMuted
+                          ? 'bg-red-500 text-white'
+                          : participantSpeaking
+                          ? 'bg-emerald-500 text-white animate-bounce'
+                          : 'bg-zinc-800 text-zinc-300'
+                      }`}
+                      title={participantMuted ? 'Micro coupé' : 'Micro actif'}
+                    >
+                      {participantMuted ? (
+                        <MicOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Mic className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Nom du participant */}
+                  <div className="relative z-10 mt-auto pt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950/70 border border-zinc-800/80 backdrop-blur-sm max-w-full">
+                    <span className="text-xs sm:text-sm font-semibold text-zinc-200 truncate">
+                      {p.userName} {isMe ? '(Vous)' : ''}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Conteneur Jitsi Meet intégré */}
-        <div className="relative flex-1 w-full h-full min-h-0 bg-black flex items-center justify-center overflow-hidden">
-          {isJitsiLoading && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/90 text-zinc-300 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-300" />
-              <p className="text-xs font-semibold text-zinc-300">Connexion au salon d'appel...</p>
-            </div>
-          )}
-
-          {/* Salon Jitsi Meet iframe injecté */}
-          <div ref={jitsiContainerRef} className="w-full h-full" />
 
           {/* Bandeau d'attente d'autres membres si seul dans l'appel */}
-          {isAloneInRoom && !isJitsiLoading && (
-            <div className="absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-center space-y-2 backdrop-blur-md pointer-events-none z-10 animate-fade-in">
+          {isAloneInRoom && (
+            <div className="mt-8 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-center space-y-2 backdrop-blur-md max-w-md w-full animate-fade-in">
               <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-300">
                 <PhoneCall className="w-4 h-4 animate-bounce" />
                 <span>Appel en cours • En attente des membres</span>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {waitingMembers.slice(0, 6).map((m) => (
-                  <div key={m.userId || m.id} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-xs">
-                    <img
-                      src={m.avatar || '/Avatar_Herisson.jpg'}
-                      alt={m.firstName}
-                      className="w-4 h-4 rounded-full object-cover"
-                    />
-                    <span className="text-zinc-300 text-[11px]">{m.firstName || m.name}</span>
-                  </div>
-                ))}
-              </div>
+              {waitingMembers.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  {waitingMembers.slice(0, 6).map((m) => (
+                    <div
+                      key={m.userId || m.id}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-xs text-zinc-300"
+                    >
+                      <img
+                        src={m.avatar || '/Avatar_Herisson.jpg'}
+                        alt={m.firstName}
+                        className="w-4 h-4 rounded-full object-cover"
+                      />
+                      <span className="text-[11px] font-medium">{m.firstName || m.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Barre Inférieure de Contrôles Unifiée */}
-        <div className="flex items-center justify-center gap-3 sm:gap-4 px-3 sm:px-6 py-3 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur-md z-10">
+        <div className="flex items-center justify-center gap-3 sm:gap-4 px-3 sm:px-6 py-4 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur-md z-10">
           {/* Couper / Activer Micro */}
           <button
             type="button"
             id="call-btn-toggle-mic"
             onClick={toggleMute}
-            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
               isMuted
                 ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                 : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700'
@@ -574,7 +554,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
               type="button"
               id="call-btn-toggle-video"
               onClick={toggleVideo}
-              className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
                 isVideoOff
                   ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-750 border border-zinc-700'
                   : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -590,7 +570,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             type="button"
             id="call-btn-toggle-speaker"
             onClick={toggleSpeaker}
-            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
               isSpeakerOn
                 ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700'
                 : 'bg-zinc-800/60 text-zinc-400 border border-zinc-800'
@@ -605,7 +585,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             type="button"
             id="call-btn-hangup"
             onClick={() => handleHangUp()}
-            className="flex flex-col items-center gap-1 px-4 sm:px-6 py-2 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 transition-all active:scale-95 cursor-pointer"
+            className="flex flex-col items-center gap-1 px-5 sm:px-7 py-2 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 transition-all active:scale-95 cursor-pointer"
           >
             <PhoneOff className="w-5 h-5" />
             <span className="text-[10px] sm:text-xs">

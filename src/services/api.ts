@@ -766,4 +766,12 @@ export const api = {
       body: JSON.stringify({ groupId, callId, userId }),
     });
   },
+
+  async updateCallState(groupId: string, callId: string, userId: string, state: { isMuted?: boolean; isSpeaking?: boolean }): Promise<any> {
+    return request('/calls/update-state', {
+      method: 'POST',
+      body: JSON.stringify({ groupId, callId, userId, ...state }),
+    });
+  },
 };
+

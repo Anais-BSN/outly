@@ -207,6 +207,8 @@ export interface CallParticipant {
   userAvatar: string;
   joinedAt: string;
   muted?: boolean;
+  isMuted?: boolean;
+  isSpeaking?: boolean;
   videoOff?: boolean;
 }
 
