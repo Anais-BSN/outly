@@ -54,6 +54,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
   if (!isOpen || !expense) return null;
 
+  const safeCurrentUser = currentUser || ({} as UserProfile);
   const isPayerMe =
     Boolean(currentUser && (expense.paidById === currentUser.id || (Boolean((currentUser as any).userId) && expense.paidById === (currentUser as any).userId)));
 

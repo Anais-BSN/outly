@@ -612,9 +612,6 @@ apiRouter.get("/sse", handleSseConnection);
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'name') THEN
           ALTER TABLE users ADD COLUMN name TEXT;
         END IF;
-        UPDATE users 
-        SET name = TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')))
-        WHERE (name IS NULL OR name = '') AND (first_name IS NOT NULL AND first_name <> '');
       END $$;
     `);
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_from_user_id_fkey;`);
@@ -634,12 +631,11 @@ apiRouter.get("/sse", handleSseConnection);
 apiRouter.get("/users", async (_req, res) => {
   try {
     const result = await query(
-      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+      `SELECT id, name, name as "firstName", '' as "lastName",
               email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
        WHERE COALESCE(is_deleted, false) = false
-       ORDER BY COALESCE(name, first_name) ASC`
+       ORDER BY name ASC`
     );
     res.json(result.rows);
   } catch (err) {
@@ -703,9 +699,9 @@ apiRouter.post("/auth/register", async (req, res) => {
     const userId = `user-${crypto.randomUUID()}`;
     const userAvatar = avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80";
     const insertRes = await query(
-      `INSERT INTO users (id, name, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash)
-       VALUES ($1, $2, $2, '', $3, $4, $5, 1, 'light', $6)
-       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+      `INSERT INTO users (id, name, email, handle, avatar, shares, theme_preference, password_hash)
+       VALUES ($1, $2, $3, $4, $5, 1, 'light', $6)
+       RETURNING id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
       [userId, displayName, email, cleanHandle, userAvatar, password]
     );
     res.json(insertRes.rows[0]);
@@ -724,8 +720,7 @@ apiRouter.post("/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Veuillez saisir votre mot de passe" });
     }
     const result = await query(
-      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+      `SELECT id, name, name as "firstName", '' as "lastName",
               email, handle, avatar, shares, theme_preference as "themePreference", password_hash
        FROM users
        WHERE email ILIKE $1 OR handle ILIKE $1
@@ -754,8 +749,7 @@ apiRouter.post("/auth/google", async (req, res) => {
       return res.status(400).json({ error: "Email Google manquant" });
     }
     const existing = await query(
-      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+      `SELECT id, name, name as "firstName", '' as "lastName",
               email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
        WHERE (google_id IS NOT NULL AND google_id = $1) OR email ILIKE $2
@@ -777,9 +771,9 @@ apiRouter.post("/auth/google", async (req, res) => {
     }
     const userAvatar = avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80";
     const insertRes = await query(
-      `INSERT INTO users (id, name, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash, google_id)
-       VALUES ($1, $2, $2, '', $3, $4, $5, 1, 'light', 'google_oauth', $6)
-       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+      `INSERT INTO users (id, name, email, handle, avatar, shares, theme_preference, password_hash, google_id)
+       VALUES ($1, $2, $3, $4, $5, 1, 'light', 'google_oauth', $6)
+       RETURNING id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
       [userId, displayName, email, handle, userAvatar, googleId || userId]
     );
     res.json(insertRes.rows[0]);
@@ -796,8 +790,7 @@ apiRouter.post("/auth/forgot-password", async (req, res) => {
     }
     const cleanEmail = email.trim().toLowerCase();
     const userRes = await query(
-      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-              COALESCE(name, first_name, '') as "firstName", email
+      `SELECT id, name, name as "firstName", email
        FROM users
        WHERE email ILIKE $1
        LIMIT 1`,
@@ -832,7 +825,7 @@ apiRouter.get("/auth/verify-reset-token/:token", async (req, res) => {
   try {
     const { token } = req.params;
     const userRes = await query(
-      `SELECT id, email, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
+      `SELECT id, email, name, name as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
       [token]
     );
     if (userRes.rows.length === 0) {
@@ -855,7 +848,7 @@ apiRouter.post("/auth/reset-password", async (req, res) => {
       return res.status(400).json({ error: passwordError });
     }
     const userRes = await query(
-      `SELECT id, COALESCE(name, first_name) as name, email
+      `SELECT id, name, email
        FROM users
        WHERE reset_password_token = $1 AND reset_password_expires > NOW()
        LIMIT 1`,
@@ -912,8 +905,7 @@ apiRouter.get(["/user/me", "/users/:id?"], async (req, res) => {
       return res.status(401).json({ error: "Session non authentifi\xE9e" });
     }
     const result = await query(
-      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+      `SELECT id, name, name as "firstName", '' as "lastName",
               email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
        WHERE id = $1`,
@@ -936,15 +928,13 @@ apiRouter.put("/users/:id", async (req, res) => {
     const result = await query(
       `UPDATE users
        SET name = COALESCE($1, name),
-           first_name = COALESCE($1, first_name),
-           last_name = '',
            email = COALESCE($2, email),
            handle = COALESCE($3, handle),
            avatar = COALESCE($4, avatar),
            shares = COALESCE($5, shares),
            theme_preference = COALESCE($6, theme_preference)
        WHERE id = $7
-       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+       RETURNING id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
       [updatedName, email, handle, avatar, shares, themePreference, id]
     );
     if (result.rows.length === 0) {
@@ -999,13 +989,12 @@ apiRouter.get("/friends", async (req, res) => {
       return res.status(401).json({ error: "Session non authentifi\xE9e" });
     }
     const result = await query(
-      `SELECT u.id, COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Ami') as name,
-              COALESCE(u.name, u.first_name, '') as "firstName", COALESCE(u.last_name, '') as "lastName",
+      `SELECT u.id, u.name, u.name as "firstName", '' as "lastName",
               u.handle, u.email, u.avatar, u.shares, f.status
        FROM friends f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1
-       ORDER BY COALESCE(u.name, u.first_name) ASC`,
+       ORDER BY u.name ASC`,
       [userId]
     );
     res.json(result.rows);
@@ -1027,17 +1016,16 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
     if (cleanedList.length === 0) {
       return res.status(400).json({ error: "Veuillez saisir au moins un @pseudo ou une adresse e-mail" });
     }
-    const senderRes = await query(`SELECT COALESCE(name, first_name) as name, first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
+    const senderRes = await query(`SELECT name, name as "firstName", '' as "lastName", handle FROM users WHERE id = $1`, [userId]);
     const sender = senderRes.rows[0] || { name: "Un ami", firstName: "Un ami", lastName: "", handle: "@ami" };
-    const senderName = sender.name || `${sender.firstName || "Un ami"} ${sender.lastName || ""}`.trim();
+    const senderName = sender.name || "Un ami";
     const appBaseUrl = getCleanAppUrl();
     const results = [];
     const isSingleLegacyMode = !Array.isArray(handlesOrEmails) && !Array.isArray(emails) && cleanedList.length === 1;
     for (const item of cleanedList) {
       const cleanHandle = item.startsWith("@") ? item : `@${item}`;
       const targetUserRes = await query(
-        `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
-                COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+        `SELECT id, name, name as "firstName", '' as "lastName",
                 handle, email, avatar, shares
          FROM users
          WHERE handle ILIKE $1 OR handle ILIKE $2 OR email ILIKE $2
@@ -1162,8 +1150,8 @@ apiRouter.put("/friends/:friendId", async (req, res) => {
       [status, userId, friendId]
     );
     if (status === "accepted") {
-      const accepterRes = await query(`SELECT first_name FROM users WHERE id = $1`, [userId]);
-      const accepterName = accepterRes.rows[0]?.first_name || "Un ami";
+      const accepterRes = await query(`SELECT name FROM users WHERE id = $1`, [userId]);
+      const accepterName = accepterRes.rows[0]?.name || "Un ami";
       const notifMsg = `${accepterName} a accept\xE9 votre demande d'ami.`;
       const existingNotif = await query(
         `SELECT id FROM notifications WHERE user_id = $1 AND type = 'friend' AND message = $2`,
@@ -1245,14 +1233,14 @@ apiRouter.get("/groups", async (req, res) => {
     }
     const groupIds = groupsRes.rows.map((g) => g.id);
     const membersRes = await query(
-      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
-              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role,
+      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role,
               COALESCE(u.is_deleted, false) as "isDeleted"
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = ANY($1::text[])
          AND COALESCE(u.is_deleted, false) = false
-         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprim\xE9%')
+         AND NOT (u.name ILIKE 'Utilisateur%supprim%')
        ORDER BY gm.joined_at ASC`,
       [groupIds]
     );
@@ -1307,15 +1295,15 @@ apiRouter.get(["/groups/:id", "/groups/preview/:id", "/groups/:id/preview"], asy
     const group = groupRes.rows[0];
     const actualGroupId = group.id;
     const membersRes = await query(
-      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
-              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role,
+      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role,
               COALESCE(u.is_deleted, false) as "isDeleted",
               CASE WHEN (u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') THEN true ELSE false END as "isVirtual"
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
          AND COALESCE(u.is_deleted, false) = false
-         AND NOT (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprim\xE9%' OR u.first_name ILIKE 'Utilisateur supprim\xE9%'))
+         AND NOT (u.name ILIKE 'Utilisateur%supprim%')
        ORDER BY gm.joined_at ASC`,
       [actualGroupId]
     );
@@ -1336,7 +1324,7 @@ apiRouter.get(["/groups/:id", "/groups/preview/:id", "/groups/:id/preview"], asy
       };
     });
     const virtualMembers = members.filter(
-      (m) => m.isVirtual && !m.isDeleted && !m.name.toLowerCase().includes("utilisateur supprim\xE9") && !m.firstName.toLowerCase().includes("utilisateur supprim\xE9")
+      (m) => m.isVirtual && !m.isDeleted && !m.name.toLowerCase().includes("utilisateur supprim\xE9")
     );
     res.json({
       ...group,
@@ -1380,11 +1368,11 @@ apiRouter.post("/groups", async (req, res) => {
       );
     }
     const creatorRes = await query(
-      `SELECT COALESCE(name, first_name) as name, first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [creatorId]
     );
     const creator = creatorRes.rows[0];
-    const authorName = creator?.name || (creator ? `${creator.firstName} ${creator.lastName || ""}`.trim() : "Un ami");
+    const authorName = creator?.name || "Un ami";
     const groupName = name || "Nouveau Groupe";
     for (const fId of invitedFriendIds) {
       if (fId && fId !== creatorId && !fId.startsWith("user-virt-")) {
@@ -1412,8 +1400,8 @@ apiRouter.post("/groups", async (req, res) => {
       }
     }
     const membersRes = await query(
-      `SELECT u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
-              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1`,
@@ -1455,8 +1443,8 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
       [id, userId, role]
     );
     const memberRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1 AND gm.user_id = $2`,
@@ -1466,17 +1454,17 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
     const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
     const groupName = groupInfoRes.rows[0]?.name || "Groupe";
     const authorRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [authorId]
     );
     const author = authorRes.rows[0];
-    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un membre";
+    const authorName = author?.name || "Un membre";
     const newMemberUserRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [userId]
     );
     const newMemberUser = newMemberUserRes.rows[0];
-    const newMemberName = newMemberUser ? `${newMemberUser.firstName} ${newMemberUser.lastName || ""}`.trim() : "Un nouveau membre";
+    const newMemberName = newMemberUser?.name || "Un nouveau membre";
     if (!userId.startsWith("user-virt-") && userId !== authorId) {
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       const notifMessage = `Vous avez \xE9t\xE9 ajout\xE9 au groupe ${groupName} par ${authorName}`;
@@ -1540,13 +1528,13 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
       [id]
     );
     const allMembersRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
          AND COALESCE(u.is_deleted, false) = false
-         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprim\xE9%')
+         AND NOT (u.name ILIKE 'Utilisateur%supprim%')
        ORDER BY gm.joined_at ASC`,
       [id]
     );
@@ -1583,8 +1571,8 @@ apiRouter.post("/groups/:id/virtual-member", async (req, res) => {
     const randomHandle = `@${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const dummyEmail = `${virtualUserId}@outlys.local`;
     await query(
-      `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, created_at)
-       VALUES ($1, $2, '', $3, $4, $5, $6, NOW())`,
+      `INSERT INTO users (id, name, email, handle, avatar, shares, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
       [virtualUserId, trimmedFirstName, dummyEmail, randomHandle, avatar, shares || 1]
     );
     await query(
@@ -1610,13 +1598,13 @@ apiRouter.post("/groups/:id/virtual-member", async (req, res) => {
       [groupId]
     );
     const allMembersRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
          AND COALESCE(u.is_deleted, false) = false
-         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprim\xE9%')
+         AND NOT (u.name ILIKE 'Utilisateur%supprim%')
        ORDER BY gm.joined_at ASC`,
       [groupId]
     );
@@ -1648,7 +1636,7 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
       return res.status(400).json({ error: "virtualUserId et targetUserId sont requis" });
     }
     const targetUserRes = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares FROM users WHERE id = $1`,
+      `SELECT id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares FROM users WHERE id = $1`,
       [targetUserId]
     );
     if (targetUserRes.rows.length === 0) {
@@ -1734,9 +1722,9 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
     const memberData = {
       id: targetUser.id,
       userId: targetUser.id,
-      firstName: targetUser.firstName,
-      lastName: targetUser.lastName || "",
-      name: `${targetUser.firstName} ${targetUser.lastName || ""}`.trim(),
+      firstName: targetUser.name || targetUser.firstName || "Membre",
+      lastName: "",
+      name: targetUser.name || targetUser.firstName || "Membre",
       handle: targetUser.handle,
       avatar: targetUser.avatar,
       shares: targetUser.shares || 1,
@@ -1746,7 +1734,7 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
     const updatedExpensesRes = await query(
       `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
               e.paid_by_id as "paidById",
-              COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
+              COALESCE(u.name, 'Utilisateur supprim\xE9') as "paidByName",
               COALESCE(u.avatar, '') as "paidByAvatar",
               e.category, e.date::text as date,
               e.split_mode as "splitMode",
@@ -1763,13 +1751,13 @@ apiRouter.post("/groups/:id/merge-member", async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
-              COALESCE(u1.last_name, '') as "fromUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
+              COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
+              '' as "fromUserLastName",
+              COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
-              COALESCE(u2.last_name, '') as "toUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
+              COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserFirstName",
+              '' as "toUserLastName",
+              COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -1826,11 +1814,11 @@ apiRouter.put("/groups/:id", async (req, res) => {
       [newName, newDesc, newCover, id]
     );
     const authorRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [authorId]
     );
     const author = authorRes.rows[0];
-    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un membre";
+    const authorName = author?.name || "Un membre";
     const membersToNotifyRes = await query(
       `SELECT gm.user_id 
        FROM group_members gm
@@ -1871,8 +1859,8 @@ apiRouter.put("/groups/:id", async (req, res) => {
       [id]
     );
     const membersRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1`,
@@ -1910,9 +1898,9 @@ apiRouter.post("/groups/:id/invite", async (req, res) => {
     const groupRes = await query(`SELECT id, name FROM groups WHERE id = $1`, [groupId]);
     const group = groupRes.rows[0];
     const groupName = group?.name || "Groupe";
-    const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`, [senderId]);
+    const senderRes = await query(`SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`, [senderId]);
     const sender = senderRes.rows[0];
-    const resolvedSenderName = senderName || (sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Un ami");
+    const resolvedSenderName = senderName || sender?.name || "Un ami";
     const appBaseUrl = getCleanAppUrl();
     const emailBatchPayload = [];
     const generatedInvitations = [];
@@ -1967,11 +1955,11 @@ apiRouter.delete("/groups/:id", async (req, res) => {
     const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
     const groupName = groupRes.rows[0]?.name || "Groupe";
     const authorRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [authorId]
     );
     const author = authorRes.rows[0];
-    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un administrateur";
+    const authorName = author?.name || "Un administrateur";
     const membersRes = await query(
       `SELECT gm.user_id 
        FROM group_members gm
@@ -2026,40 +2014,40 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
     const groupName = groupInfoRes.rows[0]?.name || "Groupe";
     const authorRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [authorId]
     );
     const author = authorRes.rows[0];
-    const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "Un administrateur";
+    const authorName = author?.name || "Un administrateur";
     const removedUserInfoRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT name, name as "firstName", '' as "lastName" FROM users WHERE id = $1`,
       [userId]
     );
     const removedUser = removedUserInfoRes.rows[0];
-    const removedMemberName = removedUser ? `${removedUser.firstName} ${removedUser.lastName || ""}`.trim() : "Un membre";
+    const removedMemberName = removedUser?.name || "Un membre";
     const memberRoleRes = await query(
       `SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2`,
       [groupId, userId]
     );
     const wasAdmin = memberRoleRes.rows[0]?.role === "admin";
     const existingDeletedRes = await query(
-      `SELECT DISTINCT u.first_name, u.last_name
+      `SELECT DISTINCT u.name
        FROM users u
        WHERE (
          u.id IN (SELECT paid_by_id FROM expenses WHERE group_id = $1)
          OR u.id IN (SELECT from_user_id FROM debt_settlements WHERE group_id = $1)
          OR u.id IN (SELECT to_user_id FROM debt_settlements WHERE group_id = $1)
-         OR (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprim\xE9%' OR u.first_name ILIKE 'Utilisateur supprim\xE9%'))
+         OR (u.name ILIKE 'Utilisateur%supprim%')
          OR u.is_deleted = TRUE
        ) AND (
-         (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprim\xE9%' OR u.first_name ILIKE 'Utilisateur supprim\xE9%'))
+         (u.name ILIKE 'Utilisateur%supprim%')
          OR u.is_deleted = TRUE
        )`,
       [groupId]
     );
     let maxDeletedNum = 0;
     for (const r of existingDeletedRes.rows) {
-      const fullName = `${r.first_name || ""} ${r.last_name || ""}`.trim();
+      const fullName = r.name || "";
       const match = fullName.match(/Utilisateur\s+supprimé(?:\s+(\d+))?/i);
       if (match) {
         const num = match[1] ? parseInt(match[1], 10) : 1;
@@ -2069,8 +2057,7 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       }
     }
     const nextDeletedNum = maxDeletedNum + 1;
-    const deletedFirstName = `Utilisateur supprim\xE9 ${nextDeletedNum}`;
-    const deletedLastName = "";
+    const deletedName = `Utilisateur supprim\xE9 ${nextDeletedNum}`;
     const deletedHandle = `deleted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${Math.random().toString(36).substring(2, 7)}`;
     const isRealUser = !userId.startsWith("user-virt-");
     const isVoluntaryLeave = userId === authorId;
@@ -2141,9 +2128,9 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       const virtualUserId = `user-virt-del-${crypto.randomUUID()}`;
       const dummyEmail = `${virtualUserId}@outlys.local`;
       await query(
-        `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, is_deleted, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW())`,
-        [virtualUserId, deletedFirstName, deletedLastName, dummyEmail, deletedHandle, "/Avatar_Herisson.jpg", frozenShares]
+        `INSERT INTO users (id, name, email, handle, avatar, shares, is_deleted, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())`,
+        [virtualUserId, deletedName, dummyEmail, deletedHandle, "/Avatar_Herisson.jpg", frozenShares]
       );
       await query(
         `UPDATE expenses
@@ -2209,16 +2196,16 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
     } else {
       await query(
         `UPDATE users
-         SET first_name = $1, last_name = $2, handle = $3, is_deleted = TRUE
-         WHERE id = $4`,
-        [deletedFirstName, deletedLastName, deletedHandle, userId]
+         SET name = $1, handle = $2, is_deleted = TRUE
+         WHERE id = $3`,
+        [deletedName, deletedHandle, userId]
       );
       await query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
     }
     const expRes = await query(
       `SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
               e.paid_by_id as "paidById",
-              COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
+              COALESCE(u.name, 'Utilisateur supprim\xE9') as "paidByName",
               COALESCE(u.avatar, '') as "paidByAvatar",
               e.category, e.date::text as date,
               e.split_mode as "splitMode",
@@ -2236,13 +2223,13 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
-              COALESCE(u1.last_name, '') as "fromUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
+              COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
+              '' as "fromUserLastName",
+              COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
-              COALESCE(u2.last_name, '') as "toUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
+              COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserFirstName",
+              '' as "toUserLastName",
+              COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -2263,7 +2250,7 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
            FROM group_members gm
            JOIN users u ON gm.user_id = u.id
            WHERE gm.group_id = $1 AND NOT gm.user_id LIKE 'user-virt-%' AND COALESCE(u.is_deleted, false) = false
-           ORDER BY u.first_name ASC, u.last_name ASC
+           ORDER BY u.name ASC
            LIMIT 1`,
           [groupId]
         );
@@ -2282,13 +2269,13 @@ apiRouter.delete("/groups/:id/members/:userId", async (req, res) => {
       [groupId]
     );
     const allMembersRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+              u.name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
          AND COALESCE(u.is_deleted, false) = false
-         AND NOT (u.first_name ILIKE 'Utilisateur%' AND u.last_name ILIKE 'supprim\xE9%')
+         AND NOT (u.name ILIKE 'Utilisateur%supprim%')
        ORDER BY gm.joined_at ASC`,
       [groupId]
     );
@@ -2329,7 +2316,7 @@ apiRouter.get("/events", async (req, res) => {
       SELECT e.id, e.group_id as "groupId", e.title, e.start_datetime as "startDateTime",
              e.end_datetime as "endDateTime", e.location, e.gps_url as "gpsUrl",
              e.description, e.banner_image as "bannerImage", e.organizer_id as "organizerId",
-             COALESCE(u.first_name, 'Organisateur') as "organizerName",
+             COALESCE(u.name, 'Organisateur') as "organizerName",
              COALESCE(u.avatar, '') as "organizerAvatar",
              e.reminder_24h as "reminder24h"
       FROM events e
@@ -2418,8 +2405,8 @@ apiRouter.post("/events", async (req, res) => {
         [eventId, uId, st]
       );
     }
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [organizerId]);
-    const org = userRes.rows[0] || { first_name: "Organisateur", avatar: "" };
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [organizerId]);
+    const org = userRes.rows[0] || { name: "Organisateur", avatar: "" };
     const newEvent = {
       id: eventId,
       groupId,
@@ -2431,7 +2418,7 @@ apiRouter.post("/events", async (req, res) => {
       description,
       bannerImage,
       organizerId,
-      organizerName: org.first_name,
+      organizerName: org.name,
       organizerAvatar: org.avatar,
       reminder24h,
       rsvp: initialRsvp
@@ -2488,8 +2475,8 @@ apiRouter.put("/events/:id", async (req, res) => {
       return res.status(404).json({ error: "Event not found" });
     }
     const ev = result.rows[0];
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [ev.organizer_id]);
-    const org = userRes.rows[0] || { first_name: "Organisateur", avatar: "" };
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [ev.organizer_id]);
+    const org = userRes.rows[0] || { name: "Organisateur", avatar: "" };
     const rsvpRes = await query(`SELECT user_id as "userId", status FROM event_rsvps WHERE event_id = $1`, [id]);
     const rsvp = {};
     for (const r of rsvpRes.rows) {
@@ -2506,7 +2493,7 @@ apiRouter.put("/events/:id", async (req, res) => {
       description: ev.description,
       bannerImage: ev.banner_image,
       organizerId: ev.organizer_id,
-      organizerName: org.first_name,
+      organizerName: org.name,
       organizerAvatar: org.avatar,
       reminder24h: ev.reminder_24h,
       rsvp
@@ -2575,11 +2562,11 @@ apiRouter.get("/availability", async (req, res) => {
     const targetDateStr = date || (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const tzOffsetMinutes = req.query.tz ? Number(req.query.tz) : 0;
     const membersRes = await query(
-      `SELECT u.id, u.first_name as "firstName", u.last_name as "lastName", u.avatar
+      `SELECT u.id, u.name, u.name as "firstName", '' as "lastName", u.avatar
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
-       ORDER BY u.first_name ASC`,
+       ORDER BY u.name ASC`,
       [groupId]
     );
     const eventsRes = await query(
@@ -2611,7 +2598,7 @@ apiRouter.get("/availability", async (req, res) => {
       });
       return {
         memberId: member.id,
-        memberName: `${member.firstName} ${member.lastName}`.trim(),
+        memberName: member.name || member.firstName || "Membre",
         memberAvatar: member.avatar,
         slots
       };
@@ -2635,7 +2622,7 @@ apiRouter.get("/messages", async (req, res) => {
       SELECT m.id, m.group_id as "groupId", m.sender_id as "senderId",
              CASE
                WHEN m.is_system THEN 'Outlys Bot'
-               ELSE COALESCE(concat(u.first_name, ' ', u.last_name), 'Membre')
+               ELSE COALESCE(u.name, 'Membre')
              END as "senderName",
              COALESCE(u.avatar, '') as "senderAvatar",
              m.timestamp, m.text, m.image_url as "imageUrl",
@@ -2760,9 +2747,9 @@ apiRouter.post("/messages", async (req, res) => {
         });
       }
     }
-    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [senderId]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [senderId]);
     const user = userRes.rows[0];
-    const senderName = isSystem ? "Outlys Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
+    const senderName = isSystem ? "Outlys Bot" : user?.name || "Membre";
     const senderAvatar = isSystem ? "" : user?.avatar || "";
     const newMsg = {
       id,
@@ -2808,9 +2795,9 @@ apiRouter.put("/messages/:id", async (req, res) => {
       return res.status(404).json({ error: "Message introuvable" });
     }
     const msg = updatedRes.rows[0];
-    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [msg.senderId]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [msg.senderId]);
     const user = userRes.rows[0];
-    const senderName = msg.isSystem ? "Outlys Bot" : user ? `${user.first_name} ${user.last_name}`.trim() : "Membre";
+    const senderName = msg.isSystem ? "Outlys Bot" : user?.name || "Membre";
     const senderAvatar = msg.isSystem ? "" : user?.avatar || "";
     const fullMessage = {
       ...msg,
@@ -2927,7 +2914,7 @@ apiRouter.get("/polls", async (req, res) => {
     let sql = `
       SELECT p.id, p.group_id as "groupId", p.title, p.type, p.description,
              p.created_by as "createdBy",
-             COALESCE(u.first_name, 'Membre') as "creatorName",
+             COALESCE(u.name, 'Membre') as "creatorName",
              COALESCE(u.avatar, '') as "creatorAvatar",
              p.created_at as "createdAt"
       FROM polls p
@@ -3009,7 +2996,7 @@ apiRouter.post("/polls", async (req, res) => {
         votes: opt.votes || []
       });
     }
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [createdBy]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [createdBy]);
     const user = userRes.rows[0];
     const createdPoll = {
       id: pollId,
@@ -3018,7 +3005,7 @@ apiRouter.post("/polls", async (req, res) => {
       type,
       description,
       createdBy,
-      creatorName: user?.first_name || "Membre",
+      creatorName: user?.name || "Membre",
       creatorAvatar: user?.avatar || "",
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       options: createdOptions
@@ -3041,8 +3028,8 @@ apiRouter.post("/polls/:pollId/vote", async (req, res) => {
     if (!userId || userId === "user-me") {
       return res.status(401).json({ error: "Session non authentifi\xE9e" });
     }
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [userId]);
-    const user = userRes.rows[0] || { first_name: "Utilisateur", avatar: "" };
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [userId]);
+    const user = userRes.rows[0] || { name: "Utilisateur", avatar: "" };
     const optRes = await query(`SELECT id, votes FROM poll_options WHERE id = $1 AND poll_id = $2`, [optionId, pollId]);
     if (optRes.rows.length === 0) {
       return res.status(404).json({ error: "Option not found" });
@@ -3053,7 +3040,7 @@ apiRouter.post("/polls/:pollId/vote", async (req, res) => {
       ...otherVotes,
       {
         userId,
-        userName: user.first_name,
+        userName: user.name,
         userAvatar: user.avatar,
         status
       }
@@ -3116,7 +3103,7 @@ apiRouter.put("/polls/:id", async (req, res) => {
        ORDER BY id ASC`,
       [id]
     );
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [poll.created_by]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [poll.created_by]);
     const user = userRes.rows[0];
     const updatedPoll = {
       id: poll.id,
@@ -3125,7 +3112,7 @@ apiRouter.put("/polls/:id", async (req, res) => {
       type: poll.type,
       description: poll.description,
       createdBy: poll.created_by,
-      creatorName: user?.first_name || "Membre",
+      creatorName: user?.name || "Membre",
       creatorAvatar: user?.avatar || "",
       createdAt: poll.created_at,
       options: updatedOptionsRes.rows.map((opt) => ({
@@ -3173,7 +3160,7 @@ apiRouter.get("/gallery", async (req, res) => {
     let sql = `
       SELECT g.id, g.group_id as "groupId", g.image_url as "imageUrl",
              g.uploader_id as "uploaderId",
-             COALESCE(concat(u.first_name, ' ', u.last_name), 'Membre') as "uploaderName",
+             COALESCE(u.name, 'Membre') as "uploaderName",
              COALESCE(u.avatar, '') as "uploaderAvatar",
              g.caption, g.timestamp
       FROM gallery_items g
@@ -3210,14 +3197,14 @@ apiRouter.post("/gallery", async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, groupId, imageUrl, uploaderId, caption, timestamp]
     );
-    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [uploaderId]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [uploaderId]);
     const user = userRes.rows[0];
     const newItem = {
       id,
       groupId,
       imageUrl,
       uploaderId,
-      uploaderName: user ? `${user.first_name} ${user.last_name}`.trim() : "Membre",
+      uploaderName: user?.name || "Membre",
       uploaderAvatar: user?.avatar || "",
       caption,
       timestamp
@@ -3257,7 +3244,7 @@ apiRouter.get("/tasks", async (req, res) => {
     let sql = `
       SELECT t.id, t.group_id as "groupId", t.event_id as "eventId", t.title, t.quantity,
              t.assigned_to_id as "assignedToId",
-             u.first_name as "assignedToName",
+             u.name as "assignedToName",
              u.avatar as "assignedToAvatar",
              t.completed, t.category,
              t.created_by as "createdBy",
@@ -3307,9 +3294,9 @@ apiRouter.post("/tasks", async (req, res) => {
     let assignedToName = null;
     let assignedToAvatar = null;
     if (assignedToId) {
-      const uRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [assignedToId]);
+      const uRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [assignedToId]);
       if (uRes.rows.length > 0) {
-        assignedToName = uRes.rows[0].first_name;
+        assignedToName = uRes.rows[0].name;
         assignedToAvatar = uRes.rows[0].avatar;
       }
     }
@@ -3377,14 +3364,14 @@ apiRouter.put("/tasks/:id/claim", async (req, res) => {
        RETURNING group_id as "groupId"`,
       [userId, id]
     );
-    const uRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [userId]);
+    const uRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [userId]);
     const user = uRes.rows[0];
     const groupId = tRes.rows[0]?.groupId;
     const claimedData = {
       id,
       groupId,
       assignedToId: userId,
-      assignedToName: user?.first_name || null,
+      assignedToName: user?.name || null,
       assignedToAvatar: user?.avatar || null
     };
     realtimeBroadcaster.broadcast({
@@ -3450,7 +3437,7 @@ apiRouter.get("/expenses", async (req, res) => {
     let sql = `
       SELECT e.id, e.group_id as "groupId", e.title, e.amount::float as amount,
              e.paid_by_id as "paidById",
-             COALESCE(NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Utilisateur supprim\xE9') as "paidByName",
+             COALESCE(u.name, 'Utilisateur supprim\xE9') as "paidByName",
              COALESCE(u.avatar, '') as "paidByAvatar",
              e.category, e.date::text as date,
              e.split_mode as "splitMode",
@@ -3506,7 +3493,7 @@ apiRouter.post("/expenses", async (req, res) => {
         JSON.stringify(sharesSnapshot)
       ]
     );
-    const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [paidById]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [paidById]);
     const user = userRes.rows[0];
     const newExpense = {
       id,
@@ -3514,7 +3501,7 @@ apiRouter.post("/expenses", async (req, res) => {
       title,
       amount: Number(amount),
       paidById,
-      paidByName: user?.first_name || "Utilisateur supprim\xE9",
+      paidByName: user?.name || "Utilisateur supprim\xE9",
       paidByAvatar: user?.avatar || "",
       category,
       date,
@@ -3577,9 +3564,9 @@ apiRouter.put("/expenses/:id", async (req, res) => {
         id
       ]
     );
-    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [updatedPaidById]);
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [updatedPaidById]);
     const user = userRes.rows[0];
-    const paidByName = user ? (user.first_name + (user.last_name ? ` ${user.last_name}` : "")).trim() || user.first_name : "Utilisateur supprim\xE9";
+    const paidByName = user?.name || "Utilisateur supprim\xE9";
     const updatedExpense = {
       id,
       groupId: existing.group_id,
@@ -3630,13 +3617,13 @@ apiRouter.get("/settlements", async (req, res) => {
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
              s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
-             COALESCE(u1.first_name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
-             COALESCE(u1.last_name, '') as "fromUserLastName",
-             COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Utilisateur supprim\xE9') as "fromUserName",
+             COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
+             '' as "fromUserLastName",
+             COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserName",
              COALESCE(u1.avatar, '') as "fromUserAvatar",
-             COALESCE(u2.first_name, 'Utilisateur supprim\xE9') as "toUserFirstName",
-             COALESCE(u2.last_name, '') as "toUserLastName",
-             COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Utilisateur supprim\xE9') as "toUserName",
+             COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserFirstName",
+             '' as "toUserLastName",
+             COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserName",
              COALESCE(u2.avatar, '') as "toUserAvatar"
       FROM debt_settlements s
       LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3686,13 +3673,13 @@ var handleSettlementToggle = async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.first_name, 'Membre') as "fromUserFirstName",
-              COALESCE(u1.last_name, '') as "fromUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u1.first_name, ' ', u1.last_name)), ''), u1.first_name, 'Membre') as "fromUserName",
+              COALESCE(u1.name, 'Membre') as "fromUserFirstName",
+              '' as "fromUserLastName",
+              COALESCE(u1.name, 'Membre') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.first_name, 'Membre') as "toUserFirstName",
-              COALESCE(u2.last_name, '') as "toUserLastName",
-              COALESCE(NULLIF(TRIM(concat(u2.first_name, ' ', u2.last_name)), ''), u2.first_name, 'Membre') as "toUserName",
+              COALESCE(u2.name, 'Membre') as "toUserFirstName",
+              '' as "toUserLastName",
+              COALESCE(u2.name, 'Membre') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3846,7 +3833,7 @@ apiRouter.get(["/invitations/:token", "/groups/join/:token"], async (req, res) =
       `SELECT i.id, i.token, i.email, i.group_id as "groupId", i.inviter_id as "inviterId",
               i.type, i.status, i.created_at as "createdAt",
               g.name as "groupName", g.description as "groupDescription", g.cover_image as "groupCoverImage",
-              u.first_name as "inviterFirstName", u.last_name as "inviterLastName", u.avatar as "inviterAvatar"
+              u.name as "inviterFirstName", '' as "inviterLastName", u.name as "inviterName", u.avatar as "inviterAvatar"
        FROM invitations i
        LEFT JOIN groups g ON i.group_id = g.id
        LEFT JOIN users u ON i.inviter_id = u.id
@@ -3880,15 +3867,15 @@ apiRouter.get(["/invitations/:token", "/groups/join/:token"], async (req, res) =
     invitationData.virtualMembers = [];
     if (invitationData.groupId) {
       const membersRes = await query(
-        `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-                concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+        `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+                u.name, u.handle, u.avatar, u.shares, gm.role,
                 COALESCE(u.is_deleted, false) as "isDeleted",
                 CASE WHEN (u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') THEN true ELSE false END as "isVirtual"
          FROM group_members gm
          JOIN users u ON gm.user_id = u.id
          WHERE gm.group_id = $1
            AND COALESCE(u.is_deleted, false) = false
-           AND NOT (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprim\xE9%' OR u.first_name ILIKE 'Utilisateur supprim\xE9%'))
+           AND NOT (u.name ILIKE 'Utilisateur%' AND u.name ILIKE '%supprim\xE9%')
          ORDER BY gm.joined_at ASC`,
         [invitationData.groupId]
       );
@@ -3963,15 +3950,15 @@ apiRouter.post(["/invitations/:token/accept", "/groups/join/:token/accept"], asy
         [invitation.groupId]
       );
       const membersRes = await query(
-        `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-                concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+        `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
+                u.name, u.handle, u.avatar, u.shares, gm.role,
                 COALESCE(u.is_deleted, false) as "isDeleted",
                 CASE WHEN (u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') THEN true ELSE false END as "isVirtual"
          FROM group_members gm
          JOIN users u ON gm.user_id = u.id
          WHERE gm.group_id = $1
            AND COALESCE(u.is_deleted, false) = false
-           AND NOT (u.first_name ILIKE 'Utilisateur%' AND (u.last_name ILIKE 'supprim\xE9%' OR u.first_name ILIKE 'Utilisateur supprim\xE9%'))
+           AND NOT (u.name ILIKE 'Utilisateur%' AND u.name ILIKE '%supprim\xE9%')
          ORDER BY gm.joined_at ASC`,
         [invitation.groupId]
       );
@@ -4103,9 +4090,9 @@ apiRouter.post("/calls/start", async (req, res) => {
     if (!groupId || !initiatorId) {
       return res.status(400).json({ error: "groupId et initiatorId sont requis" });
     }
-    const userRes = await query(`SELECT first_name, last_name, avatar FROM users WHERE id = $1`, [initiatorId]);
-    const user = userRes.rows[0] || { first_name: "Membre", last_name: "", avatar: "" };
-    const initiatorName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Membre";
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [initiatorId]);
+    const user = userRes.rows[0] || { name: "Membre", avatar: "" };
+    const initiatorName = user.name?.trim() || "Membre";
     const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
     const groupName = groupRes.rows[0]?.name || "Groupe";
     const callId = `call-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
