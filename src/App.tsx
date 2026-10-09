@@ -406,25 +406,8 @@ export default function App() {
           }
           break;
         case 'connection:restored':
-          if (currentUser) {
-            Promise.all([
-              api.getMessages(),
-              api.getPolls(),
-              api.getEvents(undefined, currentUser.id),
-              api.getTasks(),
-              api.getExpenses(),
-              api.getSettlements(),
-              api.getGallery(),
-            ]).then(([mRes, pRes, eRes, tRes, expRes, sRes, gRes]) => {
-              setMessages(mRes);
-              setPolls(pRes);
-              setEvents(eRes);
-              setTasks(tRes);
-              setExpenses(expRes);
-              setSettlements(sRes);
-              setGalleryItems(gRes);
-            }).catch(() => {});
-          }
+          // Reconnexion transparente : les événements SSE assurent la synchronisation temps réel sans saturer la base de données
+          console.debug('[Realtime] Connexion SSE rétablie');
           break;
         case 'notification:created':
           setNotifications((prev) => {
@@ -1025,13 +1008,15 @@ export default function App() {
     initLocalNotifications();
   }, []);
 
-  // Synchronisation de l'appel actif lors du changement de groupe
+  // Synchronisation du canal de groupe temps réel & appel actif lors du changement de groupe
   useEffect(() => {
     if (activeGroupId) {
+      realtimeService.setActiveGroup(activeGroupId);
       api.getActiveCall(activeGroupId)
         .then((session) => setActiveCallSession(session))
         .catch(() => setActiveCallSession(null));
     } else {
+      realtimeService.setActiveGroup('');
       setActiveCallSession(null);
     }
   }, [activeGroupId]);
@@ -1365,16 +1350,6 @@ export default function App() {
 
     try {
       await api.votePoll(pollId, optionId, status, currentUser.id);
-      if (activeGroupId) {
-        api.getPolls(activeGroupId).then((freshPolls) => {
-          if (Array.isArray(freshPolls)) {
-            setPolls((prev) => {
-              const others = prev.filter((p) => p.groupId !== activeGroupId);
-              return [...freshPolls, ...others];
-            });
-          }
-        }).catch(() => {});
-      }
     } catch (err) {
       console.error('Error voting in PostgreSQL:', err);
     }
@@ -1673,25 +1648,6 @@ export default function App() {
         return [newExp, ...filtered];
       });
 
-      // 3. Forced immediate re-fetching of all expenses & settlements (no reliance on SSE)
-      const [freshExps, freshSettlements] = await Promise.all([
-        api.getExpenses(activeGroupId).catch(() => null),
-        api.getSettlements(activeGroupId).catch(() => null),
-      ]);
-
-      if (Array.isArray(freshExps)) {
-        setExpenses((prev) => {
-          const others = prev.filter((e) => e.groupId !== activeGroupId);
-          return [...freshExps, ...others];
-        });
-      }
-      if (Array.isArray(freshSettlements)) {
-        setSettlements((prev) => {
-          const freshIds = new Set(freshSettlements.map((s) => s.id));
-          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-          return [...freshSettlements, ...others];
-        });
-      }
     } catch (err) {
       console.error('Error adding expense in PostgreSQL:', err);
       setExpenses((prev) => prev.filter((exp) => exp.id !== tempId));
@@ -1713,25 +1669,6 @@ export default function App() {
         prev.map((exp) => (exp.id === expenseId ? updated : exp))
       );
 
-      // 2. Forced immediate re-fetching of all expenses & settlements
-      const [freshExps, freshSettlements] = await Promise.all([
-        api.getExpenses(activeGroupId).catch(() => null),
-        api.getSettlements(activeGroupId).catch(() => null),
-      ]);
-
-      if (Array.isArray(freshExps)) {
-        setExpenses((prev) => {
-          const others = prev.filter((e) => e.groupId !== activeGroupId);
-          return [...freshExps, ...others];
-        });
-      }
-      if (Array.isArray(freshSettlements)) {
-        setSettlements((prev) => {
-          const freshIds = new Set(freshSettlements.map((s) => s.id));
-          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-          return [...freshSettlements, ...others];
-        });
-      }
     } catch (err) {
       console.error('Error updating expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -1749,25 +1686,6 @@ export default function App() {
     try {
       await api.deleteExpense(expenseId);
 
-      // 2. Forced immediate re-fetching of all expenses & settlements
-      const [freshExps, freshSettlements] = await Promise.all([
-        api.getExpenses(activeGroupId).catch(() => null),
-        api.getSettlements(activeGroupId).catch(() => null),
-      ]);
-
-      if (Array.isArray(freshExps)) {
-        setExpenses((prev) => {
-          const others = prev.filter((e) => e.groupId !== activeGroupId);
-          return [...freshExps, ...others];
-        });
-      }
-      if (Array.isArray(freshSettlements)) {
-        setSettlements((prev) => {
-          const freshIds = new Set(freshSettlements.map((s) => s.id));
-          const others = prev.filter((s) => s.groupId && s.groupId !== activeGroupId && !freshIds.has(s.id));
-          return [...freshSettlements, ...others];
-        });
-      }
     } catch (err) {
       console.error('Error deleting expense in PostgreSQL:', err);
       // Reload on error to ensure sync
@@ -1839,18 +1757,6 @@ export default function App() {
           return [saved, ...filtered];
         });
 
-        // Background synchronization to guarantee strict consistency
-        api.getSettlements(targetGroupId).then((freshSettlements) => {
-          if (Array.isArray(freshSettlements) && freshSettlements.length > 0) {
-            setSettlements((prev) => {
-              const freshIds = new Set(freshSettlements.map((s) => s.id));
-              const otherGroupSettlements = prev.filter(
-                (s) => s.groupId && s.groupId !== targetGroupId && !freshIds.has(s.id)
-              );
-              return [...freshSettlements, ...otherGroupSettlements];
-            });
-          }
-        }).catch(() => {});
       }
     } catch (err) {
       console.error('Erreur lors du règlement de la dette en base:', err);
@@ -2232,17 +2138,7 @@ export default function App() {
         const filtered = prev.filter((p) => p.id !== newPoll.id);
         return [newPoll, ...filtered];
       });
-      handleSendMessage(`Nouveau sondage ouvert : "${newPoll.title}".`);
-      if (activeGroupId) {
-        api.getPolls(activeGroupId).then((freshPolls) => {
-          if (Array.isArray(freshPolls)) {
-            setPolls((prev) => {
-              const others = prev.filter((p) => p.groupId !== activeGroupId);
-              return [...freshPolls, ...others];
-            });
-          }
-        }).catch(() => {});
-      }
+      // Le nouvel état est directement appliqué via la réponse serveur et diffusé par SSE
     } catch (err) {
       console.error('Error creating poll in PostgreSQL:', err);
     } finally {

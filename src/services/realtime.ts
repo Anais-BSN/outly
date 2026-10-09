@@ -1,3 +1,4 @@
+import Pusher, { Channel } from 'pusher-js';
 import { getApiBaseUrl } from './api';
 
 export interface RealtimeEvent {
@@ -11,32 +12,77 @@ export interface RealtimeEvent {
 type EventListener = (event: RealtimeEvent) => void;
 
 class RealtimeService {
+  private pusher: Pusher | null = null;
+  private userChannel: Channel | null = null;
+  private activeGroupChannel: Channel | null = null;
+  private currentGroupId: string | null = null;
+  private currentUserId: string | null = null;
+
   private eventSource: EventSource | null = null;
   private listeners: Set<EventListener> = new Set();
   private reconnectTimeout: any = null;
-  private currentUserId: string | null = null;
   private isConnecting: boolean = false;
   private reconnectAttempts: number = 0;
-  private wasConnected: boolean = false;
   private networkListenersAttached: boolean = false;
+  private isPusherActive: boolean = false;
 
   constructor() {
     this.setupNetworkListeners();
+    this.initPusher();
+  }
+
+  private initPusher(): void {
+    const pusherKey = (import.meta as any).env?.VITE_PUSHER_KEY;
+    const pusherCluster = (import.meta as any).env?.VITE_PUSHER_CLUSTER || 'eu';
+
+    if (pusherKey && !pusherKey.includes('ton_key')) {
+      try {
+        this.pusher = new Pusher(pusherKey, {
+          cluster: pusherCluster,
+          forceTLS: true,
+        });
+
+        this.pusher.connection.bind('connected', () => {
+          this.isPusherActive = true;
+          console.debug('[Realtime:Pusher] Connecté avec succès au cluster', pusherCluster);
+        });
+
+        this.pusher.connection.bind('error', (err: any) => {
+          console.warn('[Realtime:Pusher] Avertissement connexion Pusher:', err);
+        });
+
+        this.pusher.connection.bind('disconnected', () => {
+          this.isPusherActive = false;
+        });
+      } catch (err) {
+        console.error('[Realtime:Pusher] Erreur initialisation Pusher:', err);
+        this.isPusherActive = false;
+      }
+    } else {
+      console.debug('[Realtime] Clés Pusher non configurées, bascule sur flux temps réel standard');
+    }
   }
 
   private setupNetworkListeners(): void {
     if (typeof window === 'undefined' || this.networkListenersAttached) return;
 
     window.addEventListener('online', () => {
-      console.log('[Realtime] Réseau rétabli (online) - vérification de la connexion');
+      console.debug('[Realtime] Réseau rétabli (online)');
       this.reconnectAttempts = 0;
-      this.reconnectImmediately();
+      if (this.pusher && this.pusher.connection.state !== 'connected') {
+        this.pusher.connect();
+      }
+      if (!this.isPusherActive) {
+        this.reconnectImmediately();
+      }
     });
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        if (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED) {
-          console.log('[Realtime] Application revenue au premier plan - reconnexion immédiate');
+        if (this.pusher && this.pusher.connection.state !== 'connected') {
+          this.pusher.connect();
+        }
+        if (!this.isPusherActive && (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED)) {
           this.reconnectAttempts = 0;
           this.reconnectImmediately();
         }
@@ -47,14 +93,68 @@ class RealtimeService {
   }
 
   public connect(userId: string): void {
-    if (this.currentUserId === userId && this.eventSource && this.eventSource.readyState === EventSource.OPEN) {
+    if (this.currentUserId === userId) {
       return;
     }
 
-    this.disconnect();
     this.currentUserId = userId;
-    this.reconnectAttempts = 0;
-    this.initEventSource();
+
+    // 1. Abonnement au canal utilisateur Pusher
+    if (this.pusher) {
+      if (this.userChannel) {
+        this.pusher.unsubscribe(`user-${this.currentUserId}`);
+      }
+      const userChannelName = `user-${userId}`;
+      this.userChannel = this.pusher.subscribe(userChannelName);
+      
+      this.userChannel.bind_global((eventName: string, data: any) => {
+        if (eventName.startsWith('pusher:')) return;
+        const normalizedEvent: RealtimeEvent = {
+          type: data?.type || eventName,
+          groupId: data?.groupId,
+          userId: data?.userId || userId,
+          data: data?.data !== undefined ? data.data : data,
+          timestamp: data?.timestamp || new Date().toISOString(),
+        };
+        this.notifyListeners(normalizedEvent);
+      });
+    }
+
+    // 2. Flux SSE de secours si Pusher n'est pas actif
+    if (!this.isPusherActive) {
+      this.disconnectSSE();
+      this.initEventSource();
+    }
+  }
+
+  public setActiveGroup(groupId: string): void {
+    if (this.currentGroupId === groupId) return;
+
+    // Désabonnement propre du groupe précédent
+    if (this.pusher && this.activeGroupChannel && this.currentGroupId) {
+      this.pusher.unsubscribe(`group-${this.currentGroupId}`);
+      this.activeGroupChannel = null;
+    }
+
+    this.currentGroupId = groupId;
+
+    if (!groupId || !this.pusher) return;
+
+    // Abonnement au canal dédié du nouveau groupe
+    const groupChannelName = `group-${groupId}`;
+    this.activeGroupChannel = this.pusher.subscribe(groupChannelName);
+
+    this.activeGroupChannel.bind_global((eventName: string, data: any) => {
+      if (eventName.startsWith('pusher:')) return;
+      const normalizedEvent: RealtimeEvent = {
+        type: data?.type || eventName,
+        groupId: data?.groupId || groupId,
+        userId: data?.userId,
+        data: data?.data !== undefined ? data.data : data,
+        timestamp: data?.timestamp || new Date().toISOString(),
+      };
+      this.notifyListeners(normalizedEvent);
+    });
   }
 
   private initEventSource(): void {
@@ -68,19 +168,8 @@ class RealtimeService {
 
       this.eventSource.onopen = () => {
         this.isConnecting = false;
-        const hadPriorConnection = this.wasConnected;
-        this.wasConnected = true;
         this.reconnectAttempts = 0;
-        console.debug('[Realtime] Flux SSE connecté avec succès pour', this.currentUserId, 'sur', url);
-
-        // Si la connexion a été rétablie après une coupure, notifier les composants pour rafraîchir les données
-        if (hadPriorConnection) {
-          this.notifyListeners({
-            type: 'connection:restored',
-            userId: this.currentUserId || undefined,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        console.debug('[Realtime:SSE] Flux connecté avec succès');
       };
 
       this.eventSource.onmessage = (e) => {
@@ -89,13 +178,12 @@ class RealtimeService {
           const parsed: RealtimeEvent = JSON.parse(e.data);
           this.notifyListeners(parsed);
         } catch (err) {
-          console.debug('[Realtime] Erreur de parsing SSE:', err);
+          console.debug('[Realtime] Erreur de parsing événement:', err);
         }
       };
 
       this.eventSource.onerror = () => {
         this.isConnecting = false;
-        // Si la connexion est fermée, planifier une reconnexion silencieuse avec backoff exponentiel
         if (this.eventSource?.readyState === EventSource.CLOSED) {
           this.scheduleReconnect();
         }
@@ -112,10 +200,7 @@ class RealtimeService {
       this.reconnectTimeout = null;
     }
     if (this.currentUserId) {
-      if (this.eventSource) {
-        this.eventSource.close();
-        this.eventSource = null;
-      }
+      this.disconnectSSE();
       this.isConnecting = false;
       this.initEventSource();
     }
@@ -124,18 +209,17 @@ class RealtimeService {
   private scheduleReconnect(): void {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-    // Backoff exponentiel : 1s, 2s, 4s, plafonné à 8s
     const delay = Math.min(8000, 1000 * Math.pow(1.8, Math.min(this.reconnectAttempts, 4)));
     this.reconnectAttempts++;
 
     this.reconnectTimeout = setTimeout(() => {
-      if (this.currentUserId) {
+      if (this.currentUserId && !this.isPusherActive) {
         this.initEventSource();
       }
     }, delay);
   }
 
-  public disconnect(): void {
+  private disconnectSSE(): void {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -144,7 +228,23 @@ class RealtimeService {
       this.eventSource.close();
       this.eventSource = null;
     }
+  }
+
+  public disconnect(): void {
+    if (this.pusher) {
+      if (this.userChannel && this.currentUserId) {
+        this.pusher.unsubscribe(`user-${this.currentUserId}`);
+        this.userChannel = null;
+      }
+      if (this.activeGroupChannel && this.currentGroupId) {
+        this.pusher.unsubscribe(`group-${this.currentGroupId}`);
+        this.activeGroupChannel = null;
+      }
+    }
+
+    this.disconnectSSE();
     this.currentUserId = null;
+    this.currentGroupId = null;
     this.isConnecting = false;
     this.reconnectAttempts = 0;
   }
@@ -161,7 +261,7 @@ class RealtimeService {
       try {
         listener(event);
       } catch (err) {
-        console.error('[Realtime] Erreur dans le listener SSE:', err);
+        console.error('[Realtime] Erreur dans le listener:', err);
       }
     }
   }

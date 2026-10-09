@@ -2131,8 +2131,15 @@ apiRouter.get('/events', async (req: Request, res: Response) => {
 
     const eventsRes = await query(sql, params);
 
-    // Charger les RSVP
-    const rsvpRes = await query(`SELECT event_id as "eventId", user_id as "userId", status FROM event_rsvps`);
+    // Charger les RSVP uniquement pour les événements concernés
+    let rsvpRes = { rows: [] as any[] };
+    if (eventsRes.rows.length > 0) {
+      const eventIds = eventsRes.rows.map((ev) => ev.id);
+      rsvpRes = await query(
+        `SELECT event_id as "eventId", user_id as "userId", status FROM event_rsvps WHERE event_id = ANY($1)`,
+        [eventIds]
+      );
+    }
     const rsvpByEvent: Record<string, Record<string, string>> = {};
     for (const r of rsvpRes.rows) {
       if (!rsvpByEvent[r.eventId]) {
@@ -2520,23 +2527,18 @@ apiRouter.get('/messages', async (req: Request, res: Response) => {
       });
     };
 
-    if (limit && limit > 0) {
-      params.push(limit);
-      const sql = `
-        SELECT * FROM (
-          ${baseSql}
-          ORDER BY m.timestamp DESC
-          LIMIT $${params.length}
-        ) sub
-        ORDER BY sub.timestamp ASC
-      `;
-      const result = await query(sql, params);
-      return res.json(processRows(result.rows));
-    } else {
-      baseSql += ` ORDER BY m.timestamp ASC`;
-      const result = await query(baseSql, params);
-      return res.json(processRows(result.rows));
-    }
+    const effectiveLimit = limit && limit > 0 ? limit : 60;
+    params.push(effectiveLimit);
+    const sql = `
+      SELECT * FROM (
+        ${baseSql}
+        ORDER BY m.timestamp DESC
+        LIMIT $${params.length}
+      ) sub
+      ORDER BY sub.timestamp ASC
+    `;
+    const result = await query(sql, params);
+    return res.json(processRows(result.rows));
   } catch (err: any) {
     console.error('Error in GET /messages:', err);
     res.status(500).json({ error: err.message });
@@ -2845,10 +2847,16 @@ apiRouter.get('/polls', async (req: Request, res: Response) => {
 
     const pollsRes = await query(sql, params);
 
-    const optionsRes = await query(
-      `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
-       FROM poll_options`
-    );
+    let optionsRes = { rows: [] as any[] };
+    if (pollsRes.rows.length > 0) {
+      const pollIds = pollsRes.rows.map((p) => p.id);
+      optionsRes = await query(
+        `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
+         FROM poll_options
+         WHERE poll_id = ANY($1)`,
+        [pollIds]
+      );
+    }
 
     const optionsByPoll: Record<string, any[]> = {};
     for (const opt of optionsRes.rows) {

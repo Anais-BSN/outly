@@ -1,6 +1,6 @@
 // server/app.ts
 import express from "express";
-import dotenv3 from "dotenv";
+import dotenv4 from "dotenv";
 
 // server/api.ts
 import { Router } from "express";
@@ -371,13 +371,40 @@ var emailService = {
 };
 
 // server/events.ts
+import Pusher from "pusher";
+import dotenv3 from "dotenv";
+dotenv3.config();
 var EventBroadcaster = class {
   constructor() {
     this.subscribers = /* @__PURE__ */ new Map();
     this.pingInterval = null;
+    this.pusher = null;
+    this.initPusher();
     this.pingInterval = setInterval(() => {
       this.sendHeartbeat();
     }, 25e3);
+  }
+  initPusher() {
+    const appId = process.env.PUSHER_APP_ID;
+    const key = process.env.PUSHER_KEY;
+    const secret = process.env.PUSHER_SECRET;
+    const cluster = process.env.PUSHER_CLUSTER || "eu";
+    if (appId && key && secret && !appId.includes("ton_app_id")) {
+      try {
+        this.pusher = new Pusher({
+          appId,
+          key,
+          secret,
+          cluster,
+          useTLS: true
+        });
+        console.log("[Pusher] Initialis\xE9 avec succ\xE8s sur le cluster", cluster);
+      } catch (err) {
+        console.error("[Pusher] Erreur lors de l'initialisation:", err?.message || err);
+      }
+    } else {
+      console.log("[Pusher] Cl\xE9s non d\xE9finies ou par d\xE9faut, fallback SSE actif");
+    }
   }
   addSubscriber(id, res, userId, groupId) {
     this.subscribers.set(id, { id, res, userId, groupId });
@@ -402,6 +429,25 @@ var EventBroadcaster = class {
       ...event,
       timestamp: event.timestamp || (/* @__PURE__ */ new Date()).toISOString()
     };
+    if (this.pusher) {
+      const channels = [];
+      if (event.groupId) {
+        channels.push(`group-${event.groupId}`);
+      }
+      if (event.userId) {
+        channels.push(`user-${event.userId}`);
+      }
+      if (channels.length === 0) {
+        channels.push("global");
+      }
+      this.pusher.trigger(channels, event.type, payload).catch((err) => {
+        console.warn("[Pusher] Erreur lors de l'\xE9mission de l'\xE9v\xE9nement:", err?.message || err);
+      });
+      if (!channels.includes("global") && !channels.includes(`user-${event.userId}`)) {
+        this.pusher.trigger(channels, "outlys-event", payload).catch(() => {
+        });
+      }
+    }
     const message = `data: ${JSON.stringify(payload)}
 
 `;
@@ -2241,7 +2287,14 @@ apiRouter.get("/events", async (req, res) => {
     }
     sql += ` ORDER BY e.start_datetime ASC`;
     const eventsRes = await query(sql, params);
-    const rsvpRes = await query(`SELECT event_id as "eventId", user_id as "userId", status FROM event_rsvps`);
+    let rsvpRes = { rows: [] };
+    if (eventsRes.rows.length > 0) {
+      const eventIds = eventsRes.rows.map((ev) => ev.id);
+      rsvpRes = await query(
+        `SELECT event_id as "eventId", user_id as "userId", status FROM event_rsvps WHERE event_id = ANY($1)`,
+        [eventIds]
+      );
+    }
     const rsvpByEvent = {};
     for (const r of rsvpRes.rows) {
       if (!rsvpByEvent[r.eventId]) {
@@ -2562,23 +2615,18 @@ apiRouter.get("/messages", async (req, res) => {
         };
       });
     };
-    if (limit && limit > 0) {
-      params.push(limit);
-      const sql = `
-        SELECT * FROM (
-          ${baseSql}
-          ORDER BY m.timestamp DESC
-          LIMIT $${params.length}
-        ) sub
-        ORDER BY sub.timestamp ASC
-      `;
-      const result = await query(sql, params);
-      return res.json(processRows(result.rows));
-    } else {
-      baseSql += ` ORDER BY m.timestamp ASC`;
-      const result = await query(baseSql, params);
-      return res.json(processRows(result.rows));
-    }
+    const effectiveLimit = limit && limit > 0 ? limit : 60;
+    params.push(effectiveLimit);
+    const sql = `
+      SELECT * FROM (
+        ${baseSql}
+        ORDER BY m.timestamp DESC
+        LIMIT $${params.length}
+      ) sub
+      ORDER BY sub.timestamp ASC
+    `;
+    const result = await query(sql, params);
+    return res.json(processRows(result.rows));
   } catch (err) {
     console.error("Error in GET /messages:", err);
     res.status(500).json({ error: err.message });
@@ -2821,10 +2869,16 @@ apiRouter.get("/polls", async (req, res) => {
     }
     sql += ` ORDER BY p.created_at DESC`;
     const pollsRes = await query(sql, params);
-    const optionsRes = await query(
-      `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
-       FROM poll_options`
-    );
+    let optionsRes = { rows: [] };
+    if (pollsRes.rows.length > 0) {
+      const pollIds = pollsRes.rows.map((p) => p.id);
+      optionsRes = await query(
+        `SELECT id, poll_id as "pollId", text, date_value as "dateValue", end_date_value as "endDateValue", COALESCE(votes, '[]'::jsonb) as votes
+         FROM poll_options
+         WHERE poll_id = ANY($1)`,
+        [pollIds]
+      );
+    }
     const optionsByPoll = {};
     for (const opt of optionsRes.rows) {
       if (!optionsByPoll[opt.pollId]) {
@@ -4246,7 +4300,7 @@ apiRouter.post("/calls/leave", async (req, res) => {
 });
 
 // server/app.ts
-dotenv3.config();
+dotenv4.config();
 var app = express();
 app.use(corsMiddleware);
 app.use((_req, res, next) => {
