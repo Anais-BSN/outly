@@ -93,11 +93,11 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-profile-avatar-btn"
               onClick={onOpenDrawer}
               className="hidden sm:block ml-1 p-0.5 rounded-full ring-2 ring-[#C7B7A3] hover:ring-[#6D2932] transition-all cursor-pointer"
-              title={currentUser.firstName || 'Profil'}
+              title={currentUser.name || currentUser.firstName || 'Profil'}
             >
               <img
                 src={currentUser.avatar || '/Avatar_Herisson.jpg'}
-                alt={currentUser.firstName || 'Avatar'}
+                alt={currentUser.name || currentUser.firstName || 'Avatar'}
                 className="w-7 h-7 rounded-full object-cover"
                 referrerPolicy="no-referrer"
               />

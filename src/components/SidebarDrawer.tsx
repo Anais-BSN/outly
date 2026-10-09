@@ -321,11 +321,11 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 <div className="relative shrink-0">
                   <img
                     src={currentUser.avatar}
-                    alt={currentUser.firstName}
+                    alt={currentUser.name || currentUser.firstName || 'Avatar'}
                     onClick={(e) => {
                       if (onViewAvatar && currentUser.avatar) {
                         e.stopPropagation();
-                        onViewAvatar(currentUser.avatar, `${currentUser.firstName} ${currentUser.lastName}`.trim(), currentUser.handle);
+                        onViewAvatar(currentUser.avatar, currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur', currentUser.handle);
                       }
                     }}
                     className="w-11 h-11 rounded-full object-cover ring-2 ring-[#6D2932] dark:ring-[#E8D8C4] cursor-pointer hover:scale-105 transition-transform"
@@ -337,7 +337,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 </div>
                 <div className="text-left min-w-0">
                   <div className="font-bold text-xs text-[#27272A] dark:text-[#FFF9EB] group-hover:text-[#6D2932] dark:group-hover:text-amber-200 transition-colors truncate">
-                    {currentUser.firstName} {currentUser.lastName}
+                    {currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur'}
                   </div>
                   <div className="text-[11px] text-[#6D2932] dark:text-zinc-400 font-semibold truncate">
                     {currentUser.handle}

@@ -49,11 +49,11 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
   const getCreatorName = (task: LogisticsTask) => {
     if (!task.createdBy) return null;
-    if (task.createdBy === currentUser.id || task.createdBy === 'user-me') return 'Moi';
+    if (currentUser && task.createdBy === currentUser.id) return 'Moi';
     const found = safeMembers.find(
       (m) => m.id === task.createdBy || m.userId === task.createdBy
     );
-    return found ? (found.firstName || found.name) : 'Un membre';
+    return found ? (found.name || found.firstName) : 'Un membre';
   };
 
   return (

@@ -100,12 +100,12 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-amber-500/20 shadow-2xs">
             <img
               src={currentUser.avatar || '/Avatar_Herisson.jpg'}
-              alt={currentUser.firstName}
+              alt={currentUser.name || currentUser.firstName || 'Vous'}
               className="w-8 h-8 rounded-full object-cover ring-1 ring-[#5D0D18] shrink-0"
             />
             <div className="min-w-0">
               <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-                {currentUser.firstName} {currentUser.lastName} (Vous)
+                {currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur'} (Vous)
               </div>
               <div className="text-[10.5px] text-[#5D0D18] dark:text-amber-300 truncate font-semibold">
                 {currentUser.handle || currentUser.email}

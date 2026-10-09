@@ -154,7 +154,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
       return {
         memberId: m.userId,
-        memberName: m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Membre',
+        memberName: m.name || m.firstName || 'Membre',
         memberAvatar: m.avatar,
         slots,
       };
@@ -870,7 +870,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                   {deduplicatedMembers.map((m) => {
                     const uid = m.userId || m.id;
                     const rsvpStatus = rsvps[uid];
-                    const memberName = m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Membre';
+                    const memberName = m.name || m.firstName || 'Membre';
 
                     return (
                       <div

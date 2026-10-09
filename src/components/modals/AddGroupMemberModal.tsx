@@ -42,13 +42,13 @@ const EligibleFriendRow = React.memo<EligibleFriendRowProps>(({ friend, isAdding
       <div className="flex items-center gap-2.5 min-w-0">
         <img
           src={friend.avatar || '/Avatar_Herisson.jpg'}
-          alt={friend.firstName}
+          alt={friend.name || friend.firstName || 'Ami'}
           className="w-9 h-9 rounded-full object-cover ring-1 ring-[#6D2932]"
           referrerPolicy="no-referrer"
         />
         <div className="min-w-0">
           <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-            {friend.firstName} {friend.lastName}
+            {friend.name || friend.firstName}
           </div>
           <div className="text-[10px] text-[#6D2932] dark:text-zinc-400 truncate">
             {friend.handle}
@@ -122,6 +122,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   const filteredFriends = eligibleFriends.filter((f) => {
     const q = searchQuery.toLowerCase();
     return (
+      (f.name && f.name.toLowerCase().includes(q)) ||
       (f.firstName && f.firstName.toLowerCase().includes(q)) ||
       (f.lastName && f.lastName.toLowerCase().includes(q)) ||
       (f.handle && f.handle.toLowerCase().includes(q)) ||
@@ -172,12 +173,13 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     setFeedbackMsg(null);
     try {
       await api.addGroupMember(group.id, friend.id, 'member', currentUser?.id);
+      const friendDisplayName = friend.name || `${friend.firstName || ''} ${friend.lastName || ''}`.trim() || 'Ami';
       onMemberAdded({
         id: friend.id,
         userId: friend.id,
-        firstName: friend.firstName,
-        lastName: friend.lastName,
-        name: `${friend.firstName} ${friend.lastName}`.trim(),
+        firstName: friend.name || friend.firstName,
+        lastName: '',
+        name: friendDisplayName,
         handle: friend.handle,
         avatar: friend.avatar,
         shares: friend.shares || 1,
@@ -186,7 +188,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
       });
       setFeedbackMsg({
         type: 'success',
-        text: `${friend.firstName} a été ajouté(e) au groupe "${group.name}" ! 🎉`,
+        text: `${friendDisplayName} a été ajouté(e) au groupe "${group.name}" ! 🎉`,
       });
     } catch (err: any) {
       setFeedbackMsg({
@@ -205,9 +207,10 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     setFeedbackMsg(null);
     try {
       await onMergeMember(group.id, vUserId, reconcileCandidate.id);
+      const candidateDisplayName = reconcileCandidate.name || reconcileCandidate.firstName || 'Ami';
       setFeedbackMsg({
         type: 'success',
-        text: `${reconcileCandidate.firstName} a été lié(e) à "${virtualMember.name || virtualMember.firstName}". Toutes les dépenses et dettes ont été fusionnées ! 🎉`,
+        text: `${candidateDisplayName} a été lié(e) à "${virtualMember.name || virtualMember.firstName}". Toutes les dépenses et dettes ont été fusionnées ! 🎉`,
       });
       setReconcileCandidate(null);
     } catch (err: any) {
@@ -238,7 +241,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
     try {
       const result = await api.inviteGroupMembers(group.id, {
         emails,
-        senderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+        senderName: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
         senderId: currentUser.id,
       });
 
@@ -327,12 +330,12 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
               <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-amber-500/20">
                 <img
                   src={reconcileCandidate.avatar || '/Avatar_Herisson.jpg'}
-                  alt={reconcileCandidate.firstName}
+                  alt={reconcileCandidate.name || reconcileCandidate.firstName || 'Ami'}
                   className="w-8 h-8 rounded-full object-cover ring-1 ring-[#6D2932]"
                 />
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-                    {reconcileCandidate.firstName} {reconcileCandidate.lastName}
+                    {reconcileCandidate.name || reconcileCandidate.firstName}
                   </div>
                   <div className="text-[10px] text-[#6D2932] dark:text-amber-300 truncate font-semibold">
                     {reconcileCandidate.handle}

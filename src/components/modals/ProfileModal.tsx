@@ -56,8 +56,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
-  const [lastName, setLastName] = useState(currentUser?.lastName || '');
+  const [name, setName] = useState(currentUser?.name || currentUser?.firstName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [avatar, setAvatar] = useState(
     currentUser?.avatar || '/Avatar_Herisson.jpg'
@@ -72,25 +71,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Field-specific inline editing states
-  const [isEditingFirstName, setIsEditingFirstName] = useState(false);
-  const [isEditingLastName, setIsEditingLastName] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
 
-  const firstNameRef = useRef<HTMLDivElement>(null);
-  const lastNameRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLDivElement>(null);
   const emailRef = useRef<HTMLDivElement>(null);
 
   // Annulation en cas de clic en dehors du champ édité ou du bouton d'enregistrement
   useEffect(() => {
     const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
-      if (isEditingFirstName && firstNameRef.current && !firstNameRef.current.contains(target)) {
-        setFirstName(currentUser?.firstName || '');
-        setIsEditingFirstName(false);
-      }
-      if (isEditingLastName && lastNameRef.current && !lastNameRef.current.contains(target)) {
-        setLastName(currentUser?.lastName || '');
-        setIsEditingLastName(false);
+      if (isEditingName && nameRef.current && !nameRef.current.contains(target)) {
+        setName(currentUser?.name || currentUser?.firstName || '');
+        setIsEditingName(false);
       }
       if (isEditingEmail && emailRef.current && !emailRef.current.contains(target)) {
         setEmail(currentUser?.email || '');
@@ -98,7 +91,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       }
     };
 
-    if (isEditingFirstName || isEditingLastName || isEditingEmail) {
+    if (isEditingName || isEditingEmail) {
       document.addEventListener('mousedown', handlePointerDownOutside);
       document.addEventListener('touchstart', handlePointerDownOutside);
     }
@@ -107,20 +100,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       document.removeEventListener('mousedown', handlePointerDownOutside);
       document.removeEventListener('touchstart', handlePointerDownOutside);
     };
-  }, [isEditingFirstName, isEditingLastName, isEditingEmail, currentUser]);
+  }, [isEditingName, isEditingEmail, currentUser]);
 
   useEffect(() => {
     if (isOpen) {
-      setFirstName(currentUser?.firstName || '');
-      setLastName(currentUser?.lastName || '');
+      setName(currentUser?.name || currentUser?.firstName || '');
       setEmail(currentUser?.email || '');
       setAvatar(currentUser?.avatar || '/Avatar_Herisson.jpg');
       setShares(currentUser?.shares || 1);
       const savedTheme = localStorage.getItem('outly_theme') as 'light' | 'dark' | null;
       const effectiveTheme = savedTheme || currentUser?.themePreference || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       setThemePreference(effectiveTheme);
-      setIsEditingFirstName(false);
-      setIsEditingLastName(false);
+      setIsEditingName(false);
       setIsEditingEmail(false);
     }
   }, [isOpen, currentUser]);
@@ -141,10 +132,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Auto-save on Avatar Selection
   const handleSelectAvatar = (newAvatarUrl: string) => {
     setAvatar(newAvatarUrl);
+    const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
     onSaveProfile({
       ...currentUser,
-      firstName: firstName.trim() || currentUser.firstName,
-      lastName: lastName.trim() || currentUser.lastName,
+      name: finalName,
+      firstName: finalName,
+      lastName: '',
       email: email.trim() || currentUser.email,
       avatar: newAvatarUrl,
       shares,
@@ -177,10 +170,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
     localStorage.setItem('outly_theme', newTheme);
     syncSystemBarsTheme(isDark);
+    const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
     onSaveProfile({
       ...currentUser,
-      firstName: firstName.trim() || currentUser.firstName,
-      lastName: lastName.trim() || currentUser.lastName,
+      name: finalName,
+      firstName: finalName,
+      lastName: '',
       email: email.trim() || currentUser.email,
       avatar,
       shares,
@@ -189,29 +184,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   // Coordinate Inline Save Handlers
-  const handleSaveFirstName = () => {
-    const finalVal = firstName.trim() || currentUser.firstName || 'Prénom';
-    setFirstName(finalVal);
-    setIsEditingFirstName(false);
+  const handleSaveName = () => {
+    const finalVal = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
+    setName(finalVal);
+    setIsEditingName(false);
     onSaveProfile({
       ...currentUser,
+      name: finalVal,
       firstName: finalVal,
-      lastName: lastName.trim() || currentUser.lastName,
-      email: email.trim() || currentUser.email,
-      avatar,
-      shares,
-      themePreference,
-    });
-  };
-
-  const handleSaveLastName = () => {
-    const finalVal = lastName.trim() || currentUser.lastName || 'Nom';
-    setLastName(finalVal);
-    setIsEditingLastName(false);
-    onSaveProfile({
-      ...currentUser,
-      firstName: firstName.trim() || currentUser.firstName,
-      lastName: finalVal,
+      lastName: '',
       email: email.trim() || currentUser.email,
       avatar,
       shares,
@@ -223,10 +204,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const finalVal = email.trim() || currentUser.email;
     setEmail(finalVal);
     setIsEditingEmail(false);
+    const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
     onSaveProfile({
       ...currentUser,
-      firstName: firstName.trim() || currentUser.firstName,
-      lastName: lastName.trim() || currentUser.lastName,
+      name: finalName,
+      firstName: finalName,
+      lastName: '',
       email: finalVal,
       avatar,
       shares,
@@ -238,10 +221,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     if (shares < 20) {
       const newShares = shares + 1;
       setShares(newShares);
+      const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
       onSaveProfile({
         ...currentUser,
-        firstName: firstName.trim() || currentUser.firstName,
-        lastName: lastName.trim() || currentUser.lastName,
+        name: finalName,
+        firstName: finalName,
+        lastName: '',
         email: email.trim() || currentUser.email,
         avatar,
         shares: newShares,
@@ -254,10 +239,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     if (shares > 1) {
       const newShares = shares - 1;
       setShares(newShares);
+      const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
       onSaveProfile({
         ...currentUser,
-        firstName: firstName.trim() || currentUser.firstName,
-        lastName: lastName.trim() || currentUser.lastName,
+        name: finalName,
+        firstName: finalName,
+        lastName: '',
         email: email.trim() || currentUser.email,
         avatar,
         shares: newShares,
@@ -294,10 +281,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const handleClose = () => {
+    const finalName = name.trim() || currentUser.name || currentUser.firstName || 'Nom';
     onSaveProfile({
       ...currentUser,
-      firstName: firstName.trim() || currentUser.firstName || 'Prénom',
-      lastName: lastName.trim() || currentUser.lastName || 'Nom',
+      name: finalName,
+      firstName: finalName,
+      lastName: '',
       email: email.trim() || currentUser.email,
       avatar,
       shares,
@@ -440,109 +429,55 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </span>
             </div>
 
-            {/* Prénom & Nom */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
-              {/* Prénom */}
-              <div className="space-y-1 w-full min-w-0 overflow-hidden" ref={firstNameRef}>
-                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  Prénom
-                </label>
-                {isEditingFirstName ? (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
-                    <input
-                      type="text"
-                      id="profile-input-firstname"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSaveFirstName();
-                        } else if (e.key === 'Escape') {
-                          setFirstName(currentUser?.firstName || '');
-                          setIsEditingFirstName(false);
-                        }
-                      }}
-                      autoFocus
-                      className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
-                    />
-                    <button
-                      type="button"
-                      id="profile-save-firstname-btn"
-                      onClick={handleSaveFirstName}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
-                    >
-                      <span>Enregistrer</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
-                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
-                      {firstName || currentUser.firstName || 'Non renseigné'}
-                    </span>
-                    <button
-                      type="button"
-                      id="profile-edit-firstname-btn"
-                      onClick={() => setIsEditingFirstName(true)}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
-                    >
-                      <Pencil className="w-3 h-3" />
-                      <span>Modifier</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Nom */}
-              <div className="space-y-1 w-full min-w-0 overflow-hidden" ref={lastNameRef}>
-                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  Nom
-                </label>
-                {isEditingLastName ? (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
-                    <input
-                      type="text"
-                      id="profile-input-lastname"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSaveLastName();
-                        } else if (e.key === 'Escape') {
-                          setLastName(currentUser?.lastName || '');
-                          setIsEditingLastName(false);
-                        }
-                      }}
-                      autoFocus
-                      className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
-                    />
-                    <button
-                      type="button"
-                      id="profile-save-lastname-btn"
-                      onClick={handleSaveLastName}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
-                    >
-                      <span>Enregistrer</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
-                    <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
-                      {lastName || currentUser.lastName || 'Non renseigné'}
-                    </span>
-                    <button
-                      type="button"
-                      id="profile-edit-lastname-btn"
-                      onClick={() => setIsEditingLastName(true)}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
-                    >
-                      <Pencil className="w-3 h-3" />
-                      <span>Modifier</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Nom */}
+            <div className="w-full min-w-0 overflow-hidden" ref={nameRef}>
+              <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                Nom (ou nom d'affichage)
+              </label>
+              {isEditingName ? (
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
+                  <input
+                    type="text"
+                    id="profile-input-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSaveName();
+                      } else if (e.key === 'Escape') {
+                        setName(currentUser?.name || currentUser?.firstName || '');
+                        setIsEditingName(false);
+                      }
+                    }}
+                    autoFocus
+                    className="w-full min-w-0 flex-1 px-1 py-0.5 text-xs bg-transparent text-[#27272A] dark:text-[#FFF9EB] focus:outline-none h-[26px]"
+                  />
+                  <button
+                    type="button"
+                    id="profile-save-name-btn"
+                    onClick={handleSaveName}
+                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
+                  >
+                    <span>Enregistrer</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 w-full min-w-0 h-[42px] box-border">
+                  <span className="text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] truncate min-w-0 px-1">
+                    {name || currentUser.name || currentUser.firstName || 'Non renseigné'}
+                  </span>
+                  <button
+                    type="button"
+                    id="profile-edit-name-btn"
+                    onClick={() => setIsEditingName(true)}
+                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Modifier</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* E-mail & Pseudo */}
@@ -845,7 +780,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
-                            {u.firstName} {u.lastName}
+                            {u.name || u.firstName || 'Utilisateur'}
                           </span>
                           {isCurrent && (
                             <span className="px-1.5 py-0.5 bg-[#5D0D18] text-[#FFF9EB] text-[9px] font-bold rounded-full shrink-0">

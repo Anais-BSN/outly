@@ -214,12 +214,12 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                       <div className="flex items-center gap-2">
                         <img
                           src={friend.avatar}
-                          alt={friend.firstName}
+                          alt={friend.name || friend.firstName || 'Ami'}
                           className="w-7 h-7 rounded-full object-cover ring-1 ring-[#C7B7A3]"
                           referrerPolicy="no-referrer"
                         />
                         <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                          {friend.firstName} {friend.lastName}
+                          {friend.name || friend.firstName}
                         </span>
                       </div>
 

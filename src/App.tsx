@@ -231,17 +231,30 @@ export default function App() {
     try {
       let activeUserId = userId || localStorage.getItem('outly_user_id');
 
+      // Si l'identifiant stocké est l'ancien fallback 'user-me', le rejeter immédiatement
+      if (activeUserId === 'user-me') {
+        activeUserId = null;
+        localStorage.removeItem('outly_user_id');
+        localStorage.removeItem('outly_auth_token');
+        localStorage.removeItem('outly_user_profile');
+        await clearNativeSession();
+      }
+
       // Récupération automatique de la session persistante native si non trouvée en localStorage
       if (!activeUserId) {
         const nativeSession = await getNativeSession();
-        if (nativeSession.userId) {
+        if (nativeSession.userId && nativeSession.userId !== 'user-me') {
           activeUserId = nativeSession.userId;
           localStorage.setItem('outly_user_id', nativeSession.userId);
         }
       }
 
-      // If not logged in, prompt authentication immediately (unless user is arriving via reset-password or download deep link)
+      // Si aucune session valide, purge immédiate et affichage de la page de connexion
       if (!activeUserId) {
+        localStorage.removeItem('outly_user_id');
+        localStorage.removeItem('outly_auth_token');
+        localStorage.removeItem('outly_user_profile');
+        await clearNativeSession();
         setCurrentUser(null);
         const isResetRoute = window.location.pathname.startsWith('/reset-password') || window.location.search.includes('token=');
         const isDownloadRoute = window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
@@ -325,9 +338,36 @@ export default function App() {
       setNotifications(notifsRes);
     } catch (err: any) {
       console.error('Failed to load data from PostgreSQL database:', err);
-      if (err.message && (err.message.includes('404') || err.message.includes('introuvable') || err.message.includes('non trouvé'))) {
+      // En cas d'erreur d'authentification ou session introuvable : purge immédiate et affichage du login sans fallback
+      if (
+        err.status === 401 ||
+        err.status === 404 ||
+        (err.message && (
+          err.message.includes('401') ||
+          err.message.includes('404') ||
+          err.message.includes('Session') ||
+          err.message.includes('authentifi') ||
+          err.message.includes('introuvable') ||
+          err.message.includes('non trouvé') ||
+          err.message.includes('invalide')
+        ))
+      ) {
         localStorage.removeItem('outly_user_id');
+        localStorage.removeItem('outly_auth_token');
+        localStorage.removeItem('outly_user_profile');
+        sessionStorage.clear();
+        await clearNativeSession();
         setCurrentUser(null);
+        setGroups([]);
+        setEvents([]);
+        setMessages([]);
+        setPolls([]);
+        setGalleryItems([]);
+        setTasks([]);
+        setExpenses([]);
+        setSettlements([]);
+        setFriends([]);
+        setNotifications([]);
         setIsAuthOpen(true);
       } else {
         setLoadError(err.message || 'Impossible de se connecter à la base de données Outlys');
@@ -1072,8 +1112,9 @@ export default function App() {
   const unreadMessagesCount = groupMessages.filter(
     (m) =>
       !m.isSystem &&
-      m.senderId !== currentUser?.id &&
-      (!m.readBy || !m.readBy.includes(currentUser?.id || 'user-me'))
+      currentUser?.id &&
+      m.senderId !== currentUser.id &&
+      (!m.readBy || !m.readBy.includes(currentUser.id))
   ).length;
 
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
@@ -1169,7 +1210,7 @@ export default function App() {
       id: tempId,
       groupId: activeGroupId,
       senderId: currentUser.id,
-      senderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      senderName: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
       senderAvatar: currentUser.avatar,
       timestamp: new Date().toISOString(),
       text,
@@ -1190,7 +1231,7 @@ export default function App() {
             groupId: activeGroupId,
             imageUrl: img,
             uploaderId: currentUser.id,
-            uploaderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+            uploaderName: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
             uploaderAvatar: currentUser.avatar,
             timestamp: new Date().toISOString(),
             caption: text || 'Photo partagée dans le fil',
@@ -1353,7 +1394,7 @@ export default function App() {
                   ...otherVotes,
                   {
                     userId: currentUser.id,
-                    userName: currentUser.firstName,
+                    userName: currentUser.name || currentUser.firstName || 'Moi',
                     userAvatar: currentUser.avatar,
                     status,
                   },
@@ -1482,7 +1523,7 @@ export default function App() {
       groupId: activeGroupId,
       imageUrl,
       uploaderId: currentUser.id,
-      uploaderName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      uploaderName: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
       uploaderAvatar: currentUser.avatar,
       timestamp: new Date().toISOString(),
       caption,
@@ -1536,7 +1577,7 @@ export default function App() {
           ? {
               ...t,
               assignedToId: currentUser.id,
-              assignedToName: currentUser.firstName,
+              assignedToName: currentUser.name || currentUser.firstName || 'Membre',
               assignedToAvatar: currentUser.avatar,
             }
           : t
@@ -1638,7 +1679,7 @@ export default function App() {
       date: expenseData.date || new Date().toISOString().split('T')[0],
       category: (expenseData.category as ExpenseCategory) || 'Autre',
       paidById: expenseData.paidById || currentUser.id,
-      paidByName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      paidByName: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
       paidByAvatar: currentUser.avatar,
       splitMode: expenseData.splitMode || 'custom',
       participantIds: expenseData.participantIds || activeGroup.members.map((m) => m.userId || m.id),
@@ -1798,9 +1839,9 @@ export default function App() {
         {
           id: `gm-${Date.now()}`,
           userId: currentUser.id,
-          name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
-          firstName: currentUser.firstName,
-          lastName: currentUser.lastName,
+          name: currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur',
+          firstName: currentUser.name || currentUser.firstName,
+          lastName: '',
           handle: currentUser.handle,
           avatar: currentUser.avatar,
           shares: currentUser.shares || 1,
@@ -2189,17 +2230,18 @@ export default function App() {
 
   // Handlers: Friends
   const handleSendFriendRequest = async (handleOrEmail: string | string[]) => {
+    if (!currentUser) throw new Error('Session non authentifiée');
     try {
       if (Array.isArray(handleOrEmail)) {
-        const batchResult = await api.sendBatchFriendRequests(handleOrEmail, currentUser?.id || 'user-me');
+        const batchResult = await api.sendBatchFriendRequests(handleOrEmail, currentUser.id);
         if (batchResult.results && batchResult.results.length > 0) {
-          const updatedFriends = await api.getFriends(currentUser?.id || 'user-me');
+          const updatedFriends = await api.getFriends(currentUser.id);
           setFriends(updatedFriends);
         }
         return batchResult;
       }
 
-      const newFriend = await api.sendFriendRequest(handleOrEmail, currentUser?.id || 'user-me');
+      const newFriend = await api.sendFriendRequest(handleOrEmail, currentUser.id);
       setFriends((prev) => {
         const existing = prev.filter((f) => f.id !== newFriend.id);
         return [newFriend, ...existing];
@@ -2259,7 +2301,7 @@ export default function App() {
           m.userId === updated.id || m.id === updated.id
             ? {
                 ...m,
-                name: `${updated.firstName} ${updated.lastName}`.trim(),
+                name: updated.name || `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || 'Utilisateur',
                 avatar: updated.avatar,
                 shares: updated.shares,
               }
@@ -2766,6 +2808,7 @@ export default function App() {
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser || {
           id: 'temp',
+          name: 'Invité',
           firstName: 'Invité',
           lastName: '',
           email: '',

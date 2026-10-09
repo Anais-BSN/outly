@@ -116,7 +116,7 @@ export function calculateExpensesAndDebts(
 
     const newBal: InternalDebtBalance = {
       userId: finalUserId,
-      userName: member?.firstName || member?.name || (fallbackName && fallbackName !== 'Membre' ? fallbackName : 'Utilisateur supprimé'),
+      userName: member?.name || member?.firstName || (fallbackName && fallbackName !== 'Membre' ? fallbackName : 'Utilisateur supprimé'),
       userAvatar: member?.avatar || fallbackAvatar || '',
       paidExpensesCents: 0,
       shareCents: 0,
@@ -136,7 +136,7 @@ export function calculateExpensesAndDebts(
     if (!m) return;
     const uid = m.userId || m.id;
     if (uid) {
-      const bal = getOrCreateInternalBalance(uid, m.firstName || m.name, m.avatar);
+      const bal = getOrCreateInternalBalance(uid, m.name || m.firstName, m.avatar);
       if (bal) {
         if (m.id) internalBalances[m.id] = bal;
         if (m.userId) internalBalances[m.userId] = bal;
@@ -195,7 +195,7 @@ export function calculateExpensesAndDebts(
     participantShareDefs.forEach(({ userId, member }) => {
       const partCents = allocatedMap.get(userId) || 0;
       totalExpenseSharesCents += partCents;
-      const partBal = getOrCreateInternalBalance(userId, member?.firstName || member?.name, member?.avatar);
+      const partBal = getOrCreateInternalBalance(userId, member?.name || member?.firstName, member?.avatar);
       if (partBal) {
         partBal.shareCents += partCents;
       }

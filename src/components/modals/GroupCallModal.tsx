@@ -519,10 +519,10 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
                     >
                       <img
                         src={m.avatar || '/Avatar_Herisson.jpg'}
-                        alt={m.firstName}
+                        alt={m.name || m.firstName || 'Membre'}
                         className="w-4 h-4 rounded-full object-cover"
                       />
-                      <span className="text-[11px] font-medium">{m.firstName || m.name}</span>
+                      <span className="text-[11px] font-medium">{m.name || m.firstName || 'Membre'}</span>
                     </div>
                   ))}
                 </div>

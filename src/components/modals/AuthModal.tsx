@@ -42,8 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
 
   // Register fields
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
@@ -166,8 +165,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !registerEmail.trim()) {
-      setErrorMsg('Le prénom et l’e-mail sont requis');
+    if (!name.trim() || !registerEmail.trim()) {
+      setErrorMsg('Le nom et l’e-mail sont requis');
       return;
     }
 
@@ -201,8 +200,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       const user = await api.register({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        name: name.trim(),
+        firstName: name.trim(),
+        lastName: '',
         handle: cleanHandle,
         email: registerEmail.trim(),
         password: registerPassword,
@@ -435,32 +435,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* FORM 2: REGISTER */}
         {authMode === 'register' && (
           <form onSubmit={handleRegister} className="space-y-3">
-            {/* First and Last Name */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                  Prénom *
-                </label>
+            {/* Nom d'affichage unique */}
+            <div>
+              <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                Nom *
+              </label>
+              <div className="relative">
                 <input
                   type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Votre prénom"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Votre nom ou nom d'affichage"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
                 />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
-                  Nom <span className="text-[10px] font-normal text-[#27272A]/60 dark:text-zinc-400">(optionnel)</span>
-                </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder=""
-                  className="w-full px-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
-                />
+                <User className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
               </div>
             </div>
 
@@ -594,7 +583,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <button
               type="submit"
-              disabled={loading || !firstName.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false}
+              disabled={loading || !name.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false}
               className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}

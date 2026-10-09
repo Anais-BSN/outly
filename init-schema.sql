@@ -13,8 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(100) PRIMARY KEY,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) DEFAULT '',
+    name TEXT NOT NULL,
     email VARCHAR(255),
     handle VARCHAR(100),
     avatar TEXT DEFAULT '',

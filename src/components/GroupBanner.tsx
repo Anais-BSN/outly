@@ -115,12 +115,12 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                   <img
                     key={member?.id || member?.userId || Math.random()}
                     src={member?.avatar || '/Avatar_Herisson.jpg'}
-                    alt={`${member?.firstName || ''} ${member?.lastName || ''}`.trim() || 'Membre'}
-                    title={`${member?.firstName || 'Membre'} (cliquer pour agrandir)`}
+                    alt={member?.name || member?.firstName || 'Membre'}
+                    title={`${member?.name || member?.firstName || 'Membre'} (cliquer pour agrandir)`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onViewAvatar && member?.avatar) {
-                        onViewAvatar(member.avatar, `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.name || 'Membre', member.handle);
+                        onViewAvatar(member.avatar, member.name || member.firstName || 'Membre', member.handle);
                       }
                     }}
                     className="w-6 h-6 rounded-full border-2 border-[#FFF9EB] dark:border-[#18181B] object-cover ring-1 ring-[#C7B7A3]/50 cursor-pointer hover:scale-110 transition-transform"

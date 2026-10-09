@@ -112,8 +112,9 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
     );
 
     if (isMe) {
+      const myName = currentUser?.name || currentUser?.firstName;
       return {
-        name: currentUser?.firstName ? `${currentUser.firstName} (Moi)` : 'Moi',
+        name: myName ? `${myName} (Moi)` : 'Moi',
         avatar: currentUser?.avatar || expense.paidByAvatar || '/Avatar_Herisson.jpg',
         isMe: true,
       };
@@ -122,7 +123,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
     const member = safeMembers.find((m) => m && (m.id === paidById || m.userId === paidById));
     return {
       name: member
-        ? (member.firstName || member.name || 'Membre')
+        ? (member.name || member.firstName || 'Membre')
         : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé'),
       avatar: member?.avatar || expense.paidByAvatar || '/Avatar_Herisson.jpg',
       isMe: false,

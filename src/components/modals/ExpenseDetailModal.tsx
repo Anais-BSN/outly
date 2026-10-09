@@ -54,18 +54,8 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
   if (!isOpen || !expense) return null;
 
-  const safeCurrentUser: UserProfile = currentUser || {
-    id: 'user-me',
-    firstName: 'Moi',
-    lastName: '',
-    email: '',
-    handle: 'moi',
-    avatar: '/Avatar_Herisson.jpg',
-  };
-
   const isPayerMe =
-    expense.paidById === safeCurrentUser.id ||
-    (Boolean((safeCurrentUser as any).userId) && expense.paidById === (safeCurrentUser as any).userId);
+    Boolean(currentUser && (expense.paidById === currentUser.id || (Boolean((currentUser as any).userId) && expense.paidById === (currentUser as any).userId)));
 
   // Deduplicate members list
   const memberMap = new Map<string, GroupMember>();
@@ -264,7 +254,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                   Réglé par
                 </span>
                 <span className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate block">
-                  {isPayerMe ? `${safeCurrentUser.firstName} (Moi)` : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé')}
+                  {isPayerMe ? `${safeCurrentUser.name || safeCurrentUser.firstName} (Moi)` : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé')}
                 </span>
               </div>
             </div>

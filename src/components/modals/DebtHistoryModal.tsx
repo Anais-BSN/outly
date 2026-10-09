@@ -46,8 +46,9 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
       ((currentUser as any)?.userId && userId === (currentUser as any).userId)
     );
     if (isMe) {
+      const myName = currentUser?.name || currentUser?.firstName;
       return {
-        name: currentUser?.firstName ? `${currentUser.firstName} (Moi)` : 'Moi',
+        name: myName ? `${myName} (Moi)` : 'Moi',
         avatar: currentUser?.avatar || defaultAvatar || '/Avatar_Herisson.jpg',
         isMe: true,
       };
@@ -55,7 +56,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
     const member = (members || []).find((m) => m && (m.id === userId || m.userId === userId));
     return {
       name: member
-        ? (member.firstName || member.name)
+        ? (member.name || member.firstName)
         : (defaultName && defaultName !== 'Membre' ? defaultName : 'Utilisateur supprimé'),
       avatar: member?.avatar || defaultAvatar || '/Avatar_Herisson.jpg',
       isMe: false,

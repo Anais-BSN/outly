@@ -253,7 +253,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
     setIsSubmitting(true);
 
     const safeUserId = currentUser?.id || 'user-current';
-    const safeUserName = currentUser?.firstName || 'Moi';
+    const safeUserName = currentUser?.name || currentUser?.firstName || 'Moi';
     const safeUserAvatar = currentUser?.avatar || '/Avatar_Herisson.jpg';
     const targetGroupId = initialPoll?.groupId || groupId || 'default';
 

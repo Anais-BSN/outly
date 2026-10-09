@@ -2,8 +2,9 @@ export type TabType = 'agenda' | 'discussion' | 'sondages' | 'galerie' | 'logist
 
 export interface UserProfile {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   handle: string; // @pseudo
   avatar: string;
@@ -13,8 +14,9 @@ export interface UserProfile {
 
 export interface Friend {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
   handle: string;
   email: string;
   avatar: string;
@@ -25,9 +27,9 @@ export interface Friend {
 export interface GroupMember {
   id: string;
   userId?: string;
-  name?: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
   handle: string;
   avatar: string;
   shares: number;

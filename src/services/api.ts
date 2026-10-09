@@ -114,7 +114,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorMsg = data?.error || data?.message || `Erreur requête (${response.status})`;
-    throw new Error(errorMsg);
+    const error = new Error(errorMsg);
+    (error as any).status = response.status;
+    throw error;
   }
 
   return (data !== null ? data : {}) as T;
@@ -122,7 +124,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // 1. Authentification & Profil Utilisateur
-  async getUser(userId: string = 'user-me'): Promise<UserProfile> {
+  async getUser(userId: string): Promise<UserProfile> {
     return request<UserProfile>(`/user/me?userId=${encodeURIComponent(userId)}`);
   },
 
@@ -135,7 +137,8 @@ export const api = {
   },
 
   async register(data: {
-    firstName: string;
+    name?: string;
+    firstName?: string;
     lastName?: string;
     email: string;
     handle?: string;
@@ -171,7 +174,8 @@ export const api = {
 
   async loginWithGoogle(data: {
     email: string;
-    firstName: string;
+    name?: string;
+    firstName?: string;
     lastName?: string;
     avatar?: string;
     googleId?: string;
@@ -245,38 +249,38 @@ export const api = {
   },
 
   // 2. Amis
-  async getFriends(userId: string = 'user-me'): Promise<Friend[]> {
+  async getFriends(userId: string): Promise<Friend[]> {
     return request<Friend[]>(`/friends?userId=${encodeURIComponent(userId)}`);
   },
 
-  async sendFriendRequest(handleOrEmail: string, userId: string = 'user-me'): Promise<Friend> {
+  async sendFriendRequest(handleOrEmail: string, userId: string): Promise<Friend> {
     return request<Friend>('/friends', {
       method: 'POST',
       body: JSON.stringify({ handleOrEmail, userId }),
     });
   },
 
-  async sendBatchFriendRequests(handlesOrEmails: string[], userId: string = 'user-me'): Promise<{ success: boolean; count: number; results: any[] }> {
+  async sendBatchFriendRequests(handlesOrEmails: string[], userId: string): Promise<{ success: boolean; count: number; results: any[] }> {
     return request<{ success: boolean; count: number; results: any[] }>('/friends/invite', {
       method: 'POST',
       body: JSON.stringify({ handlesOrEmails, userId }),
     });
   },
 
-  async acceptFriendRequest(friendId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async acceptFriendRequest(friendId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/friends/${friendId}`, {
       method: 'PUT',
       body: JSON.stringify({ userId, status: 'accepted' }),
     });
   },
 
-  async declineFriendRequest(friendId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async declineFriendRequest(friendId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/friends/${friendId}?userId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
   },
 
-  async deleteFriend(friendId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async deleteFriend(friendId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/friends/${friendId}?userId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
@@ -295,7 +299,7 @@ export const api = {
   async createGroup(
     groupData: Partial<Group>,
     invitedFriendIds: string[],
-    creatorId: string = 'user-me'
+    creatorId: string
   ): Promise<Group> {
     return request<Group>('/groups', {
       method: 'POST',
@@ -311,7 +315,7 @@ export const api = {
     groupId: string,
     userId: string,
     role: string = 'member',
-    authorId: string = 'user-me'
+    authorId?: string
   ): Promise<any> {
     return request<any>(`/groups/${groupId}/members`, {
       method: 'POST',
@@ -321,7 +325,7 @@ export const api = {
 
   async addVirtualMember(
     groupId: string,
-    data: { firstName: string; avatar?: string; shares?: number }
+    data: { name?: string; firstName?: string; avatar?: string; shares?: number }
   ): Promise<any> {
     return request<any>(`/groups/${groupId}/virtual-member`, {
       method: 'POST',
@@ -348,19 +352,19 @@ export const api = {
     });
   },
 
-  async deleteGroup(groupId: string, authorId: string = 'user-me'): Promise<{ success: boolean }> {
+  async deleteGroup(groupId: string, authorId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/groups/${groupId}?authorId=${encodeURIComponent(authorId)}`, {
       method: 'DELETE',
     });
   },
 
-  async leaveGroup(groupId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async leaveGroup(groupId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/groups/${groupId}/members/${userId}?authorId=${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
   },
 
-  async removeGroupMember(groupId: string, userId: string, authorId: string = 'user-me'): Promise<{
+  async removeGroupMember(groupId: string, userId: string, authorId: string): Promise<{
     success: boolean;
     demotedToVirtual?: boolean;
     virtualMember?: GroupMember;
@@ -410,7 +414,7 @@ export const api = {
     });
   },
 
-  async updateRsvp(eventId: string, status: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async updateRsvp(eventId: string, status: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/events/${eventId}/rsvp`, {
       method: 'PUT',
       body: JSON.stringify({ userId, status }),
@@ -468,7 +472,7 @@ export const api = {
   async toggleMessageReaction(
     messageId: string,
     emoji: string,
-    userId: string = 'user-me'
+    userId: string
   ): Promise<{ success: boolean; reactions: any[] }> {
     return request<{ success: boolean; reactions: any[] }>(`/messages/${messageId}/react`, {
       method: 'POST',
@@ -476,7 +480,7 @@ export const api = {
     });
   },
 
-  async markGroupMessagesAsRead(groupId: string, userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async markGroupMessagesAsRead(groupId: string, userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>(`/groups/${encodeURIComponent(groupId)}/messages/read`, {
       method: 'POST',
       body: JSON.stringify({ userId }),
@@ -507,7 +511,7 @@ export const api = {
     pollId: string,
     optionId: string,
     status: 'available' | 'unavailable' | 'yes' | 'no' = 'available',
-    userId: string = 'user-me'
+    userId: string = ''
   ): Promise<{ success: boolean; votes: any[] }> {
     return request<{ success: boolean; votes: any[] }>(`/polls/${pollId}/vote`, {
       method: 'POST',
@@ -564,7 +568,7 @@ export const api = {
 
   async claimTask(
     taskId: string,
-    userId: string = 'user-me'
+    userId: string
   ): Promise<{ id: string; assignedToId: string; assignedToName: string; assignedToAvatar: string }> {
     return request<{ id: string; assignedToId: string; assignedToName: string; assignedToAvatar: string }>(
       `/tasks/${taskId}/claim`,
@@ -633,11 +637,11 @@ export const api = {
   },
 
   // 11. Notifications & Resend
-  async getNotifications(userId: string = 'user-me'): Promise<AppNotification[]> {
+  async getNotifications(userId: string): Promise<AppNotification[]> {
     return request<AppNotification[]>(`/notifications?userId=${encodeURIComponent(userId)}`);
   },
 
-  async markAllNotificationsRead(userId: string = 'user-me'): Promise<{ success: boolean }> {
+  async markAllNotificationsRead(userId: string): Promise<{ success: boolean }> {
     return request<{ success: boolean }>('/notifications/read-all', {
       method: 'PUT',
       body: JSON.stringify({ userId }),
@@ -693,7 +697,7 @@ export const api = {
     return request(`/groups/preview/${encodeURIComponent(groupIdOrToken)}`);
   },
 
-  async acceptInvitationByToken(token: string, userId: string = 'user-me'): Promise<any> {
+  async acceptInvitationByToken(token: string, userId: string): Promise<any> {
     return request(`/invitations/${encodeURIComponent(token)}/accept`, {
       method: 'POST',
       body: JSON.stringify({ userId }),

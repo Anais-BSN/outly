@@ -39,13 +39,13 @@ const FriendItem = React.memo<FriendItemProps>(({ friend, onDeleteFriend }) => {
       <div className="flex items-center gap-2.5">
         <img
           src={friend.avatar}
-          alt={friend.firstName}
+          alt={friend.name || friend.firstName || 'Ami'}
           className="w-8 h-8 rounded-full object-cover ring-1 ring-[#C7B7A3]"
           referrerPolicy="no-referrer"
         />
         <div>
           <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-            {friend.firstName} {friend.lastName}
+            {friend.name || friend.firstName}
           </div>
           <div className="text-[10px] text-[#5D0D18] dark:text-zinc-400">
             {friend.handle} • {friend.shares} {friend.shares > 1 ? 'parts' : 'part'}
@@ -61,7 +61,7 @@ const FriendItem = React.memo<FriendItemProps>(({ friend, onDeleteFriend }) => {
           <button
             id={`delete-friend-btn-${friend.id}`}
             onClick={() => {
-              if (window.confirm(`Voulez-vous retirer ${friend.firstName} ${friend.lastName || ''} de vos amis ?`)) {
+              if (window.confirm(`Voulez-vous retirer ${friend.name || friend.firstName} de vos amis ?`)) {
                 onDeleteFriend(friend.id);
               }
             }}
@@ -91,13 +91,13 @@ const PendingFriendItem = React.memo<PendingFriendItemProps>(({ req, onAccept, o
       <div className="flex items-center gap-2.5">
         <img
           src={req.avatar}
-          alt={req.firstName}
+          alt={req.name || req.firstName || 'Ami'}
           className="w-9 h-9 rounded-full object-cover ring-1 ring-[#5D0D18]"
           referrerPolicy="no-referrer"
         />
         <div>
           <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-            {req.firstName} {req.lastName}
+            {req.name || req.firstName}
           </div>
           <div className="text-[11px] text-[#5D0D18] dark:text-zinc-400 font-medium">
             {req.handle}
@@ -154,6 +154,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
     if (!f) return false;
     const q = searchQuery.toLowerCase();
     return (
+      (f.name && f.name.toLowerCase().includes(q)) ||
       (f.firstName && f.firstName.toLowerCase().includes(q)) ||
       (f.lastName && f.lastName.toLowerCase().includes(q)) ||
       (f.handle && f.handle.toLowerCase().includes(q)) ||

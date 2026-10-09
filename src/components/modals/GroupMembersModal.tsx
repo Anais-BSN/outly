@@ -134,8 +134,8 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
             const isMe = memberUserId === currentUser.id;
             const isAdmin = member.role === 'admin';
             const memberName =
-              `${member.firstName || ''} ${member.lastName || ''}`.trim() ||
               member.name ||
+              `${member.firstName || ''} ${member.lastName || ''}`.trim() ||
               'Membre';
 
             return (

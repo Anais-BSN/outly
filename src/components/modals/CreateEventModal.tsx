@@ -185,7 +185,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       description: description.trim(),
       bannerImage,
       organizerId: initialEvent?.organizerId || currentUser.id,
-      organizerName: initialEvent?.organizerName || currentUser.firstName,
+      organizerName: initialEvent?.organizerName || currentUser.name || currentUser.firstName || 'Organisateur',
       organizerAvatar: initialEvent?.organizerAvatar || currentUser.avatar,
       reminder24h,
       rsvp: initialEvent?.rsvp || {

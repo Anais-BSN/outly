@@ -91,6 +91,19 @@ apiRouter.get('/sse', handleSseConnection);
         UNIQUE(user_id, token)
       );
     `);
+    // Assurer la présence de la colonne unique name (support complet Unicode / émojis)
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'name') THEN
+          ALTER TABLE users ADD COLUMN name TEXT;
+        END IF;
+        UPDATE users 
+        SET name = TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')))
+        WHERE (name IS NULL OR name = '') AND (first_name IS NOT NULL AND first_name <> '');
+      END $$;
+    `);
+
     // Assurer la rétrocompatibilité des colonnes et supprimer les contraintes rigides sur utilisateurs virtuels
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_from_user_id_fkey;`);
     await query(`ALTER TABLE debt_settlements DROP CONSTRAINT IF EXISTS debt_settlements_to_user_id_fkey;`);
@@ -117,9 +130,12 @@ apiRouter.get('/sse', handleSseConnection);
 apiRouter.get('/users', async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"
+      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+              email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
-       ORDER BY first_name ASC`
+       WHERE COALESCE(is_deleted, false) = false
+       ORDER BY COALESCE(name, first_name) ASC`
     );
     res.json(result.rows);
   } catch (err: any) {
@@ -161,13 +177,14 @@ function validatePasswordRules(pwd: string): string | null {
   return null;
 }
 
-// Inscription
+// Inscription (Champ unique "Nom" avec support complet des émojis et caractères Unicode)
 apiRouter.post('/auth/register', async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName = '', email, handle, password, avatar } = req.body;
+    const { name, firstName, lastName = '', email, handle, password, avatar } = req.body;
+    const displayName = (name !== undefined ? name : (firstName ? `${firstName} ${lastName}`.trim() : ''))?.trim();
 
-    if (!email || !firstName) {
-      return res.status(400).json({ error: 'Prénom et e-mail sont obligatoires' });
+    if (!email || !displayName) {
+      return res.status(400).json({ error: 'Le nom et l’e-mail sont obligatoires' });
     }
 
     if (!handle || !handle.trim()) {
@@ -193,16 +210,16 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Un compte avec cet e-mail existe déjà' });
     }
 
-    const userId = `user-${Date.now()}`;
+    const userId = `user-${crypto.randomUUID()}`;
     const userAvatar =
       avatar ||
       'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 
     const insertRes = await query(
-      `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, 1, 'light', $7)
-       RETURNING id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
-      [userId, firstName, lastName, email, cleanHandle, userAvatar, password]
+      `INSERT INTO users (id, name, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash)
+       VALUES ($1, $2, $2, '', $3, $4, $5, 1, 'light', $6)
+       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+      [userId, displayName, email, cleanHandle, userAvatar, password]
     );
 
     // Nouveau compte vierge : 0 groupe, 0 ami, 0 sortie, 0 notification
@@ -227,7 +244,9 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
     }
 
     const result = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference", password_hash
+      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+              email, handle, avatar, shares, theme_preference as "themePreference", password_hash
        FROM users
        WHERE email ILIKE $1 OR handle ILIKE $1
        LIMIT 1`,
@@ -256,14 +275,17 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
 // Connexion & Inscription Google OAuth unifiée
 apiRouter.post('/auth/google', async (req: Request, res: Response) => {
   try {
-    const { email, firstName, lastName, avatar, googleId } = req.body;
+    const { email, name, firstName, lastName, avatar, googleId } = req.body;
+    const displayName = (name !== undefined ? name : (firstName ? `${firstName} ${lastName || ''}`.trim() : 'Utilisateur'))?.trim() || 'Utilisateur';
 
     if (!email) {
       return res.status(400).json({ error: 'Email Google manquant' });
     }
 
     const existing = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"
+      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+              email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
        WHERE (google_id IS NOT NULL AND google_id = $1) OR email ILIKE $2
        LIMIT 1`,
@@ -278,7 +300,7 @@ apiRouter.post('/auth/google', async (req: Request, res: Response) => {
     }
 
     // Créer un nouvel utilisateur Google vierge (0 groupe, 0 ami, 0 sortie, 0 notif)
-    const userId = `user-google-${googleId || Date.now()}`;
+    const userId = `user-google-${crypto.randomUUID()}`;
     const cleanPrefix = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
     let handle = `@${cleanPrefix}`;
     const existingHandle = await query(`SELECT id FROM users WHERE handle ILIKE $1`, [handle]);
@@ -288,10 +310,10 @@ apiRouter.post('/auth/google', async (req: Request, res: Response) => {
     const userAvatar = avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 
     const insertRes = await query(
-      `INSERT INTO users (id, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash, google_id)
-       VALUES ($1, $2, $3, $4, $5, $6, 1, 'light', 'google_oauth', $7)
-       RETURNING id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
-      [userId, firstName || 'Utilisateur', lastName || '', email, handle, userAvatar, googleId || userId]
+      `INSERT INTO users (id, name, first_name, last_name, email, handle, avatar, shares, theme_preference, password_hash, google_id)
+       VALUES ($1, $2, $2, '', $3, $4, $5, 1, 'light', 'google_oauth', $6)
+       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+      [userId, displayName, email, handle, userAvatar, googleId || userId]
     );
 
     res.json(insertRes.rows[0]);
@@ -311,7 +333,11 @@ apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const userRes = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email FROM users WHERE email ILIKE $1 LIMIT 1`,
+      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+              COALESCE(name, first_name, '') as "firstName", email
+       FROM users
+       WHERE email ILIKE $1
+       LIMIT 1`,
       [cleanEmail]
     );
 
@@ -329,7 +355,7 @@ apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
 
       emailService.sendPasswordResetEmail({
         toEmail: user.email,
-        userName: user.firstName,
+        userName: user.name || user.firstName,
         resetLink,
         token,
       }).catch((e) => console.error('Background password reset email failed:', e));
@@ -351,7 +377,7 @@ apiRouter.get('/auth/verify-reset-token/:token', async (req: Request, res: Respo
   try {
     const { token } = req.params;
     const userRes = await query(
-      `SELECT id, email, first_name as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
+      `SELECT id, email, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName" FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW() LIMIT 1`,
       [token]
     );
 
@@ -359,7 +385,7 @@ apiRouter.get('/auth/verify-reset-token/:token', async (req: Request, res: Respo
       return res.status(400).json({ valid: false, error: 'Ce lien de réinitialisation est invalide ou a expiré.' });
     }
 
-    res.json({ valid: true, email: userRes.rows[0].email, firstName: userRes.rows[0].firstName });
+    res.json({ valid: true, email: userRes.rows[0].email, name: userRes.rows[0].name, firstName: userRes.rows[0].firstName });
   } catch (err: any) {
     console.error('Error in GET /auth/verify-reset-token:', err);
     res.status(500).json({ error: err.message });
@@ -381,7 +407,7 @@ apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
     }
 
     const userRes = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email
+      `SELECT id, COALESCE(name, first_name) as name, email
        FROM users
        WHERE reset_password_token = $1 AND reset_password_expires > NOW()
        LIMIT 1`,
@@ -442,12 +468,17 @@ apiRouter.post('/users/:id/password', async (req: Request, res: Response) => {
   }
 });
 
-// Obtenir l'utilisateur connecté ('user-me' par défaut)
-apiRouter.get('/user/me', async (req: Request, res: Response) => {
+// Obtenir l'utilisateur connecté (aucun fallback - validation stricte de session)
+apiRouter.get(['/user/me', '/users/:id?'], async (req: Request, res: Response) => {
   try {
-    const userId = (req.query.userId as string) || 'user-me';
+    const userId = ((req.params.id || req.query.userId) as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const result = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"
+      `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+              COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+              email, handle, avatar, shares, theme_preference as "themePreference"
        FROM users
        WHERE id = $1`,
       [userId]
@@ -457,40 +488,34 @@ apiRouter.get('/user/me', async (req: Request, res: Response) => {
       return res.json(result.rows[0]);
     }
 
-    // Fallback: premier utilisateur
-    const fallback = await query(
-      `SELECT id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"
-       FROM users
-       LIMIT 1`
-    );
-    if (fallback.rows.length > 0) {
-      return res.json(fallback.rows[0]);
-    }
-    return res.status(404).json({ error: 'User not found' });
+    // Aucun fallback automatique vers le premier utilisateur : retourne strictement 401 Unauthorized
+    return res.status(401).json({ error: 'Session invalide ou compte introuvable' });
   } catch (err: any) {
     console.error('Error in GET /user/me:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Mettre à jour le profil utilisateur
+// Mettre à jour le profil utilisateur (Nom unique avec support complet Unicode / émojis / espaces)
 apiRouter.put('/users/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, handle, avatar, shares, themePreference } = req.body;
+    const { name, firstName, lastName, email, handle, avatar, shares, themePreference } = req.body;
+    const updatedName = (name !== undefined ? name : (firstName ? `${firstName} ${lastName || ''}`.trim() : undefined))?.trim();
 
     const result = await query(
       `UPDATE users
-       SET first_name = COALESCE($1, first_name),
-           last_name = COALESCE($2, last_name),
-           email = COALESCE($3, email),
-           handle = COALESCE($4, handle),
-           avatar = COALESCE($5, avatar),
-           shares = COALESCE($6, shares),
-           theme_preference = COALESCE($7, theme_preference)
-       WHERE id = $8
-       RETURNING id, first_name as "firstName", last_name as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
-      [firstName, lastName, email, handle, avatar, shares, themePreference, id]
+       SET name = COALESCE($1, name),
+           first_name = COALESCE($1, first_name),
+           last_name = '',
+           email = COALESCE($2, email),
+           handle = COALESCE($3, handle),
+           avatar = COALESCE($4, avatar),
+           shares = COALESCE($5, shares),
+           theme_preference = COALESCE($6, theme_preference)
+       WHERE id = $7
+       RETURNING id, COALESCE(name, first_name) as name, COALESCE(name, first_name) as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
+      [updatedName, email, handle, avatar, shares, themePreference, id]
     );
 
     if (result.rows.length === 0) {
@@ -554,13 +579,18 @@ apiRouter.delete('/users/:id', async (req: Request, res: Response) => {
 
 apiRouter.get('/friends', async (req: Request, res: Response) => {
   try {
-    const userId = (req.query.userId as string) || 'user-me';
+    const userId = (req.query.userId as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const result = await query(
-      `SELECT u.id, u.first_name as "firstName", u.last_name as "lastName", u.handle, u.email, u.avatar, u.shares, f.status
+      `SELECT u.id, COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Ami') as name,
+              COALESCE(u.name, u.first_name, '') as "firstName", COALESCE(u.last_name, '') as "lastName",
+              u.handle, u.email, u.avatar, u.shares, f.status
        FROM friends f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1
-       ORDER BY u.first_name ASC`,
+       ORDER BY COALESCE(u.name, u.first_name) ASC`,
       [userId]
     );
     res.json(result.rows);
@@ -572,7 +602,11 @@ apiRouter.get('/friends', async (req: Request, res: Response) => {
 
 apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Response) => {
   try {
-    const { userId = 'user-me', handleOrEmail, handlesOrEmails, emails } = req.body;
+    const userId = req.body.userId?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
+    const { handleOrEmail, handlesOrEmails, emails } = req.body;
 
     const rawList: string[] = Array.isArray(handlesOrEmails)
       ? handlesOrEmails
@@ -588,9 +622,9 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
     }
 
     // Récupérer les informations de l'expéditeur
-    const senderRes = await query(`SELECT first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
-    const sender = senderRes.rows[0] || { firstName: 'Un ami', lastName: '', handle: '@ami' };
-    const senderName = `${sender.firstName || 'Un ami'} ${sender.lastName || ''}`.trim();
+    const senderRes = await query(`SELECT COALESCE(name, first_name) as name, first_name as "firstName", last_name as "lastName", handle FROM users WHERE id = $1`, [userId]);
+    const sender = senderRes.rows[0] || { name: 'Un ami', firstName: 'Un ami', lastName: '', handle: '@ami' };
+    const senderName = sender.name || `${sender.firstName || 'Un ami'} ${sender.lastName || ''}`.trim();
     const appBaseUrl = getCleanAppUrl();
 
     const results = [];
@@ -601,7 +635,9 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
 
       // Recherche en base de données
       const targetUserRes = await query(
-        `SELECT id, first_name as "firstName", last_name as "lastName", handle, email, avatar, shares
+        `SELECT id, COALESCE(name, NULLIF(TRIM(concat(first_name, ' ', last_name)), ''), first_name, 'Utilisateur') as name,
+                COALESCE(name, first_name, '') as "firstName", COALESCE(last_name, '') as "lastName",
+                handle, email, avatar, shares
          FROM users
          WHERE handle ILIKE $1 OR handle ILIKE $2 OR email ILIKE $2
          LIMIT 1`,
@@ -735,7 +771,10 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
 
 apiRouter.put('/friends/:friendId', async (req: Request, res: Response) => {
   try {
-    const userId = (req.body.userId as string) || 'user-me';
+    const userId = (req.body.userId as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const { friendId } = req.params;
     const { status = 'accepted' } = req.body;
 
@@ -792,7 +831,10 @@ apiRouter.put('/friends/:friendId', async (req: Request, res: Response) => {
 
 apiRouter.delete('/friends/:friendId', async (req: Request, res: Response) => {
   try {
-    const userId = (req.query.userId as string) || 'user-me';
+    const userId = (req.query.userId as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const { friendId } = req.params;
 
     await query(
@@ -843,8 +885,8 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
 
     const groupIds = groupsRes.rows.map((g) => g.id);
     const membersRes = await query(
-      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
+              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role,
               COALESCE(u.is_deleted, false) as "isDeleted"
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
@@ -914,8 +956,8 @@ apiRouter.get(['/groups/:id', '/groups/preview/:id', '/groups/:id/preview'], asy
     const actualGroupId = group.id;
 
     const membersRes = await query(
-      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role,
+      `SELECT gm.group_id as "groupId", u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
+              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role,
               COALESCE(u.is_deleted, false) as "isDeleted",
               CASE WHEN (u.id LIKE 'user-virt-%' OR gm.user_id LIKE 'user-virt-%') THEN true ELSE false END as "isVirtual"
        FROM group_members gm
@@ -962,7 +1004,10 @@ apiRouter.get(['/groups/:id', '/groups/preview/:id', '/groups/:id/preview'], asy
 
 apiRouter.post('/groups', async (req: Request, res: Response) => {
   try {
-    const { name, description, coverImage, creatorId = 'user-me', invitedFriendIds = [] } = req.body;
+    const { name, description, coverImage, creatorId, invitedFriendIds = [] } = req.body;
+    if (!creatorId || creatorId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const groupId = `group-${Date.now()}`;
 
     await query(
@@ -995,11 +1040,11 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
 
     // Récupérer le nom de l'auteur (créateur)
     const creatorRes = await query(
-      `SELECT first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
+      `SELECT COALESCE(name, first_name) as name, first_name as "firstName", last_name as "lastName" FROM users WHERE id = $1`,
       [creatorId]
     );
     const creator = creatorRes.rows[0];
-    const authorName = creator ? `${creator.firstName} ${creator.lastName || ''}`.trim() : 'Un ami';
+    const authorName = creator?.name || (creator ? `${creator.firstName} ${creator.lastName || ''}`.trim() : 'Un ami');
     const groupName = name || 'Nouveau Groupe';
 
     // Générer une notification pour chaque membre invité
@@ -1031,8 +1076,8 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
 
     // Récupérer le groupe complet avec ses membres
     const membersRes = await query(
-      `SELECT u.id, u.id as "userId", u.first_name as "firstName", u.last_name as "lastName",
-              concat(u.first_name, ' ', u.last_name) as name, u.handle, u.avatar, u.shares, gm.role
+      `SELECT u.id, u.id as "userId", COALESCE(u.name, u.first_name) as "firstName", COALESCE(u.last_name, '') as "lastName",
+              COALESCE(u.name, NULLIF(TRIM(concat(u.first_name, ' ', u.last_name)), ''), u.first_name, 'Membre') as name, u.handle, u.avatar, u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1`,
@@ -1065,10 +1110,13 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
 apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId, role = 'member', authorId = 'user-me' } = req.body;
+    const { userId, role = 'member', authorId } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
+    }
+    if (!authorId || authorId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
     }
 
     await query(
@@ -1221,7 +1269,7 @@ apiRouter.post('/groups/:id/virtual-member', async (req: Request, res: Response)
       return res.status(400).json({ error: 'Le prénom du participant est requis' });
     }
 
-    const virtualUserId = `user-virt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const virtualUserId = `user-virt-${crypto.randomUUID()}`;
     const cleanPrefix = trimmedFirstName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'invite';
     const randomHandle = `@${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const dummyEmail = `${virtualUserId}@outlys.local`;
@@ -1494,7 +1542,10 @@ apiRouter.post('/groups/:id/merge-member', async (req: Request, res: Response) =
 apiRouter.put('/groups/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, coverImage, authorId = 'user-me' } = req.body;
+    const { name, description, coverImage, authorId } = req.body;
+    if (!authorId || authorId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const existingRes = await query(`SELECT id, name, description, cover_image FROM groups WHERE id = $1`, [id]);
     if (existingRes.rows.length === 0) {
@@ -1595,7 +1646,10 @@ apiRouter.put('/groups/:id', async (req: Request, res: Response) => {
 apiRouter.post('/groups/:id/invite', async (req: Request, res: Response) => {
   try {
     const { id: groupId } = req.params;
-    const { emails, email, toEmail, senderName, senderId = 'user-me' } = req.body;
+    const { emails, email, toEmail, senderName, senderId } = req.body;
+    if (!senderId || senderId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const rawEmails: string[] = Array.isArray(emails)
       ? emails
@@ -1678,7 +1732,10 @@ apiRouter.post('/groups/:id/invite', async (req: Request, res: Response) => {
 apiRouter.delete('/groups/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const authorId = (req.query.authorId as string) || (req.body?.authorId as string) || (req.query.userId as string) || (req.body?.userId as string) || 'user-me';
+    const authorId = (req.query.authorId as string)?.trim() || (req.body?.authorId as string)?.trim() || (req.query.userId as string)?.trim() || (req.body?.userId as string)?.trim();
+    if (!authorId || authorId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     // 1. Récupérer les informations du groupe, de l'auteur et des membres AVANT suppression
     const groupRes = await query(`SELECT name FROM groups WHERE id = $1`, [id]);
@@ -1745,7 +1802,10 @@ apiRouter.delete('/groups/:id', async (req: Request, res: Response) => {
 apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Response) => {
   try {
     const { id: groupId, userId } = req.params;
-    const authorId = (req.query.authorId as string) || (req.body?.authorId as string) || (req.query.userId as string) || (req.body?.userId as string) || 'user-me';
+    const authorId = (req.query.authorId as string)?.trim() || (req.body?.authorId as string)?.trim() || (req.query.userId as string)?.trim() || (req.body?.userId as string)?.trim();
+    if (!authorId || authorId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     // 0. Récupérer les noms du groupe, de l'auteur et du membre retiré AVANT modification
     const groupInfoRes = await query(`SELECT name FROM groups WHERE id = $1`, [groupId]);
@@ -1882,7 +1942,7 @@ apiRouter.delete('/groups/:id/members/:userId', async (req: Request, res: Respon
       const user = userRes.rows[0] || {};
       const frozenShares = user.shares || 1;
 
-      const virtualUserId = `user-virt-del-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const virtualUserId = `user-virt-del-${crypto.randomUUID()}`;
       const dummyEmail = `${virtualUserId}@outlys.local`;
 
       // Insérer le participant sous le libellé « Utilisateur supprimé N » avec is_deleted = TRUE et handle unique
@@ -2171,10 +2231,14 @@ apiRouter.post('/events', async (req: Request, res: Response) => {
       gpsUrl,
       description,
       bannerImage,
-      organizerId = 'user-me',
+      organizerId,
       reminder24h = true,
       rsvp = {},
     } = req.body;
+
+    if (!organizerId || organizerId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const eventId = `evt-${Date.now()}`;
 
@@ -2355,7 +2419,10 @@ apiRouter.delete('/events/:id', async (req: Request, res: Response) => {
 apiRouter.put('/events/:id/rsvp', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId = 'user-me', status } = req.body;
+    const { userId, status } = req.body;
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     await query(
       `INSERT INTO event_rsvps (event_id, user_id, status)
@@ -2550,16 +2617,22 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
     const {
       id = `msg-${Date.now()}`,
       groupId,
-      senderId = 'user-me',
+      senderId,
       text = '',
       imageUrl = null,
       imageUrls = null,
       isSystem = false,
       systemType = null,
-      readBy = ['user-me'],
+      readBy = [],
       reactions = [],
       timestamp = new Date().toISOString(),
     } = req.body;
+
+    if (!senderId || senderId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
+
+    const effectiveReadBy = Array.isArray(readBy) && readBy.length > 0 ? readBy : [senderId];
 
     const allImages: string[] =
       Array.isArray(imageUrls) && imageUrls.length > 0
@@ -2735,7 +2808,10 @@ apiRouter.delete('/messages/:id', async (req: Request, res: Response) => {
 apiRouter.post('/messages/:id/react', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { emoji, userId = 'user-me' } = req.body;
+    const { emoji, userId } = req.body;
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     if (!emoji) {
       return res.status(400).json({ error: 'Emoji is required' });
@@ -2792,10 +2868,10 @@ apiRouter.post('/messages/:id/react', async (req: Request, res: Response) => {
 apiRouter.post('/groups/:groupId/messages/read', async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
-    const { userId = 'user-me' } = req.body;
+    const { userId } = req.body;
 
-    if (!groupId || !userId) {
-      return res.status(400).json({ error: 'groupId and userId are required' });
+    if (!groupId || !userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée ou identifiants manquants' });
     }
 
     await query(
@@ -2889,7 +2965,10 @@ apiRouter.get('/polls', async (req: Request, res: Response) => {
 
 apiRouter.post('/polls', async (req: Request, res: Response) => {
   try {
-    const { groupId, title, type, description, createdBy = 'user-me', options = [] } = req.body;
+    const { groupId, title, type, description, createdBy, options = [] } = req.body;
+    if (!createdBy || createdBy === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const pollId = `poll-${Date.now()}`;
 
     await query(
@@ -2953,7 +3032,10 @@ apiRouter.post('/polls', async (req: Request, res: Response) => {
 apiRouter.post('/polls/:pollId/vote', async (req: Request, res: Response) => {
   try {
     const { pollId } = req.params;
-    const { optionId, userId = 'user-me', status = 'available' } = req.body;
+    const { optionId, userId, status = 'available' } = req.body;
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const userRes = await query(`SELECT first_name, avatar FROM users WHERE id = $1`, [userId]);
     const user = userRes.rows[0] || { first_name: 'Utilisateur', avatar: '' };
@@ -3145,10 +3227,14 @@ apiRouter.post('/gallery', async (req: Request, res: Response) => {
     const {
       groupId,
       imageUrl,
-      uploaderId = 'user-me',
+      uploaderId,
       caption = '',
       timestamp = new Date().toISOString(),
     } = req.body;
+
+    if (!uploaderId || uploaderId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const id = `gal-${Date.now()}`;
     await query(
@@ -3254,8 +3340,12 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
       quantity = '1',
       assignedToId = null,
       category = 'Matériel',
-      createdBy = 'user-me',
+      createdBy,
     } = req.body;
+
+    if (!createdBy || createdBy === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const taskId = `task-${Date.now()}`;
     await query(
@@ -3333,7 +3423,10 @@ apiRouter.put('/tasks/:id/toggle', async (req: Request, res: Response) => {
 apiRouter.put('/tasks/:id/claim', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId = 'user-me' } = req.body;
+    const { userId } = req.body;
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const tRes = await query(
       `UPDATE logistics_tasks
@@ -3463,13 +3556,17 @@ apiRouter.post('/expenses', async (req: Request, res: Response) => {
       groupId,
       title,
       amount,
-      paidById = 'user-me',
+      paidById,
       category = 'Autre',
       date = new Date().toISOString().split('T')[0],
       splitMode = 'all',
       participantIds = [],
       sharesSnapshot = {},
     } = req.body;
+
+    if (!paidById || paidById === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
 
     const id = `exp-${Date.now()}`;
     await query(
@@ -3734,7 +3831,10 @@ apiRouter.post('/settlements', handleSettlementToggle);
 
 apiRouter.get('/notifications', async (req: Request, res: Response) => {
   try {
-    const userId = (req.query.userId as string) || 'user-me';
+    const userId = (req.query.userId as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const result = await query(
       `SELECT id, user_id as "userId", type, title, message, timestamp, read,
               group_id as "groupId", event_id as "eventId"
@@ -3752,7 +3852,10 @@ apiRouter.get('/notifications', async (req: Request, res: Response) => {
 
 apiRouter.put('/notifications/read-all', async (req: Request, res: Response) => {
   try {
-    const userId = (req.body.userId as string) || 'user-me';
+    const userId = (req.body.userId as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     await query(`UPDATE notifications SET read = true WHERE user_id = $1`, [userId]);
 
     realtimeBroadcaster.broadcast({
@@ -3809,7 +3912,10 @@ apiRouter.delete('/notifications/:id', async (req: Request, res: Response) => {
 // Envoi d'email d'invitation (Resend - support unitaire et batch)
 apiRouter.post('/invitations/send-email', async (req: Request, res: Response) => {
   try {
-    const { emails, toEmail, senderName, groupName, inviteLink, groupId, senderId = 'user-me' } = req.body;
+    const { emails, toEmail, senderName, groupName, inviteLink, groupId, senderId } = req.body;
+    if (!senderId || senderId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const rawEmails: string[] = Array.isArray(emails)
       ? emails
       : (typeof toEmail === 'string' && toEmail ? [toEmail] : []);
@@ -3971,7 +4077,10 @@ apiRouter.get(['/invitations/:token', '/groups/join/:token'], async (req: Reques
 apiRouter.post(['/invitations/:token/accept', '/groups/join/:token/accept'], async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
-    const { userId = 'user-me' } = req.body;
+    const { userId } = req.body;
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
     const cleanId = token.replace(/^group-/, '');
     const altGroupId = `group-${cleanId}`;
 

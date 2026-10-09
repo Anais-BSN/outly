@@ -341,7 +341,7 @@ const MessageItem = React.memo<MessageItemProps>(({
               title="Moi (cliquer pour agrandir)"
               onClick={() => {
                 if (onViewAvatar && currentUser.avatar) {
-                  onViewAvatar(currentUser.avatar, `${currentUser.firstName} ${currentUser.lastName}`.trim(), currentUser.handle);
+                  onViewAvatar(currentUser.avatar, currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur', currentUser.handle);
                 }
               }}
               className="w-5 h-5 rounded-full object-cover ring-1 ring-[#6D2932] cursor-pointer hover:scale-110 transition-transform"
@@ -735,7 +735,7 @@ const MessageItem = React.memo<MessageItemProps>(({
             {isReadByEveryone
               ? 'Vu par tout le monde'
               : `Vu par ${readOtherMembers
-                  .map((m) => m.firstName || m.name?.split(' ')[0] || 'Un membre')
+                  .map((m) => m.name || m.firstName || 'Un membre')
                   .join(', ')}`}
           </span>
         </div>
