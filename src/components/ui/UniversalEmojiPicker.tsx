@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Search, X, Smile } from 'lucide-react';
+import { Search, X, Smile, Send } from 'lucide-react';
 import { EMOJI_CATEGORIES, ALL_EMOJIS_DATA, EmojiItem } from '../../data/emojis';
 import { triggerHaptic } from '../../services/nativeService';
 
@@ -12,6 +12,12 @@ interface UniversalEmojiPickerProps {
   mode?: 'popover' | 'bottomSheet' | 'auto';
   title?: string;
   closeOnSelect?: boolean;
+  draftInput?: {
+    text: string;
+    onChange: (text: string) => void;
+    placeholder?: string;
+    onSend?: () => void;
+  };
   messagePreview?: {
     senderName?: string;
     text?: string;
@@ -27,6 +33,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
   mode = 'auto',
   title = 'Choisir un émoji',
   closeOnSelect = true,
+  draftInput,
   messagePreview,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -279,6 +286,49 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                 className="w-8 h-8 rounded-lg object-cover shrink-0 ring-1 ring-black/10"
               />
             )}
+          </div>
+        )}
+
+        {/* Barre de texte en cours de rédaction avec prévisualisation dynamique au fur et à mesure des clics émojis */}
+        {draftInput && (
+          <div className="mb-2.5 px-3.5 py-2 rounded-2xl bg-[#E8D8C4]/80 dark:bg-zinc-800/90 border-2 border-[#5D0D18]/30 dark:border-amber-400/30 shadow-xs shrink-0 animate-fade-in">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-300 uppercase tracking-wider">
+                Message en cours de rédaction
+              </span>
+              {draftInput.text && (
+                <button
+                  type="button"
+                  onClick={() => draftInput.onChange('')}
+                  className="text-[10px] text-zinc-500 hover:text-red-500 font-semibold cursor-pointer"
+                >
+                  Effacer
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={draftInput.text}
+                onChange={(e) => draftInput.onChange(e.target.value)}
+                placeholder={draftInput.placeholder || "Écrivez votre message..."}
+                className="flex-1 bg-transparent text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/50 dark:placeholder:text-zinc-500 focus:outline-none"
+              />
+              {draftInput.onSend && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    draftInput.onSend!();
+                    onClose();
+                  }}
+                  disabled={!draftInput.text.trim()}
+                  className="p-1.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs"
+                  title="Envoyer le message"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 

@@ -2741,6 +2741,7 @@ export default function App() {
                   currentUser={currentUser}
                   members={activeGroup.members}
                   groupName={activeGroup.name}
+                  groupCoverImage={activeGroup.coverImage}
                   onSendMessage={handleSendMessage}
                   onAddReaction={handleAddReaction}
                   onEditMessage={handleEditMessage}

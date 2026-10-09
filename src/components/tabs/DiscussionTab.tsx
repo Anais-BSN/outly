@@ -36,6 +36,7 @@ interface DiscussionTabProps {
   currentUser: UserProfile;
   members?: GroupMember[];
   groupName?: string;
+  groupCoverImage?: string;
   onSendMessage: (text: string, imageUrl?: string, imageUrls?: string[]) => void;
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
@@ -745,6 +746,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   currentUser,
   members = [],
   groupName,
+  groupCoverImage,
   onSendMessage,
   onAddReaction,
   onEditMessage,
@@ -913,9 +915,9 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
 
   return (
     <div className="flex flex-col flex-1 h-full max-h-full min-h-0 overflow-hidden w-full max-w-4xl mx-auto">
-      {/* En-tête de la discussion (Bannière 2) avec nom du groupe et actions d'appels audio et vidéo */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* En-tête de la discussion épuré : Photo du groupe, Nom du groupe, Appel audio, Appel vidéo */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2.5 bg-[#FFF9EB] dark:bg-[#18181B] border-b border-[#E8D8C4] dark:border-zinc-800 shrink-0 transition-colors shadow-2xs">
+        <div className="flex items-center gap-3 min-w-0">
           {onBackToTabs && (
             <button
               type="button"
@@ -931,23 +933,35 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
               <ChevronLeft className="w-5 h-5 stroke-[2.2]" />
             </button>
           )}
-          <div className="flex -space-x-1.5 overflow-hidden shrink-0">
-            {(members || []).slice(0, 3).map((m) => (
+
+          {/* Photo principale du groupe */}
+          {groupCoverImage ? (
+            <div
+              onClick={() => {
+                if (onViewAvatar && groupCoverImage) {
+                  onViewAvatar(groupCoverImage, groupName || 'Photo du groupe');
+                }
+              }}
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3] shadow-xs shrink-0 cursor-pointer hover:scale-105 transition-transform"
+              title="Agrandir la photo du groupe"
+            >
               <img
-                key={m.userId || m.id}
-                src={m.avatar || '/Avatar_Herisson.jpg'}
-                alt={m.name}
-                className="inline-block h-6 w-6 rounded-full ring-2 ring-[#FFF9EB] dark:ring-[#18181B] object-cover"
+                src={groupCoverImage}
+                alt={groupName || 'Groupe'}
+                className="w-full h-full object-cover"
               />
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#5D0D18] flex items-center justify-center text-white text-sm sm:text-base font-serif font-bold shadow-xs shrink-0 select-none">
+              {groupName?.charAt(0) || 'G'}
+            </div>
+          )}
+
+          {/* Nom du groupe uniquement */}
           <div className="min-w-0">
-            <h4 className="text-xs sm:text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+            <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] truncate">
               {groupName || 'Discussion du groupe'}
             </h4>
-            <p className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 truncate">
-              {members.length} participant{members.length > 1 ? 's' : ''}
-            </p>
           </div>
         </div>
 
@@ -963,7 +977,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                   onStartCall('audio');
                 }}
                 title="Démarrer un appel audio"
-                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#E8D8C4]/80 dark:bg-zinc-800 hover:bg-[#E8D8C4] dark:hover:bg-zinc-750 text-[#5D0D18] dark:text-zinc-200 border border-[#C7B7A3]/40 dark:border-zinc-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#E8D8C4]/80 dark:bg-zinc-800 hover:bg-[#E8D8C4] dark:hover:bg-zinc-750 text-[#5D0D18] dark:text-zinc-200 border border-[#C7B7A3]/40 dark:border-zinc-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
               >
                 <Phone className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
                 <span className="hidden md:inline">Appel audio</span>
@@ -986,7 +1000,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
         </div>
       </div>
 
-      {/* Bannière d'appel en cours dans le groupe : « Appel en cours • Rejoindre » */}
+      {/* Bannière fixe d'appel en cours dans le fil de discussion : « 🟢 Appel en cours • Rejoindre » */}
       {activeCall?.active && (() => {
         const participants = activeCall.participants || [];
         const isUserInCall = participants.some((p) => p.userId === currentUser.id);
@@ -994,7 +1008,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
         return (
           <div
             id="active-call-group-banner"
-            className="px-3 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between gap-2 shadow-sm shrink-0 animate-fade-in border-b border-emerald-500/30"
+            className="px-3.5 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between gap-2 shadow-sm shrink-0 animate-fade-in border-b border-emerald-500/30 select-none"
           >
             <div className="flex items-center gap-2.5 text-xs font-bold min-w-0">
               <span className="relative flex h-3 w-3 shrink-0">
@@ -1002,7 +1016,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
               </span>
               <div className="flex items-center gap-1.5 truncate">
-                <span>{activeCall.type === 'video' ? '📹 Appel vidéo en cours' : '📞 Appel audio en cours'}</span>
+                <span>🟢 Appel en cours</span>
                 <span className="text-[11px] font-medium opacity-90">
                   • {participants.length} participant{participants.length > 1 ? 's' : ''}
                 </span>
@@ -1211,7 +1225,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           </button>
         </form>
 
-        {/* Sélecteur d'émojis universel pour la saisie de message */}
+        {/* Sélecteur d'émojis universel pour la saisie de message avec prévisualisation dynamique */}
         <UniversalEmojiPicker
           isOpen={isInputEmojiPickerOpen}
           onClose={() => setIsInputEmojiPickerOpen(false)}
@@ -1221,6 +1235,12 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
           anchorRect={inputEmojiAnchorRect}
           title="Insérer un émoji"
           closeOnSelect={false}
+          draftInput={{
+            text: inputText,
+            onChange: setInputText,
+            placeholder: "Écrivez votre message...",
+            onSend: handleSend,
+          }}
         />
       </div>
     </div>

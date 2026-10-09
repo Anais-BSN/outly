@@ -580,15 +580,15 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
                     <span>Appel de groupe en cours • Sonnerie chez les membres</span>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-                    {waitingMembers.slice(0, 6).map((m) => (
-                      <div key={m.userId || m.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700 text-xs">
+                    {waitingMembers.slice(0, 8).map((m) => (
+                      <div key={m.userId || m.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700 text-xs shadow-xs">
                         <img
                           src={m.avatar || '/Avatar_Herisson.jpg'}
                           alt={m.firstName}
                           className="w-5 h-5 rounded-full object-cover ring-1 ring-amber-400"
                         />
                         <span className="text-zinc-200 font-medium">{m.firstName || m.name}</span>
-                        <span className="text-[10px] text-amber-300 animate-pulse">Sonnerie...</span>
+                        <span className="text-[10px] text-amber-300 font-semibold animate-pulse">En attente...</span>
                       </div>
                     ))}
                   </div>
@@ -707,20 +707,20 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
         </div>
 
         {/* Barre Inférieure de Contrôles */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-6 py-3.5 bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 px-2 sm:px-6 py-3 bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md">
           {/* Couper / Activer Micro */}
           <button
             type="button"
             id="call-btn-toggle-mic"
             onClick={toggleMute}
-            className={`flex flex-col items-center gap-1 p-3 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
               isMuted
                 ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                 : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700'
             }`}
           >
             {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-emerald-400" />}
-            <span className="hidden sm:inline">{isMuted ? 'Coupé' : 'Micro'}</span>
+            <span className="text-[10px] sm:text-xs">{isMuted ? 'Coupé' : 'Micro'}</span>
           </button>
 
           {/* Activer / Désactiver Caméra */}
@@ -728,14 +728,14 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             type="button"
             id="call-btn-toggle-video"
             onClick={toggleVideo}
-            className={`flex flex-col items-center gap-1 p-3 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
               isVideoOff
                 ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-750 border border-zinc-700'
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
             }`}
           >
             {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-            <span className="hidden sm:inline">{isVideoOff ? 'Sans vidéo' : 'Caméra'}</span>
+            <span className="text-[10px] sm:text-xs">{isVideoOff ? 'Sans vidéo' : 'Caméra'}</span>
           </button>
 
           {/* Inverser caméra si vidéo active */}
@@ -744,11 +744,11 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
               type="button"
               id="call-btn-switch-camera"
               onClick={switchCamera}
-              className="flex flex-col items-center gap-1 p-3 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700 transition-all active:scale-95 cursor-pointer"
+              className="flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700 transition-all active:scale-95 cursor-pointer"
               title="Inverser caméra avant / arrière"
             >
               <RefreshCw className="w-5 h-5" />
-              <span className="hidden sm:inline">Inverser</span>
+              <span className="text-[10px] sm:text-xs">Inverser</span>
             </button>
           )}
 
@@ -757,25 +757,27 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             type="button"
             id="call-btn-toggle-speaker"
             onClick={toggleSpeaker}
-            className={`flex flex-col items-center gap-1 p-3 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-95 cursor-pointer ${
               isSpeakerOn
                 ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-750 border border-zinc-700'
                 : 'bg-zinc-800/60 text-zinc-400 border border-zinc-800'
             }`}
           >
             {isSpeakerOn ? <Volume2 className="w-5 h-5 text-amber-300" /> : <VolumeX className="w-5 h-5" />}
-            <span className="hidden sm:inline">{isSpeakerOn ? 'Haut-parleur' : 'Écouteur'}</span>
+            <span className="text-[10px] sm:text-xs">{isSpeakerOn ? 'Haut-parleur' : 'Écouteur'}</span>
           </button>
 
-          {/* Raccrocher */}
+          {/* Raccrocher / Annuler */}
           <button
             type="button"
             id="call-btn-hangup"
             onClick={() => handleHangUp()}
-            className="flex flex-col items-center gap-1 px-5 sm:px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 transition-all active:scale-95 cursor-pointer"
+            className="flex flex-col items-center gap-1 px-4 sm:px-6 py-2 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 transition-all active:scale-95 cursor-pointer"
           >
             <PhoneOff className="w-5 h-5" />
-            <span className="hidden sm:inline">Raccrocher</span>
+            <span className="text-[10px] sm:text-xs">
+              {isInitiator && isAloneInRoom ? 'Annuler' : 'Raccrocher'}
+            </span>
           </button>
         </div>
       </div>
