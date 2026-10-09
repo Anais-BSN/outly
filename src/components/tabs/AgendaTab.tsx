@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -21,11 +21,13 @@ import {
   Package,
   Check,
   UserCheck,
-  X
+  X,
+  History
 } from 'lucide-react';
 import { EventItem, UserProfile, GroupMember, LogisticsTask } from '../../types';
 import { formatEventCardDate, getLocalDateString } from '../../utils/formatters';
 import { exportToGoogleCalendar, downloadIcsFile } from '../../utils/calendarExport';
+import { EventHistoryModal } from '../modals/EventHistoryModal';
 
 interface AgendaTabProps {
   events: EventItem[];
@@ -74,11 +76,38 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
   // Modal / State for Attendee Details
   const [viewingAttendeesEvent, setViewingAttendeesEvent] = useState<EventItem | null>(null);
 
+  // State for Event History Modal
+  const [isEventHistoryOpen, setIsEventHistoryOpen] = useState(false);
+
   // State for Export Menu per event
   const [openExportMenuId, setOpenExportMenuId] = useState<string | null>(null);
 
   // State for expanded event Organisation sub-module
   const [expandedOrganisationEventId, setExpandedOrganisationEventId] = useState<string | null>(null);
+
+  // Séparation dynamique entre événements à venir et historique des événements passés
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayMs = todayStart.getTime();
+
+    const upcoming: EventItem[] = [];
+    const past: EventItem[] = [];
+
+    for (const ev of safeEvents) {
+      const endMs = ev.endDateTime ? new Date(ev.endDateTime).getTime() : new Date(ev.startDateTime).getTime();
+      if (endMs >= todayMs) {
+        upcoming.push(ev);
+      } else {
+        past.push(ev);
+      }
+    }
+
+    upcoming.sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
+    past.sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
+
+    return { upcomingEvents: upcoming, pastEvents: past };
+  }, [safeEvents]);
 
   // Charger les disponibilités style Assistant de planification
   useEffect(() => {
@@ -342,353 +371,453 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
         </div>
       )}
 
-      {/* VIEW 2: STANDARD EVENTS LIST */}
+      {/* VIEW 2: STANDARD EVENTS LIST & PAST EVENTS HISTORY */}
       {activeSubView === 'events' && (
-        <div className="space-y-4">
-          {safeEvents.length === 0 ? (
-            <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
-              <Calendar className="w-10 h-10 text-[#5D0D18]/50 dark:text-zinc-500 mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
-                Aucun événement prévu pour le moment
-              </p>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
-                Soyez le premier à proposer une sortie ou un week-end !
-              </p>
-              <button
-                onClick={() => onOpenCreateEvent()}
-                className="mt-3 px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] cursor-pointer"
-              >
-                Créer un événement
-              </button>
+        <div className="space-y-6">
+          {/* Section 1: Événements à venir */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
+                <span>Événements à venir ({upcomingEvents.length})</span>
+              </h4>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {safeEvents.map((event) => {
-                const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
-                const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
-                const eventTasks = tasks.filter((t) => t.eventId === event.id || (!t.eventId && t.groupId === event.groupId));
-                const isOrgExpanded = expandedOrganisationEventId === event.id;
 
-                return (
-                  <div
-                    key={event.id}
-                    id={`event-card-${event.id}`}
-                    className="bg-[#E8D8C4] dark:bg-[#27272A] rounded-2xl p-4 border border-[#C7B7A3] dark:border-zinc-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3"
-                  >
-                    <div className="space-y-3">
-                      {/* Title, Circular Thumbnail & Actions */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {event.bannerImage ? (
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#5D0D18]">
-                              <img
-                                src={event.bannerImage}
-                                alt={event.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#5D0D18] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
-                              {event.title.charAt(0) || 'E'}
-                            </div>
-                          )}
+            {upcomingEvents.length === 0 ? (
+              <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
+                <Calendar className="w-10 h-10 text-[#5D0D18]/50 dark:text-zinc-500 mx-auto mb-2" />
+                <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+                  Aucun événement à venir prévu pour le moment
+                </p>
+                <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
+                  Soyez le premier à proposer une sortie ou un week-end !
+                </p>
+                <button
+                  onClick={() => onOpenCreateEvent()}
+                  className="mt-3 px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] cursor-pointer shadow-xs"
+                >
+                  Créer un événement
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {upcomingEvents.map((event) => {
+                  const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
+                  const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
+                  const eventTasks = tasks.filter((t) => t.eventId === event.id || (!t.eventId && t.groupId === event.groupId));
+                  const isOrgExpanded = expandedOrganisationEventId === event.id;
 
-                          <div className="min-w-0">
-                            <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] leading-snug truncate">
-                              {event.title}
-                            </h4>
-                            <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
-                              Par {event.organizerName || 'Organisateur'}
-                            </span>
+                  return (
+                    <div
+                      key={event.id}
+                      id={`event-card-${event.id}`}
+                      className="bg-[#E8D8C4] dark:bg-[#27272A] rounded-2xl p-4 border border-[#C7B7A3] dark:border-zinc-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-3">
+                        {/* Title, Circular Thumbnail & Actions */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {event.bannerImage ? (
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#5D0D18]">
+                                <img
+                                  src={event.bannerImage}
+                                  alt={event.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#5D0D18] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
+                                {event.title.charAt(0) || 'E'}
+                              </div>
+                            )}
+
+                            <div className="min-w-0">
+                              <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] leading-snug truncate">
+                                {event.title}
+                              </h4>
+                              <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
+                                Par {event.organizerName || 'Organisateur'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {onEditEvent && (
+                              <button
+                                onClick={() => onEditEvent(event)}
+                                title="Modifier l'événement"
+                                className="p-1.5 rounded-lg text-[#5D0D18] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onDeleteEvent && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Voulez-vous supprimer l'événement "${event.title}" ?`)) {
+                                    onDeleteEvent(event.id);
+                                  }
+                                }}
+                                title="Supprimer l'événement"
+                                className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {onEditEvent && (
-                            <button
-                              onClick={() => onEditEvent(event)}
-                              title="Modifier l'événement"
-                              className="p-1.5 rounded-lg text-[#5D0D18] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
+                        {/* Date & Time */}
+                        <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
+                          <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                          <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
+                        </div>
+
+                        {/* Location */}
+                        {event.location && (
+                          <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300">
+                            <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
+                            <span className="truncate">{event.location}</span>
+                            {event.gpsUrl && (
+                              <a
+                                href={event.gpsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#6D2932] dark:text-amber-300 hover:underline shrink-0"
+                              >
+                                <ExternalLink className="w-3 h-3 inline" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        {event.description && (
+                          <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Footer: RSVPs & Attendance Action & Organisation */}
+                      <div className="pt-3 border-t border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2.5">
+                        {/* Clickable Attendee Count */}
+                        <div className="flex items-center justify-between text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setViewingAttendeesEvent(event)}
+                            className="font-bold text-[#6D2932] dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer"
+                            title="Voir la liste détaillée des présences"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>
+                              {goingCount} participant{goingCount > 1 ? 's' : ''} confirmé{goingCount > 1 ? 's' : ''} (voir le détail)
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* RSVP Buttons */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            onClick={() => onRsvp(event.id, 'going')}
+                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                              userRsvp === 'going'
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-emerald-50'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>J'y vais</span>
+                          </button>
+
+                          <button
+                            onClick={() => onRsvp(event.id, 'maybe')}
+                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                              userRsvp === 'maybe'
+                                ? 'bg-amber-600 text-white shadow-xs'
+                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-amber-50'
+                            }`}
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            <span>Peut-être</span>
+                          </button>
+
+                          <button
+                            onClick={() => onRsvp(event.id, 'declined')}
+                            className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                              userRsvp === 'declined'
+                                ? 'bg-zinc-600 text-white shadow-xs'
+                                : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-zinc-200'
+                            }`}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Non</span>
+                          </button>
+                        </div>
+
+                        {/* Export to Personal Calendar Button */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setOpenExportMenuId(openExportMenuId === event.id ? null : event.id)}
+                            className="w-full py-1.5 px-3 rounded-xl bg-[#FFF9EB]/80 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#FFF9EB] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <Share2 className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                            <span>Exporter vers mon agenda personnel</span>
+                            <ChevronDown className="w-3 h-3 ml-1" />
+                          </button>
+
+                          {/* Export Dropdown Popover */}
+                          {openExportMenuId === event.id && (
+                            <div className="absolute left-0 right-0 top-full mt-1.5 p-2 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 z-20 space-y-1 animate-scale-in">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  exportToGoogleCalendar(event);
+                                  setOpenExportMenuId(null);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Ajouter dans Google Agenda</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadIcsFile(event);
+                                  setOpenExportMenuId(null);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
+                              >
+                                <Download className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                                <span>Télécharger le fichier calendrier (.ics pour Apple & Outlook)</span>
+                              </button>
+                            </div>
                           )}
-                          {onDeleteEvent && (
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Voulez-vous supprimer l'événement "${event.title}" ?`)) {
-                                  onDeleteEvent(event.id);
-                                }
-                              }}
-                              title="Supprimer l'événement"
-                              className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        </div>
+
+                        {/* Organisation & Items Sub-Module Button */}
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedOrganisationEventId(isOrgExpanded ? null : event.id)
+                            }
+                            className="w-full py-2 px-3 rounded-xl bg-[#5D0D18]/10 dark:bg-zinc-800/80 border border-[#5D0D18]/30 dark:border-zinc-700 text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:bg-[#5D0D18]/20 flex items-center justify-between cursor-pointer transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Package className="w-4 h-4" />
+                              <span>Organisation & Matériel ({eventTasks.length} éléments)</span>
+                            </div>
+                            {isOrgExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+
+                          {/* Expandable Event Tasks List (sans sous-titre redondant) */}
+                          {isOrgExpanded && (
+                            <div className="mt-2 p-3 bg-[#FFF9EB]/90 dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 space-y-2.5 animate-fade-in">
+                              <div className="flex items-center justify-end">
+                                {onOpenAddTask && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenAddTask(event.id)}
+                                    className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Ajouter un élément</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {eventTasks.length === 0 ? (
+                                <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 py-2 text-center italic">
+                                  Aucun objet ou tâche assigné pour l'instant. Cliquez sur "Ajouter" pour vous organiser !
+                                </p>
+                              ) : (
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                  {eventTasks.map((t) => {
+                                    const isAssignedToMe = t.assignedToId === currentUser.id;
+                                    return (
+                                      <div
+                                        key={t.id}
+                                        className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all ${
+                                          t.completed
+                                            ? 'bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border-[#C7B7A3]/40 line-through opacity-75'
+                                            : 'bg-white dark:bg-zinc-800 border-[#C7B7A3]/60 dark:border-zinc-700'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                          {onToggleCompleteTask && (
+                                            <button
+                                              type="button"
+                                              onClick={() => onToggleCompleteTask(t.id)}
+                                              className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${
+                                                t.completed
+                                                  ? 'bg-emerald-600 text-white'
+                                                  : 'border border-[#C7B7A3] bg-[#FFF9EB] dark:bg-zinc-900'
+                                              }`}
+                                            >
+                                              {t.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                                            </button>
+                                          )}
+                                          <span className="truncate font-semibold text-[#27272A] dark:text-[#FFF9EB]">
+                                            {t.title} {t.quantity ? `(${t.quantity})` : ''}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          {t.assignedToId ? (
+                                            <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                                              <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
+                                              {onUnclaimTask && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => onUnclaimTask(t.id)}
+                                                  className="text-red-600 dark:text-red-400 hover:text-red-800 ml-1 cursor-pointer font-bold px-0.5"
+                                                  title="Désassigner"
+                                                >
+                                                  ✕
+                                                </button>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            onClaimTask && (
+                                              <button
+                                                type="button"
+                                                onClick={() => onClaimTask(t.id)}
+                                                className="px-2 py-0.5 rounded-full bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] cursor-pointer"
+                                              >
+                                                Je prends
+                                              </button>
+                                            )
+                                          )}
+
+                                          {onDeleteTask && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (window.confirm(`Supprimer "${t.title}" ?`)) {
+                                                  onDeleteTask(t.id);
+                                                }
+                                              }}
+                                              className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
+                                              title="Supprimer"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
-
-                      {/* Date & Time */}
-                      <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
-                        <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
-                        <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
-                      </div>
-
-                      {/* Location */}
-                      {event.location && (
-                        <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300">
-                          <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                          <span className="truncate">{event.location}</span>
-                          {event.gpsUrl && (
-                            <a
-                              href={event.gpsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[#6D2932] dark:text-amber-300 hover:underline shrink-0"
-                            >
-                              <ExternalLink className="w-3 h-3 inline" />
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Description */}
-                      {event.description && (
-                        <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
-                          {event.description}
-                        </p>
-                      )}
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-                    {/* Footer: RSVPs & Attendance Action & Organisation */}
-                    <div className="pt-3 border-t border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2.5">
-                      {/* Clickable Attendee Count */}
-                      <div className="flex items-center justify-between text-xs">
+          {/* Section 2: Historique des événements passés (Affichage par défaut des 3 derniers + Bouton Tout voir) */}
+          <div className="pt-6 border-t border-[#C7B7A3]/50 dark:border-zinc-800 space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
+                <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB]">
+                  Historique des événements
+                </h4>
+              </div>
+
+              {pastEvents.length > 0 && (
+                <button
+                  type="button"
+                  id="agenda-btn-view-all-history"
+                  onClick={() => setIsEventHistoryOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Tout voir</span>
+                </button>
+              )}
+            </div>
+
+            {pastEvents.length === 0 ? (
+              <div className="p-6 text-center bg-[#E8D8C4]/30 dark:bg-zinc-800/30 rounded-2xl border border-dashed border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A]/70 dark:text-zinc-400 italic">
+                Aucun événement passé pour l'instant.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pastEvents.slice(0, 3).map((event) => {
+                  const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
+                  const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-[#27272A]/80 border border-[#C7B7A3]/60 dark:border-zinc-700/80 shadow-xs flex flex-col justify-between space-y-2 hover:border-[#5D0D18]/40 transition-colors"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h5 className="text-xs sm:text-sm font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                            {event.title}
+                          </h5>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 border border-[#C7B7A3]/40 shrink-0">
+                            Passé
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
+                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                          <span className="truncate">{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
+                        </div>
+                        {event.location && (
+                          <div className="flex items-center gap-1 text-[11px] text-[#27272A]/70 dark:text-zinc-400">
+                            <MapPin className="w-3 h-3 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-2 border-t border-[#C7B7A3]/40 dark:border-zinc-700 flex items-center justify-between text-[11px]">
                         <button
                           type="button"
                           onClick={() => setViewingAttendeesEvent(event)}
                           className="font-bold text-[#6D2932] dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer"
-                          title="Voir la liste détaillée des présences"
                         >
-                          <Users className="w-3.5 h-3.5" />
-                          <span>
-                            {goingCount} participant{goingCount > 1 ? 's' : ''} confirmé{goingCount > 1 ? 's' : ''} (voir le détail)
+                          <Users className="w-3 h-3" />
+                          <span>{goingCount} participant{goingCount > 1 ? 's' : ''}</span>
+                        </button>
+                        {userRsvp === 'going' && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Présent
                           </span>
-                        </button>
-                      </div>
-
-                      {/* RSVP Buttons */}
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          onClick={() => onRsvp(event.id, 'going')}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                            userRsvp === 'going'
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-emerald-50'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>J'y vais</span>
-                        </button>
-
-                        <button
-                          onClick={() => onRsvp(event.id, 'maybe')}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                            userRsvp === 'maybe'
-                              ? 'bg-amber-600 text-white shadow-xs'
-                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-amber-50'
-                          }`}
-                        >
-                          <HelpCircle className="w-3.5 h-3.5" />
-                          <span>Peut-être</span>
-                        </button>
-
-                        <button
-                          onClick={() => onRsvp(event.id, 'declined')}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                            userRsvp === 'declined'
-                              ? 'bg-zinc-600 text-white shadow-xs'
-                              : 'bg-[#FFF9EB] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-zinc-200'
-                          }`}
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Non</span>
-                        </button>
-                      </div>
-
-                      {/* Export to Personal Calendar Button */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setOpenExportMenuId(openExportMenuId === event.id ? null : event.id)}
-                          className="w-full py-1.5 px-3 rounded-xl bg-[#FFF9EB]/80 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#FFF9EB] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Share2 className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
-                          <span>Exporter vers mon agenda personnel</span>
-                          <ChevronDown className="w-3 h-3 ml-1" />
-                        </button>
-
-                        {/* Export Dropdown Popover */}
-                        {openExportMenuId === event.id && (
-                          <div className="absolute left-0 right-0 top-full mt-1.5 p-2 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-[#C7B7A3] dark:border-zinc-700 z-20 space-y-1 animate-scale-in">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                exportToGoogleCalendar(event);
-                                setOpenExportMenuId(null);
-                              }}
-                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Ajouter dans Google Agenda</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                downloadIcsFile(event);
-                                setOpenExportMenuId(null);
-                              }}
-                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
-                            >
-                              <Download className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
-                              <span>Télécharger le fichier calendrier (.ics pour Apple & Outlook)</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Organisation & Items Sub-Module Button */}
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedOrganisationEventId(isOrgExpanded ? null : event.id)
-                          }
-                          className="w-full py-2 px-3 rounded-xl bg-[#5D0D18]/10 dark:bg-zinc-800/80 border border-[#5D0D18]/30 dark:border-zinc-700 text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:bg-[#5D0D18]/20 flex items-center justify-between cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Package className="w-4 h-4" />
-                            <span>Organisation & Matériel ({eventTasks.length} éléments)</span>
-                          </div>
-                          {isOrgExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-
-                        {/* Expandable Event Tasks List */}
-                        {isOrgExpanded && (
-                          <div className="mt-2 p-3 bg-[#FFF9EB]/90 dark:bg-zinc-900 rounded-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 space-y-2.5 animate-fade-in">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-[#5D0D18] dark:text-amber-300">
-                                Tâches et objets spécifiques à cet événement
-                              </span>
-                              {onOpenAddTask && (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenAddTask(event.id)}
-                                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                  <span>Ajouter</span>
-                                </button>
-                              )}
-                            </div>
-
-                            {eventTasks.length === 0 ? (
-                              <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 py-2 text-center italic">
-                                Aucun objet ou tâche assigné pour l'instant. Cliquez sur "Ajouter" pour vous organiser !
-                              </p>
-                            ) : (
-                              <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                                {eventTasks.map((t) => {
-                                  const isAssignedToMe = t.assignedToId === currentUser.id;
-                                  return (
-                                    <div
-                                      key={t.id}
-                                      className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all ${
-                                        t.completed
-                                          ? 'bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border-[#C7B7A3]/40 line-through opacity-75'
-                                          : 'bg-white dark:bg-zinc-800 border-[#C7B7A3]/60 dark:border-zinc-700'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        {onToggleCompleteTask && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onToggleCompleteTask(t.id)}
-                                            className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${
-                                              t.completed
-                                                ? 'bg-emerald-600 text-white'
-                                                : 'border border-[#C7B7A3] bg-[#FFF9EB] dark:bg-zinc-900'
-                                            }`}
-                                          >
-                                            {t.completed && <Check className="w-3 h-3 stroke-[3]" />}
-                                          </button>
-                                        )}
-                                        <span className="truncate font-semibold text-[#27272A] dark:text-[#FFF9EB]">
-                                          {t.title} {t.quantity ? `(${t.quantity})` : ''}
-                                        </span>
-                                      </div>
-
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        {t.assignedToId ? (
-                                          <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
-                                            <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
-                                            {onUnclaimTask && (
-                                              <button
-                                                type="button"
-                                                onClick={() => onUnclaimTask(t.id)}
-                                                className="text-red-600 dark:text-red-400 hover:text-red-800 ml-1 cursor-pointer font-bold px-0.5"
-                                                title="Désassigner"
-                                              >
-                                                ✕
-                                              </button>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          onClaimTask && (
-                                            <button
-                                              type="button"
-                                              onClick={() => onClaimTask(t.id)}
-                                              className="px-2 py-0.5 rounded-full bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] cursor-pointer"
-                                            >
-                                              Je prends
-                                            </button>
-                                          )
-                                        )}
-
-                                        {onDeleteTask && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              if (window.confirm(`Supprimer "${t.title}" ?`)) {
-                                                onDeleteTask(t.id);
-                                              }
-                                            }}
-                                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
-                                            title="Supprimer"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
+
+      {/* MODAL HISTORIQUE COMPLET DES ÉVÉNEMENTS */}
+      <EventHistoryModal
+        isOpen={isEventHistoryOpen}
+        onClose={() => setIsEventHistoryOpen(false)}
+        events={pastEvents}
+        members={safeMembers}
+        currentUser={currentUser}
+        onRsvp={onRsvp}
+        onViewAttendees={(ev) => setViewingAttendeesEvent(ev)}
+      />
 
       {/* ATTENDEES BREAKDOWN MODAL - SINGLE CLEAN UNIFIED LIST */}
       {viewingAttendeesEvent && (

@@ -563,51 +563,62 @@ export const sendNativeLocalNotification = async (
   body: string,
   data?: any
 ): Promise<void> => {
-  if (!isNativePlatform() || !title) return;
+  if (!title) return;
 
-  try {
-    let permStatus = await LocalNotifications.checkPermissions();
-    if (permStatus.display !== 'granted') {
-      permStatus = await LocalNotifications.requestPermissions();
-      if (permStatus.display !== 'granted') return;
+  if (isNativePlatform()) {
+    try {
+      let permStatus = await LocalNotifications.checkPermissions();
+      if (permStatus.display !== 'granted') {
+        permStatus = await LocalNotifications.requestPermissions();
+        if (permStatus.display !== 'granted') return;
+      }
+
+      if (Capacitor.getPlatform() === 'android') {
+        try {
+          await LocalNotifications.createChannel({
+            id: 'outlys_notifications',
+            name: 'Notifications Outlys',
+            description: 'Alertes en temps réel, messages et activités des groupes Outlys',
+            importance: 5,
+            visibility: 1,
+            vibration: true,
+            lights: true,
+            lightColor: '#5D0D18',
+            sound: 'default',
+          });
+        } catch (_) {}
+      }
+
+      const notifId = Math.floor(Math.random() * 2147483647);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notifId,
+            title: title,
+            body: body || '',
+            channelId: 'outlys_notifications',
+            smallIcon: 'ic_stat_outlys',
+            iconColor: '#5D0D18',
+            extra: data || {},
+            autoCancel: true,
+          },
+        ],
+      });
+
+      triggerHapticNotification('success');
+    } catch (err) {
+      console.warn('[LocalNotifications] Impossible d\'émettre la notification locale:', err);
     }
-
-    if (Capacitor.getPlatform() === 'android') {
-      try {
-        await LocalNotifications.createChannel({
-          id: 'outlys_notifications',
-          name: 'Notifications Outlys',
-          description: 'Alertes en temps réel, messages et activités des groupes Outlys',
-          importance: 5,
-          visibility: 1,
-          vibration: true,
-          lights: true,
-          lightColor: '#5D0D18',
-          sound: 'default',
-        });
-      } catch (_) {}
-    }
-
-    const notifId = Math.floor(Math.random() * 2147483647);
-
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: notifId,
-          title: title,
-          body: body || '',
-          channelId: 'outlys_notifications',
-          smallIcon: 'ic_stat_outlys',
-          iconColor: '#5D0D18',
-          extra: data || {},
-          autoCancel: true,
-        },
-      ],
-    });
-
-    triggerHapticNotification('success');
-  } catch (err) {
-    console.warn('[LocalNotifications] Impossible d\'émettre la notification locale:', err);
+  } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, {
+        body: body || '',
+        icon: '/Avatar_Herisson.jpg',
+        data: data || {},
+      });
+      triggerHapticNotification('success');
+    } catch (_) {}
   }
 };
 

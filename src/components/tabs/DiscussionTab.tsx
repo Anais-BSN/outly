@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Send,
   Image as ImageIcon,
@@ -53,6 +53,7 @@ interface MessageItemProps {
   currentUser: UserProfile;
   isConsecutive: boolean;
   members: GroupMember[];
+  latestReadMembers?: GroupMember[];
   onAddReaction: (messageId: string, emoji: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
@@ -66,6 +67,7 @@ const MessageItem = React.memo<MessageItemProps>(({
   currentUser,
   isConsecutive,
   members,
+  latestReadMembers = [],
   onAddReaction,
   onEditMessage,
   onDeleteMessage,
@@ -118,14 +120,18 @@ const MessageItem = React.memo<MessageItemProps>(({
     (m) => (m.userId || m.id) !== message.senderId
   );
 
-  // Les autres membres qui ont lu ce message
-  const readOtherMembers = otherGroupMembers.filter((m) => {
+  // Les autres membres dont CE message précis est le TOUT DERNIER message lu (dédoublonnage strict)
+  const readOtherMembers = (latestReadMembers || []).filter((m) => {
     const mId = m.userId || m.id;
-    return (message.readBy || []).includes(mId);
+    return mId !== message.senderId;
   });
 
   const isReadByEveryone =
-    otherGroupMembers.length > 0 && readOtherMembers.length >= otherGroupMembers.length;
+    otherGroupMembers.length > 0 &&
+    otherGroupMembers.every((om) => {
+      const omId = om.userId || om.id;
+      return (message.readBy || []).includes(omId);
+    });
 
   // Détection appui long sur smartphone avec maintien permanent de la barre (>2s ou relâchement)
   const isTouchingRef = useRef(false);
@@ -785,6 +791,33 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
   const hasOlderMessages = messages.length > displayedLimit;
   const displayedMessages = messages.slice(Math.max(0, messages.length - displayedLimit));
 
+  // Calcul de la déduplication des accusés de lecture (« Vu par [Prénom] ») :
+  // Chaque membre n'est affiché qu'une seule et unique fois, sous le TOUT DERNIER message lu par ce membre.
+  const latestReadMembersByMessageId = useMemo(() => {
+    const map: Record<string, GroupMember[]> = {};
+    const seenMemberIds = new Set<string>();
+
+    // On parcourt les messages chronologiquement inversés (du plus récent au plus ancien)
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      const readByList = msg.readBy || [];
+
+      for (const member of members) {
+        const mId = member.userId || member.id;
+        if (!mId) continue;
+
+        if (readByList.includes(mId) && !seenMemberIds.has(mId)) {
+          seenMemberIds.add(mId);
+          if (!map[msg.id]) {
+            map[msg.id] = [];
+          }
+          map[msg.id].push(member);
+        }
+      }
+    }
+    return map;
+  }, [messages, members]);
+
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
@@ -1096,6 +1129,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
               currentUser={currentUser}
               isConsecutive={isConsecutive}
               members={members}
+              latestReadMembers={latestReadMembersByMessageId[message.id] || []}
               onAddReaction={onAddReaction}
               onEditMessage={onEditMessage}
               onDeleteMessage={onDeleteMessage}
