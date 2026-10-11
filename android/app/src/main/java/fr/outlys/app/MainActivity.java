@@ -1,14 +1,19 @@
 package fr.outlys.app;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -142,7 +147,9 @@ public class MainActivity extends BridgeActivity {
     private void setupSystemBarsInterface() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
-                getBridge().getWebView().addJavascriptInterface(new SystemBarsBridge(), "AndroidSystemBars");
+                SystemBarsBridge bridge = new SystemBarsBridge();
+                getBridge().getWebView().addJavascriptInterface(bridge, "AndroidSystemBars");
+                getBridge().getWebView().addJavascriptInterface(bridge, "AndroidAlarmBridge");
             }
         } catch (Exception ignored) {}
     }
@@ -158,6 +165,46 @@ public class MainActivity extends BridgeActivity {
         public void setDarkMode(final boolean isDark) {
             getSharedPreferences("outlys_prefs", MODE_PRIVATE).edit().putBoolean("is_dark_mode", isDark).apply();
             runOnUiThread(() -> applySystemBars(isDark));
+        }
+
+        @JavascriptInterface
+        public boolean canScheduleExactAlarms() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                return alarmManager != null && alarmManager.canScheduleExactAlarms();
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public boolean requestExactAlarmPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
+                    openExactAlarmSettings();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public void openExactAlarmSettings() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    } catch (Exception ignored) {}
+                }
+            }
         }
     }
 

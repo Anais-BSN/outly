@@ -108,7 +108,7 @@ class RealtimeService {
       this.userChannel = this.pusher.subscribe(userChannelName);
       
       this.userChannel.bind_global((eventName: string, data: any) => {
-        if (eventName.startsWith('pusher:')) return;
+        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
         const normalizedEvent: RealtimeEvent = {
           type: data?.type || eventName,
           groupId: data?.groupId,
@@ -145,7 +145,7 @@ class RealtimeService {
     this.activeGroupChannel = this.pusher.subscribe(groupChannelName);
 
     this.activeGroupChannel.bind_global((eventName: string, data: any) => {
-      if (eventName.startsWith('pusher:')) return;
+      if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
       const normalizedEvent: RealtimeEvent = {
         type: data?.type || eventName,
         groupId: data?.groupId || groupId,
@@ -249,6 +249,8 @@ class RealtimeService {
     this.reconnectAttempts = 0;
   }
 
+  private seenEventKeys: Map<string, number> = new Map();
+
   public subscribe(listener: EventListener): () => void {
     this.listeners.add(listener);
     return () => {
@@ -257,6 +259,28 @@ class RealtimeService {
   }
 
   private notifyListeners(event: RealtimeEvent): void {
+    // Évite les doublons d'événements reçus quasi-simultanément (ex: SSE + Pusher ou triggers multiples)
+    const now = Date.now();
+    const eventIdentifier = event.data?.id || event.data?.messageId || event.data?.eventId || event.data?.pollId || event.data?.optionId || '';
+    const dedupeKey = `${event.type}:${event.groupId || ''}:${eventIdentifier}`;
+
+    if (dedupeKey.length > 5) {
+      const lastSeen = this.seenEventKeys.get(dedupeKey);
+      if (lastSeen && now - lastSeen < 1200) {
+        return; // Événement identique déjà traité il y a moins de 1,2 seconde
+      }
+      this.seenEventKeys.set(dedupeKey, now);
+
+      // Nettoyage régulier
+      if (this.seenEventKeys.size > 200) {
+        for (const [k, timestamp] of this.seenEventKeys.entries()) {
+          if (now - timestamp > 5000) {
+            this.seenEventKeys.delete(k);
+          }
+        }
+      }
+    }
+
     for (const listener of this.listeners) {
       try {
         listener(event);

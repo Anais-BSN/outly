@@ -85,18 +85,47 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
   // State for expanded event Organisation sub-module
   const [expandedOrganisationEventId, setExpandedOrganisationEventId] = useState<string | null>(null);
 
-  // Séparation dynamique entre événements à venir et historique des événements passés
-  const { upcomingEvents, pastEvents } = useMemo(() => {
-    const nowMs = Date.now();
+  // Horloge temps réel pour basculer automatiquement les événements passés dans l'historique
+  const [currentTimestamp, setCurrentTimestamp] = useState<number>(Date.now());
 
+  useEffect(() => {
+    // Actualisation automatique toutes les 30 secondes
+    const interval = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Séparation dynamique entre événements à venir / en cours et historique des événements passés
+  const { upcomingEvents, pastEvents } = useMemo(() => {
     const upcoming: EventItem[] = [];
     const past: EventItem[] = [];
 
+    const getEventEndTimestamp = (ev: EventItem): number => {
+      const dateStr = ev.endDateTime || ev.startDateTime;
+      if (!dateStr) return 0;
+      // Date brute sans heure explicite (ex: YYYY-MM-DD) -> fin de journée 23:59:59.999
+      if (!dateStr.includes('T') && !dateStr.includes(':')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          return new Date(y, m, d, 23, 59, 59, 999).getTime();
+        }
+      }
+      const parsed = new Date(dateStr).getTime();
+      if (!isNaN(parsed)) return parsed;
+      return new Date(ev.startDateTime).getTime() || 0;
+    };
+
     for (const ev of safeEvents) {
-      const endMs = ev.endDateTime ? new Date(ev.endDateTime).getTime() : new Date(ev.startDateTime).getTime();
-      if (endMs >= nowMs) {
+      const endMs = getEventEndTimestamp(ev);
+      // Seuls les événements futurs ou en cours figurent dans la section principale
+      if (endMs >= currentTimestamp) {
         upcoming.push(ev);
       } else {
+        // Tout événement dont la date de fin (ou date de tenue) est passée va dans l'historique
         past.push(ev);
       }
     }
@@ -105,7 +134,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
     past.sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
 
     return { upcomingEvents: upcoming, pastEvents: past };
-  }, [safeEvents]);
+  }, [safeEvents, currentTimestamp]);
 
   // Charger les disponibilités style Assistant de planification
   useEffect(() => {

@@ -34,6 +34,7 @@ import { GroupMembersModal } from './components/modals/GroupMembersModal';
 import { InviteReconcileModal } from './components/modals/InviteReconcileModal';
 import { GroupCallModal } from './components/modals/GroupCallModal';
 import { IncomingCallAlertModal } from './components/modals/IncomingCallAlertModal';
+import { ExactAlarmPermissionModal } from './components/modals/ExactAlarmPermissionModal';
 import { AppDownloadBanner } from './components/AppDownloadBanner';
 import { DownloadAppPage } from './components/DownloadAppPage';
 import { formatDateOnly } from './utils/formatters';
@@ -55,6 +56,8 @@ import {
   sendNativeLocalNotification,
   sendNativeIncomingCallAlert,
   requestAllAppPermissions,
+  isExactAlarmPermissionGranted,
+  openExactAlarmSettings,
 } from './services/nativeService';
 import {
   TabType,
@@ -204,6 +207,7 @@ export default function App() {
   const [activeCallSession, setActiveCallSession] = useState<GroupCallSession | null>(null);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [incomingCallAlert, setIncomingCallAlert] = useState<GroupCallSession | null>(null);
+  const [isExactAlarmModalOpen, setIsExactAlarmModalOpen] = useState(false);
 
   // Deep-link & Reset Password states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -865,6 +869,46 @@ export default function App() {
       }
     }
   }, [currentUser]);
+
+  // Vérification de l'autorisation système Android « Alarmes et rappels » au lancement
+  useEffect(() => {
+    let isMounted = true;
+    const checkExactAlarm = async () => {
+      try {
+        const isGranted = await isExactAlarmPermissionGranted();
+        if (!isGranted && isMounted) {
+          const dismissedSession = sessionStorage.getItem('outlys_exact_alarm_dismissed');
+          if (!dismissedSession) {
+            setIsExactAlarmModalOpen(true);
+          }
+        }
+      } catch (err) {
+        console.debug('[ExactAlarm] Vérification au démarrage:', err);
+      }
+    };
+
+    const timer = setTimeout(checkExactAlarm, 1500);
+
+    // Re-vérifier automatiquement quand l'utilisateur revient des paramètres Android
+    const handleRecheckOnFocus = async () => {
+      try {
+        const isGranted = await isExactAlarmPermissionGranted();
+        if (isGranted && isMounted) {
+          setIsExactAlarmModalOpen(false);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener('focus', handleRecheckOnFocus);
+    document.addEventListener('visibilitychange', handleRecheckOnFocus);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      window.removeEventListener('focus', handleRecheckOnFocus);
+      document.removeEventListener('visibilitychange', handleRecheckOnFocus);
+    };
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -3091,6 +3135,18 @@ export default function App() {
           onDecline={handleDeclineIncomingCall}
         />
       )}
+
+      {/* Boîte de dialogue explicative : Autorisation native Alarmes et rappels Android */}
+      <ExactAlarmPermissionModal
+        isOpen={isExactAlarmModalOpen}
+        onClose={() => {
+          setIsExactAlarmModalOpen(false);
+          sessionStorage.setItem('outlys_exact_alarm_dismissed', 'true');
+        }}
+        onOpenSettings={() => {
+          openExactAlarmSettings();
+        }}
+      />
     </div>
   );
 }

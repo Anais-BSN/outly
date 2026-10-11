@@ -7,6 +7,8 @@ class SoundService {
   private audioCtx: AudioContext | null = null;
   private currentRingtoneInterval: any = null;
   private isRingtonePlaying = false;
+  private activeOscillators: OscillatorNode[] = [];
+  private activeGains: GainNode[] = [];
 
   private getAudioContext(): AudioContext | null {
     try {
@@ -41,6 +43,15 @@ class SoundService {
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gainNode = ctx.createGain();
+
+      this.activeOscillators.push(osc1, osc2);
+      this.activeGains.push(gainNode);
+
+      const cleanupNodes = () => {
+        this.activeOscillators = this.activeOscillators.filter((o) => o !== osc1 && o !== osc2);
+        this.activeGains = this.activeGains.filter((g) => g !== gainNode);
+      };
+      osc1.onended = cleanupNodes;
 
       osc1.type = 'sine';
       osc2.type = 'triangle';
@@ -78,7 +89,7 @@ class SoundService {
   }
 
   /**
-   * Tonalité d'attente / composition pour l'initiateur de l'appel
+   * Tonalité d'attente / composition pour l'initiateur de l'appel (« Tut... Tut... »)
    */
   public startDialingTone(): () => void {
     this.stopRingtone();
@@ -93,6 +104,15 @@ class SoundService {
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gainNode = ctx.createGain();
+
+      this.activeOscillators.push(osc1, osc2);
+      this.activeGains.push(gainNode);
+
+      const cleanupNodes = () => {
+        this.activeOscillators = this.activeOscillators.filter((o) => o !== osc1 && o !== osc2);
+        this.activeGains = this.activeGains.filter((g) => g !== gainNode);
+      };
+      osc1.onended = cleanupNodes;
 
       osc1.type = 'sine';
       osc2.type = 'sine';
@@ -122,7 +142,7 @@ class SoundService {
   }
 
   /**
-   * Arrêt complet de toute sonnerie active
+   * Arrêt complet et immédiat de toute sonnerie active (coupe nette instantanée du flux sonore)
    */
   public stopRingtone(): void {
     this.isRingtonePlaying = false;
@@ -130,6 +150,34 @@ class SoundService {
       clearInterval(this.currentRingtoneInterval);
       this.currentRingtoneInterval = null;
     }
+
+    const ctx = this.audioCtx;
+    const now = ctx ? ctx.currentTime : 0;
+
+    // Coupe nette instantanée du gain pour supprimer tout son résiduel
+    for (const gainNode of this.activeGains) {
+      try {
+        if (ctx) {
+          gainNode.gain.cancelScheduledValues(now);
+          gainNode.gain.setValueAtTime(0, now);
+        }
+        gainNode.disconnect();
+      } catch (_) {}
+    }
+    this.activeGains = [];
+
+    // Arrêt immédiat de tous les oscillateurs en cours d'émission
+    for (const osc of this.activeOscillators) {
+      try {
+        if (ctx) {
+          osc.stop(now);
+        } else {
+          osc.stop();
+        }
+        osc.disconnect();
+      } catch (_) {}
+    }
+    this.activeOscillators = [];
   }
 
   /**

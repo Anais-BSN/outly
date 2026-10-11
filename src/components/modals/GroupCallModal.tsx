@@ -57,18 +57,30 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
 
   const participants = callSession?.participants || [];
   const isInitiator = callSession?.initiatorId === currentUser.id;
-  const isAloneInRoom = participants.length <= 1;
+  const hasOtherParticipant = participants.some((p) => p.userId && p.userId !== currentUser.id);
+  const isAloneInRoom = !hasOtherParticipant;
 
-  // Track the highest number of participants who joined
+  // Track the highest number of participants who joined & cut dialing tone instantly
   useEffect(() => {
-    if (participants.length > maxJoinedCountRef.current) {
-      maxJoinedCountRef.current = participants.length;
-      if (participants.length >= 2) {
+    if (hasOtherParticipant) {
+      // Dès que le premier membre décroche et entre dans la communication :
+      // Stoppe immédiatement la sonnerie d'attente continue (« Tut... Tut... »)
+      soundService.stopRingtone();
+
+      if (participants.length > maxJoinedCountRef.current) {
+        maxJoinedCountRef.current = participants.length;
         soundService.playJoinSound();
         triggerHapticNotification('success');
       }
+
+      // Active la transmission audio normale entre les participants
+      if (localStreamRef.current) {
+        localStreamRef.current.getAudioTracks().forEach((track) => {
+          track.enabled = !isMuted;
+        });
+      }
     }
-  }, [participants.length]);
+  }, [hasOtherParticipant, participants.length, isMuted]);
 
   // Fermeture automatique stricte : dès qu'il ne reste qu'une seule personne après qu'au moins 2 ont rejoint
   useEffect(() => {
@@ -90,14 +102,16 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
   // Tonalité d'attente pour l'initiateur tant que personne d'autre n'a rejoint
   useEffect(() => {
     let stopTone: (() => void) | null = null;
-    if (isOpen && isInitiator && isAloneInRoom) {
+    if (isOpen && isInitiator && !hasOtherParticipant) {
       stopTone = soundService.startDialingTone();
+    } else {
+      soundService.stopRingtone();
     }
     return () => {
       if (stopTone) stopTone();
       soundService.stopRingtone();
     };
-  }, [isOpen, isInitiator, isAloneInRoom]);
+  }, [isOpen, isInitiator, hasOtherParticipant]);
 
   // Compte à rebours de sonnerie initial de 35s si personne ne décroche
   useEffect(() => {

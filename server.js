@@ -648,6 +648,45 @@ apiRouter.get("/users", async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+apiRouter.get("/users/search", async (req, res) => {
+  try {
+    const rawQuery = (req.query.q || req.query.query || "").trim();
+    const currentUserId = req.query.userId?.trim();
+    if (!rawQuery) {
+      return res.json([]);
+    }
+    const cleanHandle = rawQuery.startsWith("@") ? rawQuery : `@${rawQuery}`;
+    const result = await query(
+      `SELECT id, name, name as "firstName", '' as "lastName",
+              email, handle, avatar, shares
+       FROM users
+       WHERE COALESCE(is_deleted, false) = false
+         AND ($3 = '' OR id != $3)
+         AND (
+           LOWER(TRIM(name)) = LOWER(TRIM($1))
+           OR LOWER(TRIM(handle)) = LOWER(TRIM($1))
+           OR LOWER(TRIM(handle)) = LOWER(TRIM($2))
+           OR name ILIKE $4
+           OR handle ILIKE $4
+           OR email ILIKE $4
+         )
+       ORDER BY (
+         CASE 
+           WHEN LOWER(TRIM(name)) = LOWER(TRIM($1)) THEN 1
+           WHEN LOWER(TRIM(handle)) = LOWER(TRIM($1)) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 2
+           WHEN name ILIKE $4 THEN 3
+           ELSE 4
+         END
+       ) ASC, name ASC
+       LIMIT 15`,
+      [rawQuery, cleanHandle, currentUserId || "", `%${rawQuery}%`]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error in GET /users/search:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 apiRouter.get("/auth/check-handle", async (req, res) => {
   try {
     const handle = req.query.handle || "";
@@ -1033,9 +1072,25 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
         `SELECT id, name, name as "firstName", '' as "lastName",
                 handle, email, avatar, shares
          FROM users
-         WHERE handle ILIKE $1 OR handle ILIKE $2 OR email ILIKE $2
+         WHERE COALESCE(is_deleted, false) = false
+           AND (
+             LOWER(TRIM(name)) = LOWER(TRIM($1))
+             OR LOWER(TRIM(handle)) = LOWER(TRIM($1))
+             OR LOWER(TRIM(handle)) = LOWER(TRIM($2))
+             OR name ILIKE $1
+             OR handle ILIKE $1
+             OR handle ILIKE $2
+             OR email ILIKE $1
+           )
+         ORDER BY (
+           CASE 
+             WHEN LOWER(TRIM(name)) = LOWER(TRIM($1)) THEN 1
+             WHEN LOWER(TRIM(handle)) = LOWER(TRIM($1)) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 2
+             ELSE 3
+           END
+         ) ASC
          LIMIT 1`,
-        [cleanHandle, item]
+        [item, cleanHandle]
       );
       const targetUser = targetUserRes.rows[0];
       if (targetUser) {

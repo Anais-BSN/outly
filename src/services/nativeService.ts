@@ -395,6 +395,41 @@ if (typeof window !== 'undefined') {
    7. DEMANDE GROUPÉE DES AUTORISATIONS & ALARMES EXACTES ANDROID
    ========================================================================= */
 
+export const isExactAlarmPermissionGranted = async (): Promise<boolean> => {
+  if (!isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+    return true;
+  }
+
+  try {
+    const bridge = (window as any).AndroidAlarmBridge || (window as any).AndroidSystemBars;
+    if (bridge && typeof bridge.canScheduleExactAlarms === 'function') {
+      return Boolean(bridge.canScheduleExactAlarms());
+    }
+
+    const exactStatus = await LocalNotifications.checkPermissions();
+    return exactStatus.display === 'granted';
+  } catch (err) {
+    console.warn('[Permissions] Erreur vérification exact alarm:', err);
+    return true;
+  }
+};
+
+export const openExactAlarmSettings = async (): Promise<void> => {
+  if (!isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+    return;
+  }
+
+  try {
+    const bridge = (window as any).AndroidAlarmBridge || (window as any).AndroidSystemBars;
+    if (bridge && typeof bridge.openExactAlarmSettings === 'function') {
+      bridge.openExactAlarmSettings();
+      return;
+    }
+  } catch (err) {
+    console.warn('[Permissions] Erreur ouverture réglages alarmes exactes:', err);
+  }
+};
+
 export const checkAndRequestExactAlarmPermission = async (): Promise<boolean> => {
   if (!isNativePlatform() || Capacitor.getPlatform() !== 'android') {
     return true;
@@ -402,6 +437,15 @@ export const checkAndRequestExactAlarmPermission = async (): Promise<boolean> =>
 
   try {
     const bridge = (window as any).AndroidAlarmBridge || (window as any).AndroidSystemBars;
+    if (bridge && typeof bridge.canScheduleExactAlarms === 'function') {
+      const granted = Boolean(bridge.canScheduleExactAlarms());
+      if (!granted && typeof bridge.openExactAlarmSettings === 'function') {
+        bridge.openExactAlarmSettings();
+        return false;
+      }
+      return granted;
+    }
+
     if (bridge && typeof bridge.requestExactAlarmPermission === 'function') {
       return Boolean(bridge.requestExactAlarmPermission());
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Search,
@@ -10,9 +10,11 @@ import {
   Users,
   Sparkles,
   UserCheck,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { Friend, UserProfile } from '../../types';
+import { api } from '../../services/api';
 
 interface AddFriendsModalProps {
   isOpen: boolean;
@@ -141,14 +143,51 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
 
   const safeFriends = friends || [];
   const [searchQuery, setSearchQuery] = useState('');
+  const [inviteMode, setInviteMode] = useState<'pseudo' | 'email'>('pseudo');
+  const [pseudoInput, setPseudoInput] = useState('');
   const [email, setEmail] = useState('');
+  const [pseudoSearchResults, setPseudoSearchResults] = useState<UserProfile[]>([]);
+  const [isSearchingPseudo, setIsSearchingPseudo] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const searchTimeoutRef = useRef<any>(null);
 
   const acceptedFriends = safeFriends.filter((f) => f && f.status === 'accepted');
   const pendingReceived = safeFriends.filter((f) => f && f.status === 'pending_received');
   const pendingSent = safeFriends.filter((f) => f && f.status === 'pending_sent');
+
+  // Recherche en direct par pseudo (insensible à la casse, espaces & émojis gérés)
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    const clean = pseudoInput.trim();
+    if (!clean || clean.length < 1) {
+      setPseudoSearchResults([]);
+      setIsSearchingPseudo(false);
+      return;
+    }
+
+    setIsSearchingPseudo(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await api.searchUsers(clean, currentUser.id);
+        setPseudoSearchResults(results || []);
+      } catch (err) {
+        setPseudoSearchResults([]);
+      } finally {
+        setIsSearchingPseudo(false);
+      }
+    }, 280);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [pseudoInput, currentUser.id]);
 
   const filteredFriends = acceptedFriends.filter((f) => {
     if (!f) return false;
@@ -162,8 +201,37 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
     );
   });
 
+  const handleSendInviteByPseudo = async (targetPseudoOrHandle?: string) => {
+    const target = (targetPseudoOrHandle || pseudoInput).trim();
+    if (!target || isSending) return;
+
+    setFeedbackMsg(null);
+    setErrorMsg(null);
+    setIsSending(true);
+
+    try {
+      await onSendFriendRequest(target);
+      setFeedbackMsg(`Demande d'ami envoyée avec succès à "${target}" ! 🎉`);
+      setPseudoInput('');
+      setPseudoSearchResults([]);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Impossible d\'envoyer la demande d\'ami.');
+    } finally {
+      setIsSending(false);
+      setTimeout(() => {
+        setFeedbackMsg(null);
+        setErrorMsg(null);
+      }, 5000);
+    }
+  };
+
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inviteMode === 'pseudo') {
+      await handleSendInviteByPseudo();
+      return;
+    }
+
     const cleanEmail = email.trim();
     if (!cleanEmail || isSending) return;
 
@@ -211,7 +279,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                 Mes Amis & Invitations
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 font-medium">
-                Gérez vos connexions et invitez de nouveaux proches
+                Recherchez par pseudo ou invitez de nouveaux proches
               </p>
             </div>
           </div>
@@ -224,64 +292,232 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Form to invite via Email (1 by 1) */}
-        <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
-          <label htmlFor="friend-email-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-            Ajouter un ami (par e-mail)
-          </label>
-
-          <form onSubmit={handleSendInvite} className="space-y-2.5">
-            <div className="relative">
-              <input
-                id="friend-email-input"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
-                }}
-                placeholder="nom@exemple.com"
-                required
-                disabled={isSending}
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
-              />
-              <Mail className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            </div>
-
-            <button
-              type="submit"
-              id="friends-send-invite-btn"
-              disabled={isSending || !email.trim()}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
-            >
-              {isSending ? (
-                <>
-                  <UserPlus className="w-4 h-4 animate-spin" />
-                  <span>Envoi en cours...</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  <span>Envoyer l'invitation</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {feedbackMsg && (
-            <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
-              <Sparkles className="w-4 h-4 shrink-0" />
-              <span>{feedbackMsg}</span>
-            </div>
-          )}
-
-          {errorMsg && (
-            <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
-              <X className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+        {/* Mode Selector Tabs: Par Pseudo vs Par Email */}
+        <div className="p-1 bg-[#E8D8C4]/50 dark:bg-zinc-800/80 rounded-2xl flex gap-1 border border-[#C7B7A3]/40 dark:border-zinc-700">
+          <button
+            type="button"
+            id="tab-invite-pseudo-btn"
+            onClick={() => {
+              setInviteMode('pseudo');
+              setErrorMsg(null);
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              inviteMode === 'pseudo'
+                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]/80 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <AtSign className="w-3.5 h-3.5" />
+            <span>Ajout par pseudo</span>
+          </button>
+          <button
+            type="button"
+            id="tab-invite-email-btn"
+            onClick={() => {
+              setInviteMode('email');
+              setErrorMsg(null);
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              inviteMode === 'email'
+                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]/80 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Invitation par e-mail</span>
+          </button>
         </div>
+
+        {/* Section 1: Ajout par Pseudo (avec recherche instantanée, insensible à la casse et gestion des espaces/émojis) */}
+        {inviteMode === 'pseudo' ? (
+          <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+            <div className="flex items-center justify-between">
+              <label htmlFor="friend-pseudo-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                Rechercher un pseudo / nom d'affichage
+              </label>
+              <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
+                Espaces & émojis pris en charge
+              </span>
+            </div>
+
+            <form onSubmit={handleSendInvite} className="space-y-2.5">
+              <div className="relative">
+                <input
+                  id="friend-pseudo-input"
+                  type="text"
+                  value={pseudoInput}
+                  onChange={(e) => {
+                    setPseudoInput(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  placeholder="Ex: Anaïs 🌸, Pierre 🏕️, @lucas..."
+                  required
+                  disabled={isSending}
+                  className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
+                />
+                <AtSign className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                {isSearchingPseudo && (
+                  <Loader2 className="w-4 h-4 text-[#5D0D18] dark:text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 animate-spin" />
+                )}
+              </div>
+
+              <button
+                type="submit"
+                id="friends-send-pseudo-btn"
+                disabled={isSending || !pseudoInput.trim()}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Recherche et envoi...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>Ajouter cet utilisateur</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Suggestions / Résultats instantanés de recherche par pseudo */}
+            {pseudoSearchResults.length > 0 && (
+              <div className="space-y-1.5 pt-1 border-t border-[#C7B7A3]/40 dark:border-zinc-700 animate-fade-in">
+                <span className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-300 uppercase tracking-wider">
+                  Utilisateurs trouvés ({pseudoSearchResults.length})
+                </span>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  {pseudoSearchResults.map((user) => {
+                    const isAlreadyFriend = acceptedFriends.some((f) => f.id === user.id);
+                    const isPending = pendingSent.some((f) => f.id === user.id);
+                    const displayName = user.name || user.firstName || 'Utilisateur';
+
+                    return (
+                      <div
+                        key={user.id}
+                        id={`user-search-item-${user.id}`}
+                        className="p-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center justify-between gap-2.5"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={user.avatar || '/Avatar_Herisson.jpg'}
+                            alt={displayName}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#C7B7A3] shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
+                              {displayName}
+                            </div>
+                            <div className="text-[10px] text-[#5D0D18] dark:text-zinc-400 truncate">
+                              {user.handle || (user.email ? user.email : '@pseudo')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {isAlreadyFriend ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                            <UserCheck className="w-3 h-3" />
+                            <span>Ami</span>
+                          </span>
+                        ) : isPending ? (
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                            <Clock className="w-3 h-3" />
+                            <span>En attente</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isSending}
+                            onClick={() => handleSendInviteByPseudo(user.name || user.handle || user.id)}
+                            className="px-3 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
+                          >
+                            <UserPlus className="w-3 h-3" />
+                            <span>Ajouter</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {feedbackMsg && (
+              <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span>{feedbackMsg}</span>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
+                <X className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Section 2: Invitation par E-mail */
+          <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
+            <label htmlFor="friend-email-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
+              Inviter un ami par e-mail
+            </label>
+
+            <form onSubmit={handleSendInvite} className="space-y-2.5">
+              <div className="relative">
+                <input
+                  id="friend-email-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  placeholder="nom@exemple.com"
+                  required
+                  disabled={isSending}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
+                />
+                <Mail className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+
+              <button
+                type="submit"
+                id="friends-send-invite-btn"
+                disabled={isSending || !email.trim()}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Envoi en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    <span>Envoyer l'invitation</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {feedbackMsg && (
+              <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span>{feedbackMsg}</span>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
+                <X className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pending Requests Received */}
         {pendingReceived.length > 0 && (

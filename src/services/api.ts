@@ -248,9 +248,14 @@ export const api = {
     });
   },
 
-  // 2. Amis
+  // 2. Amis & Recherche d'utilisateurs
   async getFriends(userId: string): Promise<Friend[]> {
     return request<Friend[]>(`/friends?userId=${encodeURIComponent(userId)}`);
+  },
+
+  async searchUsers(query: string, currentUserId?: string): Promise<UserProfile[]> {
+    const userParam = currentUserId ? `&userId=${encodeURIComponent(currentUserId)}` : '';
+    return request<UserProfile[]>(`/users/search?q=${encodeURIComponent(query.trim())}${userParam}`);
   },
 
   async sendFriendRequest(handleOrEmail: string, userId: string): Promise<Friend> {
