@@ -32,8 +32,7 @@ DROP TABLE IF EXISTS users CASCADE;
 -- 1. Table Utilisateurs (avec support mot de passe et Google OAuth)
 CREATE TABLE users (
     id VARCHAR(50) PRIMARY KEY,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
+    name TEXT NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     handle VARCHAR(50) UNIQUE,
     avatar TEXT,

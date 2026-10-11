@@ -3783,13 +3783,14 @@ apiRouter.get('/settlements', async (req: Request, res: Response) => {
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
              s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
-             COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserFirstName",
+             COALESCE(u1.name, u1.handle, 'Membre') as "fromUserFirstName",
              '' as "fromUserLastName",
-             COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserName",
+             COALESCE(u1.name, u1.handle, 'Membre') as "fromUserName",
+             COALESCE(u1.name, u1.handle, 'Membre') as name,
              COALESCE(u1.avatar, '') as "fromUserAvatar",
-             COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserFirstName",
+             COALESCE(u2.name, u2.handle, 'Membre') as "toUserFirstName",
              '' as "toUserLastName",
-             COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserName",
+             COALESCE(u2.name, u2.handle, 'Membre') as "toUserName",
              COALESCE(u2.avatar, '') as "toUserAvatar"
       FROM debt_settlements s
       LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3845,13 +3846,14 @@ const handleSettlementToggle = async (req: Request, res: Response) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.name, u1.handle, 'Membre') as "fromUserFirstName",
               '' as "fromUserLastName",
-              COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserName",
+              COALESCE(u1.name, u1.handle, 'Membre') as "fromUserName",
+              COALESCE(u1.name, u1.handle, 'Membre') as name,
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserFirstName",
+              COALESCE(u2.name, u2.handle, 'Membre') as "toUserFirstName",
               '' as "toUserLastName",
-              COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserName",
+              COALESCE(u2.name, u2.handle, 'Membre') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id

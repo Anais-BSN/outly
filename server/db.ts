@@ -41,7 +41,7 @@ export const query = async (text: string, params?: any[]) => {
       await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;');
       await pool.query(`
         UPDATE users 
-        SET name = COALESCE(NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), ''), handle, 'Membre')
+        SET name = COALESCE(NULLIF(TRIM(name), ''), handle, 'Membre')
         WHERE name IS NULL OR name = '';
       `);
       await pool.query('ALTER TABLE debt_settlements ALTER COLUMN id TYPE VARCHAR(255);');
