@@ -778,7 +778,9 @@ export default function App() {
           }
           break;
         case 'call:joined':
-          if (event.data?.groupId === activeGroupId) {
+          // Dès que le premier destinataire décroche, couper immédiatement la sonnerie d'attente
+          soundService.stopRingtone();
+          if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession((prev) => {
               if (prev && prev.callId === event.data?.callId) {
                 return { ...prev, participants: event.data.participants || prev.participants };
@@ -799,17 +801,40 @@ export default function App() {
           }
           break;
         case 'call:participant_left':
-          if (event.data?.groupId === activeGroupId) {
+          if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession((prev) => {
               if (prev && prev.callId === event.data?.callId) {
-                return { ...prev, participants: event.data.participants || [] };
+                const nextParticipants = event.data.participants || [];
+                // Si tous les autres ont raccroché et qu'il ne reste plus qu'un participant
+                if (nextParticipants.length <= 1) {
+                  soundService.stopRingtone();
+                }
+                return { ...prev, participants: nextParticipants };
               }
               return prev;
             });
           }
           break;
+        case 'call:solitary_participant':
+          // Clôture automatique dès qu'il ne reste plus qu'une seule personne dans la communication
+          if (
+            isCallModalOpen &&
+            (activeCallSession?.callId === event.data?.callId ||
+             event.data?.remainingParticipantId === currentUser.id)
+          ) {
+            soundService.stopRingtone();
+            soundService.playLeaveSound();
+            setIsCallModalOpen(false);
+            setActiveCallSession(null);
+            setInviteToast({
+              text: "Tous les autres membres ont raccroché. Le salon d'appel a été clôturé automatiquement.",
+              success: true,
+            });
+            setTimeout(() => setInviteToast(null), 4500);
+          }
+          break;
         case 'call:state_updated':
-          if (event.data?.groupId === activeGroupId) {
+          if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession((prev) => {
               if (prev && prev.callId === event.data?.callId) {
                 const participants = (prev.participants || []).map((p: any) => {
@@ -817,6 +842,7 @@ export default function App() {
                     return {
                       ...p,
                       ...(event.data.isMuted !== undefined ? { isMuted: event.data.isMuted, muted: event.data.isMuted } : {}),
+                      ...(event.data.muted !== undefined ? { isMuted: event.data.muted, muted: event.data.muted } : {}),
                       ...(event.data.isSpeaking !== undefined ? { isSpeaking: event.data.isSpeaking } : {}),
                     };
                   }
@@ -829,6 +855,7 @@ export default function App() {
           }
           break;
         case 'call:ended':
+          soundService.stopRingtone();
           if (event.data?.groupId === activeGroupId || (activeCallSession && activeCallSession.callId === event.data?.callId)) {
             setActiveCallSession(null);
             setIsCallModalOpen(false);

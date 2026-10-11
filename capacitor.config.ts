@@ -10,7 +10,10 @@ const config: CapacitorConfig = {
     allowNavigation: [
       'www.outlys.fr',
       'outlys.fr',
-      '*.outlys.fr'
+      '*.outlys.fr',
+      '*.pusher.com',
+      '*.pusherapp.com',
+      'sockjs-*.pusher.com'
     ]
   },
   plugins: {

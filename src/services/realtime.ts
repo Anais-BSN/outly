@@ -1,4 +1,5 @@
 import Pusher, { Channel } from 'pusher-js';
+import { App as CapacitorApp } from '@capacitor/app';
 import { getApiBaseUrl } from './api';
 
 export interface RealtimeEvent {
@@ -15,6 +16,7 @@ class RealtimeService {
   private pusher: Pusher | null = null;
   private userChannel: Channel | null = null;
   private activeGroupChannel: Channel | null = null;
+  private globalChannel: Channel | null = null;
   private currentGroupId: string | null = null;
   private currentUserId: string | null = null;
 
@@ -32,7 +34,7 @@ class RealtimeService {
   }
 
   private initPusher(): void {
-    const pusherKey = (import.meta as any).env?.VITE_PUSHER_KEY;
+    const pusherKey = (import.meta as any).env?.VITE_PUSHER_KEY || 'ffb22ce4e830df75afc1';
     const pusherCluster = (import.meta as any).env?.VITE_PUSHER_CLUSTER || 'eu';
 
     if (pusherKey && !pusherKey.includes('ton_key')) {
@@ -54,6 +56,20 @@ class RealtimeService {
         this.pusher.connection.bind('disconnected', () => {
           this.isPusherActive = false;
         });
+
+        // Abonnement au canal global pour tous les événements partagés
+        this.globalChannel = this.pusher.subscribe('global');
+        this.globalChannel.bind_global((eventName: string, data: any) => {
+          if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+          const normalizedEvent: RealtimeEvent = {
+            type: data?.type || eventName,
+            groupId: data?.groupId,
+            userId: data?.userId,
+            data: data?.data !== undefined ? data.data : data,
+            timestamp: data?.timestamp || new Date().toISOString(),
+          };
+          this.notifyListeners(normalizedEvent);
+        });
       } catch (err) {
         console.error('[Realtime:Pusher] Erreur initialisation Pusher:', err);
         this.isPusherActive = false;
@@ -65,6 +81,28 @@ class RealtimeService {
 
   private setupNetworkListeners(): void {
     if (typeof window === 'undefined' || this.networkListenersAttached) return;
+
+    // Écouteur natif Capacitor pour reprise d'activité au premier plan sur mobile Android/iOS
+    try {
+      CapacitorApp.addListener('appStateChange', (state) => {
+        if (state.isActive) {
+          console.debug('[Realtime:Capacitor] Application revenue au premier plan');
+          if (this.pusher && this.pusher.connection.state !== 'connected') {
+            this.pusher.connect();
+          }
+          if (this.currentGroupId && this.pusher && !this.activeGroupChannel) {
+            const gid = this.currentGroupId;
+            this.currentGroupId = null;
+            this.setActiveGroup(gid);
+          }
+          if (this.currentUserId && this.pusher && !this.userChannel) {
+            const uid = this.currentUserId;
+            this.currentUserId = null;
+            this.connect(uid);
+          }
+        }
+      }).catch(() => {});
+    } catch (_) {}
 
     window.addEventListener('online', () => {
       console.debug('[Realtime] Réseau rétabli (online)');

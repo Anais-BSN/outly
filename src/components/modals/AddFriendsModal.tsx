@@ -328,15 +328,15 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Section 1: Ajout par Pseudo (avec recherche instantanée, insensible à la casse et gestion des espaces/émojis) */}
+        {/* Section 1: Ajout par Pseudo unique (recherche stricte par identifiant unique @handle sans espaces ou par email) */}
         {inviteMode === 'pseudo' ? (
           <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
             <div className="flex items-center justify-between">
               <label htmlFor="friend-pseudo-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Rechercher un pseudo / nom d'affichage
+                Rechercher par pseudo unique (@identifiant)
               </label>
               <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
-                Espaces & émojis pris en charge
+                Identifiant unique sans espaces
               </span>
             </div>
 
@@ -347,10 +347,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                   type="text"
                   value={pseudoInput}
                   onChange={(e) => {
-                    setPseudoInput(e.target.value);
+                    // Retirer les espaces éventuels pour garantir un pseudo unique valide
+                    const val = e.target.value.replace(/\s+/g, '');
+                    setPseudoInput(val);
                     if (errorMsg) setErrorMsg(null);
                   }}
-                  placeholder="Ex: Anaïs 🌸, Pierre 🏕️, @lucas..."
+                  placeholder="Ex: @celya, @nathan, @matteo..."
                   required
                   disabled={isSending}
                   className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
@@ -375,7 +377,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    <span>Ajouter cet utilisateur</span>
+                    <span>Ajouter cet ami</span>
                   </>
                 )}
               </button>

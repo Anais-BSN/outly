@@ -27,6 +27,10 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    define: {
+      'import.meta.env.VITE_PUSHER_KEY': JSON.stringify(process.env.VITE_PUSHER_KEY || 'ffb22ce4e830df75afc1'),
+      'import.meta.env.VITE_PUSHER_CLUSTER': JSON.stringify(process.env.VITE_PUSHER_CLUSTER || 'eu'),
+    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},

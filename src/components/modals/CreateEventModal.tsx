@@ -119,15 +119,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   }, [initialEvent, initialDate]);
 
-  // Validation chronologique stricte : date_fin >= date_debut
+  // Validation chronologique stricte : date_fin >= date_debut et synchronisation automatique pour les événements sur une journée
+  const [isEndDateManuallyModified, setIsEndDateManuallyModified] = useState(false);
+
   const handleStartDateChange = (newStart: string) => {
+    const previousStart = startDate;
     setStartDate(newStart);
-    if (endDate && newStart > endDate) {
+    if (!isEndDateManuallyModified || startDate === endDate || (endDate && newStart > endDate) || previousStart === endDate) {
       setEndDate(newStart);
     }
   };
 
   const handleEndDateChange = (newEnd: string) => {
+    setIsEndDateManuallyModified(true);
     if (newEnd < startDate) {
       setEndDate(startDate);
     } else {

@@ -31,6 +31,23 @@ var query = async (text, params) => {
   const duration = Date.now() - start;
   return res;
 };
+(async () => {
+  try {
+    if (connectionString) {
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;");
+      await pool.query(`
+        UPDATE users 
+        SET name = COALESCE(NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), ''), handle, 'Membre')
+        WHERE name IS NULL OR name = '';
+      `);
+      await pool.query("ALTER TABLE debt_settlements ALTER COLUMN id TYPE VARCHAR(255);");
+      await pool.query("ALTER TABLE debt_settlements ALTER COLUMN group_id TYPE VARCHAR(255);");
+      await pool.query("ALTER TABLE debt_settlements ALTER COLUMN from_user_id TYPE VARCHAR(255);");
+      await pool.query("ALTER TABLE debt_settlements ALTER COLUMN to_user_id TYPE VARCHAR(255);");
+    }
+  } catch {
+  }
+})();
 
 // server/resend.ts
 import { Resend } from "resend";
@@ -650,31 +667,31 @@ apiRouter.get("/users/search", async (req, res) => {
     if (!rawQuery) {
       return res.json([]);
     }
-    const cleanHandle = rawQuery.startsWith("@") ? rawQuery : `@${rawQuery}`;
+    const cleanHandleWithoutAt = rawQuery.replace(/^@+/, "").trim();
+    const cleanHandleWithAt = `@${cleanHandleWithoutAt}`;
     const result = await query(
       `SELECT id, name, name as "firstName", '' as "lastName",
               email, handle, avatar, shares
        FROM users
        WHERE COALESCE(is_deleted, false) = false
-         AND ($3 = '' OR id != $3)
+         AND ($4 = '' OR id != $4)
          AND (
-           LOWER(TRIM(name)) = LOWER(TRIM($1))
-           OR LOWER(TRIM(handle)) = LOWER(TRIM($1))
+           LOWER(REPLACE(handle, '@', '')) = LOWER($1)
            OR LOWER(TRIM(handle)) = LOWER(TRIM($2))
-           OR name ILIKE $4
-           OR handle ILIKE $4
-           OR email ILIKE $4
+           OR (LOWER(REPLACE(handle, '@', '')) LIKE LOWER($1) || '%')
+           OR LOWER(TRIM(email)) = LOWER(TRIM($3))
+           OR (LOWER(TRIM(email)) LIKE LOWER(TRIM($3)) || '%' AND $3 LIKE '%@%')
          )
        ORDER BY (
          CASE 
-           WHEN LOWER(TRIM(name)) = LOWER(TRIM($1)) THEN 1
-           WHEN LOWER(TRIM(handle)) = LOWER(TRIM($1)) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 2
-           WHEN name ILIKE $4 THEN 3
+           WHEN LOWER(REPLACE(handle, '@', '')) = LOWER($1) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 1
+           WHEN LOWER(TRIM(email)) = LOWER(TRIM($3)) THEN 2
+           WHEN LOWER(REPLACE(handle, '@', '')) LIKE LOWER($1) || '%' THEN 3
            ELSE 4
          END
-       ) ASC, name ASC
+       ) ASC, handle ASC
        LIMIT 15`,
-      [rawQuery, cleanHandle, currentUserId || "", `%${rawQuery}%`]
+      [cleanHandleWithoutAt, cleanHandleWithAt, rawQuery, currentUserId || ""]
     );
     res.json(result.rows);
   } catch (err) {
@@ -1062,30 +1079,26 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
     const results = [];
     const isSingleLegacyMode = !Array.isArray(handlesOrEmails) && !Array.isArray(emails) && cleanedList.length === 1;
     for (const item of cleanedList) {
-      const cleanHandle = item.startsWith("@") ? item : `@${item}`;
+      const cleanHandleWithoutAt = item.replace(/^@+/, "").trim();
+      const cleanHandleWithAt = `@${cleanHandleWithoutAt}`;
       const targetUserRes = await query(
         `SELECT id, name, name as "firstName", '' as "lastName",
                 handle, email, avatar, shares
          FROM users
          WHERE COALESCE(is_deleted, false) = false
            AND (
-             LOWER(TRIM(name)) = LOWER(TRIM($1))
-             OR LOWER(TRIM(handle)) = LOWER(TRIM($1))
+             LOWER(REPLACE(handle, '@', '')) = LOWER($1)
              OR LOWER(TRIM(handle)) = LOWER(TRIM($2))
-             OR name ILIKE $1
-             OR handle ILIKE $1
-             OR handle ILIKE $2
-             OR email ILIKE $1
+             OR LOWER(TRIM(email)) = LOWER(TRIM($3))
            )
          ORDER BY (
            CASE 
-             WHEN LOWER(TRIM(name)) = LOWER(TRIM($1)) THEN 1
-             WHEN LOWER(TRIM(handle)) = LOWER(TRIM($1)) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 2
-             ELSE 3
+             WHEN LOWER(REPLACE(handle, '@', '')) = LOWER($1) OR LOWER(TRIM(handle)) = LOWER(TRIM($2)) THEN 1
+             ELSE 2
            END
          ) ASC
          LIMIT 1`,
-        [item, cleanHandle]
+        [cleanHandleWithoutAt, cleanHandleWithAt, item]
       );
       const targetUser = targetUserRes.rows[0];
       if (targetUser) {
@@ -1236,6 +1249,12 @@ apiRouter.put("/friends/:friendId", async (req, res) => {
     }
     realtimeBroadcaster.broadcast({
       type: "friend:updated",
+      userId,
+      data: { userId, friendId, status }
+    });
+    realtimeBroadcaster.broadcast({
+      type: "friend:updated",
+      userId: friendId,
       data: { userId, friendId, status }
     });
     res.json({ success: true, friendId, status });
@@ -1258,6 +1277,12 @@ apiRouter.delete("/friends/:friendId", async (req, res) => {
     );
     realtimeBroadcaster.broadcast({
       type: "friend:deleted",
+      userId,
+      data: { userId, friendId }
+    });
+    realtimeBroadcaster.broadcast({
+      type: "friend:deleted",
+      userId: friendId,
       data: { userId, friendId }
     });
     res.json({ success: true, friendId });
@@ -3672,13 +3697,13 @@ apiRouter.get("/settlements", async (req, res) => {
       SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
              s.amount::float as amount, s.status, s.settled_at as "settledAt",
              s.created_at as "createdAt", s.updated_at as "updatedAt",
-             COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserFirstName",
+             COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserFirstName",
              '' as "fromUserLastName",
-             COALESCE(u1.name, 'Utilisateur supprim\xE9') as "fromUserName",
+             COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserName",
              COALESCE(u1.avatar, '') as "fromUserAvatar",
-             COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserFirstName",
+             COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserFirstName",
              '' as "toUserLastName",
-             COALESCE(u2.name, 'Utilisateur supprim\xE9') as "toUserName",
+             COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserName",
              COALESCE(u2.avatar, '') as "toUserAvatar"
       FROM debt_settlements s
       LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3728,13 +3753,13 @@ var handleSettlementToggle = async (req, res) => {
       `SELECT s.id, s.group_id as "groupId", s.from_user_id as "fromUserId", s.to_user_id as "toUserId",
               s.amount::float as amount, s.status, s.settled_at as "settledAt",
               s.created_at as "createdAt", s.updated_at as "updatedAt",
-              COALESCE(u1.name, 'Membre') as "fromUserFirstName",
+              COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserFirstName",
               '' as "fromUserLastName",
-              COALESCE(u1.name, 'Membre') as "fromUserName",
+              COALESCE(u1.name, NULLIF(TRIM(CONCAT(u1.first_name, ' ', u1.last_name)), ''), u1.handle, 'Membre') as "fromUserName",
               COALESCE(u1.avatar, '') as "fromUserAvatar",
-              COALESCE(u2.name, 'Membre') as "toUserFirstName",
+              COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserFirstName",
               '' as "toUserLastName",
-              COALESCE(u2.name, 'Membre') as "toUserName",
+              COALESCE(u2.name, NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), ''), u2.handle, 'Membre') as "toUserName",
               COALESCE(u2.avatar, '') as "toUserAvatar"
        FROM debt_settlements s
        LEFT JOIN users u1 ON s.from_user_id = u1.id
@@ -3743,9 +3768,26 @@ var handleSettlementToggle = async (req, res) => {
       [settlementId]
     );
     const settlement = fullResult.rows[0];
+    if (cleanGroupId && cleanGroupId !== "group-current") {
+      realtimeBroadcaster.broadcast({
+        type: "settlement:updated",
+        groupId: cleanGroupId,
+        data: settlement
+      });
+    } else {
+      realtimeBroadcaster.broadcast({
+        type: "settlement:updated",
+        data: settlement
+      });
+    }
     realtimeBroadcaster.broadcast({
       type: "settlement:updated",
-      groupId: cleanGroupId,
+      userId: fromUserId,
+      data: settlement
+    });
+    realtimeBroadcaster.broadcast({
+      type: "settlement:updated",
+      userId: toUserId,
       data: settlement
     });
     res.json(settlement);
@@ -4354,14 +4396,18 @@ apiRouter.post("/calls/timeout", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-apiRouter.post("/calls/update-state", async (req, res) => {
+apiRouter.post(["/calls/update-state", "/calls/state"], async (req, res) => {
   try {
-    const { groupId, callId, userId, muted, isSpeaking, videoOff } = req.body;
+    const { groupId, callId, userId, muted, isMuted, isSpeaking, videoOff } = req.body;
+    const effectiveMuted = isMuted !== void 0 ? isMuted : muted;
     const session = activeCallsMap.get(groupId);
     if (session && session.active) {
       const p = session.participants.find((part) => part.userId === userId);
       if (p) {
-        if (muted !== void 0) p.muted = muted;
+        if (effectiveMuted !== void 0) {
+          p.muted = effectiveMuted;
+          p.isMuted = effectiveMuted;
+        }
         if (isSpeaking !== void 0) p.isSpeaking = isSpeaking;
         if (videoOff !== void 0) p.videoOff = videoOff;
       }
@@ -4372,7 +4418,8 @@ apiRouter.post("/calls/update-state", async (req, res) => {
           callId,
           groupId,
           userId,
-          muted,
+          muted: effectiveMuted,
+          isMuted: effectiveMuted,
           isSpeaking,
           videoOff,
           participants: session.participants

@@ -121,12 +121,17 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
     for (const ev of safeEvents) {
       const endMs = getEventEndTimestamp(ev);
-      // Seuls les événements futurs ou en cours figurent dans la section principale
-      if (endMs >= currentTimestamp) {
-        upcoming.push(ev);
-      } else {
-        // Tout événement dont la date de fin (ou date de tenue) est passée va dans l'historique
+      const startMs = new Date(ev.startDateTime).getTime();
+
+      // Si l'événement est antérieur à la date/heure actuelle (ex: daté d'hier),
+      // le placer automatiquement et directement dans l'historique des événements passés
+      const isPast = (endMs > 0 && endMs < currentTimestamp) || 
+                     (startMs > 0 && startMs < currentTimestamp && (!ev.endDateTime || endMs < currentTimestamp));
+
+      if (isPast) {
         past.push(ev);
+      } else {
+        upcoming.push(ev);
       }
     }
 
