@@ -609,11 +609,15 @@ export default function App() {
           });
           break;
         case 'gallery:uploaded':
-          setGalleryItems((prev) => {
-            const exists = prev.some((item) => item.id === event.data?.id || item.imageUrl === event.data?.imageUrl);
-            if (exists) return prev;
-            return [event.data, ...prev];
-          });
+          if (event.data) {
+            setGalleryItems((prev) => {
+              const newItem = event.data;
+              const filtered = prev.filter(
+                (item) => item.id !== newItem.id && item.imageUrl !== newItem.imageUrl
+              );
+              return [newItem, ...filtered];
+            });
+          }
           break;
         case 'gallery:deleted':
           setGalleryItems((prev) => prev.filter((item) => item.id !== event.data?.id));

@@ -742,6 +742,18 @@ apiRouter.post(['/friends', '/friends/invite'], async (req: Request, res: Respon
 
         realtimeBroadcaster.broadcast({
           type: 'friend:requested',
+          userId: targetUser.id,
+          data: { senderId: userId, targetId: targetUser.id },
+        });
+
+        realtimeBroadcaster.broadcast({
+          type: 'friend:requested',
+          userId: userId,
+          data: { senderId: userId, targetId: targetUser.id },
+        });
+
+        realtimeBroadcaster.broadcast({
+          type: 'friend:requested',
           data: { senderId: userId, targetId: targetUser.id },
         });
 
@@ -873,6 +885,10 @@ apiRouter.put('/friends/:friendId', async (req: Request, res: Response) => {
       userId: friendId,
       data: { userId, friendId, status },
     });
+    realtimeBroadcaster.broadcast({
+      type: 'friend:updated',
+      data: { userId, friendId, status },
+    });
 
     res.json({ success: true, friendId, status });
   } catch (err: any) {
@@ -904,6 +920,10 @@ apiRouter.delete('/friends/:friendId', async (req: Request, res: Response) => {
     realtimeBroadcaster.broadcast({
       type: 'friend:deleted',
       userId: friendId,
+      data: { userId, friendId },
+    });
+    realtimeBroadcaster.broadcast({
+      type: 'friend:deleted',
       data: { userId, friendId },
     });
 

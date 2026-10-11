@@ -270,18 +270,16 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-[#5D0D18]/10 dark:bg-amber-400/10">
-              <Users className="w-5 h-5 text-[#5D0D18] dark:text-amber-400" />
-            </div>
-            <div>
-              <h3 className="font-title text-base font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Mes Amis & Invitations
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+              <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+                Mes amis & invitations
               </h3>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 font-medium">
-                Recherchez par pseudo ou invitez de nouveaux proches
-              </p>
             </div>
+            <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 font-medium pl-7">
+              Recherchez ou invitez de nouvelles personnes
+            </p>
           </div>
           <button
             id="close-friends-modal-btn"
@@ -292,7 +290,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Mode Selector Tabs: Par Pseudo vs Par Email */}
+        {/* Mode Selector Tabs: Par Pseudo vs Par Mail */}
         <div className="p-1 bg-[#E8D8C4]/50 dark:bg-zinc-800/80 rounded-2xl flex gap-1 border border-[#C7B7A3]/40 dark:border-zinc-700">
           <button
             type="button"
@@ -324,20 +322,17 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
-            <span>Invitation par e-mail</span>
+            <span>Invitation par mail</span>
           </button>
         </div>
 
-        {/* Section 1: Ajout par Pseudo unique (recherche stricte par identifiant unique @handle sans espaces ou par email) */}
+        {/* Section 1: Ajout par Pseudo */}
         {inviteMode === 'pseudo' ? (
           <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
-            <div className="flex items-center justify-between">
+            <div>
               <label htmlFor="friend-pseudo-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Rechercher par pseudo unique (@identifiant)
+                Rechercher par pseudo
               </label>
-              <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
-                Identifiant unique sans espaces
-              </span>
             </div>
 
             <form onSubmit={handleSendInvite} className="space-y-2.5">
@@ -352,7 +347,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                     setPseudoInput(val);
                     if (errorMsg) setErrorMsg(null);
                   }}
-                  placeholder="Ex: @celya, @nathan, @matteo..."
+                  placeholder="Ex : @nom.exemple"
                   required
                   disabled={isSending}
                   className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
@@ -461,10 +456,10 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
             )}
           </div>
         ) : (
-          /* Section 2: Invitation par E-mail */
+          /* Section 2: Invitation par Mail */
           <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
             <label htmlFor="friend-email-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-              Inviter un ami par e-mail
+              Inviter un ami par mail
             </label>
 
             <form onSubmit={handleSendInvite} className="space-y-2.5">

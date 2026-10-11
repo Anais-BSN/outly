@@ -42,11 +42,20 @@ class RealtimeService {
         this.pusher = new Pusher(pusherKey, {
           cluster: pusherCluster,
           forceTLS: true,
+          enabledTransports: ['ws', 'wss', 'xhr_streaming', 'xhr_polling', 'sockjs'],
+          activityTimeout: 60000,
+          pongTimeout: 30000,
         });
 
         this.pusher.connection.bind('connected', () => {
           this.isPusherActive = true;
           console.debug('[Realtime:Pusher] Connecté avec succès au cluster', pusherCluster);
+          if (this.currentUserId) {
+            this.ensureUserChannel(this.currentUserId);
+          }
+          if (this.currentGroupId) {
+            this.ensureGroupChannel(this.currentGroupId);
+          }
         });
 
         this.pusher.connection.bind('error', (err: any) => {
@@ -79,72 +88,12 @@ class RealtimeService {
     }
   }
 
-  private setupNetworkListeners(): void {
-    if (typeof window === 'undefined' || this.networkListenersAttached) return;
-
-    // Écouteur natif Capacitor pour reprise d'activité au premier plan sur mobile Android/iOS
-    try {
-      CapacitorApp.addListener('appStateChange', (state) => {
-        if (state.isActive) {
-          console.debug('[Realtime:Capacitor] Application revenue au premier plan');
-          if (this.pusher && this.pusher.connection.state !== 'connected') {
-            this.pusher.connect();
-          }
-          if (this.currentGroupId && this.pusher && !this.activeGroupChannel) {
-            const gid = this.currentGroupId;
-            this.currentGroupId = null;
-            this.setActiveGroup(gid);
-          }
-          if (this.currentUserId && this.pusher && !this.userChannel) {
-            const uid = this.currentUserId;
-            this.currentUserId = null;
-            this.connect(uid);
-          }
-        }
-      }).catch(() => {});
-    } catch (_) {}
-
-    window.addEventListener('online', () => {
-      console.debug('[Realtime] Réseau rétabli (online)');
-      this.reconnectAttempts = 0;
-      if (this.pusher && this.pusher.connection.state !== 'connected') {
-        this.pusher.connect();
-      }
-      if (!this.isPusherActive) {
-        this.reconnectImmediately();
-      }
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        if (this.pusher && this.pusher.connection.state !== 'connected') {
-          this.pusher.connect();
-        }
-        if (!this.isPusherActive && (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED)) {
-          this.reconnectAttempts = 0;
-          this.reconnectImmediately();
-        }
-      }
-    });
-
-    this.networkListenersAttached = true;
-  }
-
-  public connect(userId: string): void {
-    if (this.currentUserId === userId) {
-      return;
-    }
-
-    this.currentUserId = userId;
-
-    // 1. Abonnement au canal utilisateur Pusher
-    if (this.pusher) {
-      if (this.userChannel) {
-        this.pusher.unsubscribe(`user-${this.currentUserId}`);
-      }
-      const userChannelName = `user-${userId}`;
+  private ensureUserChannel(userId: string): void {
+    if (!this.pusher || !userId) return;
+    const userChannelName = `user-${userId}`;
+    const existing = this.pusher.channel(userChannelName);
+    if (!existing) {
       this.userChannel = this.pusher.subscribe(userChannelName);
-      
       this.userChannel.bind_global((eventName: string, data: any) => {
         if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
         const normalizedEvent: RealtimeEvent = {
@@ -157,6 +106,99 @@ class RealtimeService {
         this.notifyListeners(normalizedEvent);
       });
     }
+  }
+
+  private ensureGroupChannel(groupId: string): void {
+    if (!this.pusher || !groupId) return;
+    const groupChannelName = `group-${groupId}`;
+    const existing = this.pusher.channel(groupChannelName);
+    if (!existing) {
+      this.activeGroupChannel = this.pusher.subscribe(groupChannelName);
+      this.activeGroupChannel.bind_global((eventName: string, data: any) => {
+        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+        const normalizedEvent: RealtimeEvent = {
+          type: data?.type || eventName,
+          groupId: data?.groupId || groupId,
+          userId: data?.userId,
+          data: data?.data !== undefined ? data.data : data,
+          timestamp: data?.timestamp || new Date().toISOString(),
+        };
+        this.notifyListeners(normalizedEvent);
+      });
+    }
+  }
+
+  private setupNetworkListeners(): void {
+    if (typeof window === 'undefined' || this.networkListenersAttached) return;
+
+    const handleAppResume = () => {
+      console.debug('[Realtime:Capacitor] Reprise application (reconnexion Pusher)');
+      if (this.pusher) {
+        const state = this.pusher.connection.state;
+        if (state !== 'connected' && state !== 'connecting') {
+          this.pusher.connect();
+        }
+      }
+      if (this.currentUserId) {
+        this.ensureUserChannel(this.currentUserId);
+      }
+      if (this.currentGroupId) {
+        this.ensureGroupChannel(this.currentGroupId);
+      }
+      if (!this.isPusherActive) {
+        this.reconnectImmediately();
+      }
+    };
+
+    // Écouteur natif Capacitor pour reprise d'activité au premier plan sur mobile Android/iOS
+    try {
+      CapacitorApp.addListener('appStateChange', (state) => {
+        if (state.isActive) {
+          handleAppResume();
+        }
+      }).catch(() => {});
+
+      CapacitorApp.addListener('resume', () => {
+        handleAppResume();
+      }).catch(() => {});
+    } catch (_) {}
+
+    window.addEventListener('online', () => {
+      console.debug('[Realtime] Réseau rétabli (online)');
+      this.reconnectAttempts = 0;
+      handleAppResume();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleAppResume();
+      }
+    });
+
+    this.networkListenersAttached = true;
+  }
+
+  public connect(userId: string): void {
+    if (!userId) return;
+
+    if (this.currentUserId === userId) {
+      if (this.pusher) {
+        this.ensureUserChannel(userId);
+      }
+      return;
+    }
+
+    if (this.currentUserId && this.pusher && this.userChannel) {
+      this.pusher.unsubscribe(`user-${this.currentUserId}`);
+      this.userChannel = null;
+    }
+
+    this.currentUserId = userId;
+
+    // 1. Abonnement au canal utilisateur personnel Pusher
+    if (this.pusher) {
+      this.ensureUserChannel(userId);
+    }
 
     // 2. Flux SSE de secours si Pusher n'est pas actif
     if (!this.isPusherActive) {
@@ -166,7 +208,12 @@ class RealtimeService {
   }
 
   public setActiveGroup(groupId: string): void {
-    if (this.currentGroupId === groupId) return;
+    if (this.currentGroupId === groupId) {
+      if (groupId && this.pusher) {
+        this.ensureGroupChannel(groupId);
+      }
+      return;
+    }
 
     // Désabonnement propre du groupe précédent
     if (this.pusher && this.activeGroupChannel && this.currentGroupId) {
@@ -178,21 +225,7 @@ class RealtimeService {
 
     if (!groupId || !this.pusher) return;
 
-    // Abonnement au canal dédié du nouveau groupe
-    const groupChannelName = `group-${groupId}`;
-    this.activeGroupChannel = this.pusher.subscribe(groupChannelName);
-
-    this.activeGroupChannel.bind_global((eventName: string, data: any) => {
-      if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
-      const normalizedEvent: RealtimeEvent = {
-        type: data?.type || eventName,
-        groupId: data?.groupId || groupId,
-        userId: data?.userId,
-        data: data?.data !== undefined ? data.data : data,
-        timestamp: data?.timestamp || new Date().toISOString(),
-      };
-      this.notifyListeners(normalizedEvent);
-    });
+    this.ensureGroupChannel(groupId);
   }
 
   private initEventSource(): void {

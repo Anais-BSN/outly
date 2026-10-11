@@ -1149,6 +1149,16 @@ apiRouter.post(["/friends", "/friends/invite"], async (req, res) => {
         });
         realtimeBroadcaster.broadcast({
           type: "friend:requested",
+          userId: targetUser.id,
+          data: { senderId: userId, targetId: targetUser.id }
+        });
+        realtimeBroadcaster.broadcast({
+          type: "friend:requested",
+          userId,
+          data: { senderId: userId, targetId: targetUser.id }
+        });
+        realtimeBroadcaster.broadcast({
+          type: "friend:requested",
           data: { senderId: userId, targetId: targetUser.id }
         });
         if (targetUser.email && !targetUser.email.endsWith("@outlys.fr") && !targetUser.email.endsWith("@outly.app")) {
@@ -1262,6 +1272,10 @@ apiRouter.put("/friends/:friendId", async (req, res) => {
       userId: friendId,
       data: { userId, friendId, status }
     });
+    realtimeBroadcaster.broadcast({
+      type: "friend:updated",
+      data: { userId, friendId, status }
+    });
     res.json({ success: true, friendId, status });
   } catch (err) {
     console.error("Error in PUT /friends/:friendId:", err);
@@ -1288,6 +1302,10 @@ apiRouter.delete("/friends/:friendId", async (req, res) => {
     realtimeBroadcaster.broadcast({
       type: "friend:deleted",
       userId: friendId,
+      data: { userId, friendId }
+    });
+    realtimeBroadcaster.broadcast({
+      type: "friend:deleted",
       data: { userId, friendId }
     });
     res.json({ success: true, friendId });
