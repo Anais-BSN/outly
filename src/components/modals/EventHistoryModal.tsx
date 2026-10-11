@@ -64,11 +64,11 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-[#5D0D18]/10 dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300">
+            <div className="p-2 rounded-2xl bg-[#6D2932]/10 dark:bg-zinc-800 text-[#6D2932] dark:text-amber-300">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Historique des événements
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -80,7 +80,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
           <button
             id="event-history-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -96,7 +96,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rechercher une sortie passée (titre, lieu...)"
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] placeholder-[#27272A]/50 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] placeholder-[#27272A]/50 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#6D2932]"
               />
             </div>
           </div>
@@ -106,8 +106,8 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-2 space-y-3 pr-1">
           {filteredEvents.length === 0 ? (
             <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700 my-4">
-              <Calendar className="w-10 h-10 text-[#5D0D18]/50 dark:text-zinc-500 mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <Calendar className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
+              <p className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 {searchTerm ? 'Aucun événement ne correspond à votre recherche' : 'Aucun événement passé pour l\'instant'}
               </p>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
@@ -127,7 +127,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       {event.bannerImage ? (
-                        <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#5D0D18]">
+                        <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#6D2932]">
                           <img
                             src={event.bannerImage}
                             alt={event.title}
@@ -135,13 +135,13 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                           />
                         </div>
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-[#5D0D18] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-[#6D2932] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
                           {event.title.charAt(0) || 'E'}
                         </div>
                       )}
 
                       <div className="min-w-0">
-                        <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] leading-snug truncate">
+                        <h4 className="text-sm sm:text-base font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] leading-snug truncate">
                           {event.title}
                         </h4>
                         <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
@@ -153,7 +153,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
 
                   {/* Date & Time */}
                   <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
-                    <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                    <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
                     <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
                   </div>
 
@@ -219,7 +219,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#C7B7A3] cursor-pointer transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
           >
             Fermer
           </button>

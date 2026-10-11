@@ -45,14 +45,14 @@ export const IncomingCallAlertModal: React.FC<IncomingCallAlertModalProps> = ({
       <div className="relative w-full max-w-sm rounded-3xl bg-[#18181B] border border-zinc-700 text-[#FFF9EB] p-6 shadow-2xl flex flex-col items-center text-center space-y-5 animate-scale-in">
         {/* Glow & Avatar Pulse */}
         <div className="relative my-2">
-          <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-[#5D0D18] to-amber-500 opacity-60 animate-ping" />
+          <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-[#6D2932] to-amber-500 opacity-60 animate-ping" />
           <div className="relative">
             <img
               src={callSession.initiatorAvatar || '/Avatar_Herisson.jpg'}
               alt={callSession.initiatorName}
-              className="w-24 h-24 rounded-full object-cover ring-4 ring-[#5D0D18] shadow-2xl"
+              className="w-24 h-24 rounded-full object-cover ring-4 ring-[#6D2932] shadow-2xl"
             />
-            <div className="absolute bottom-0 right-0 p-2 rounded-full bg-[#5D0D18] text-white ring-2 ring-[#18181B]">
+            <div className="absolute bottom-0 right-0 p-2 rounded-full bg-[#6D2932] text-white ring-2 ring-[#18181B]">
               {isVideo ? <Video className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </div>
           </div>

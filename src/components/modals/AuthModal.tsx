@@ -236,15 +236,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Header with Close */}
         <div className="flex items-center justify-between pb-2 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-xl font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+            <Sparkles className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h3 className="text-xl font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Bienvenue sur Outlys
             </h3>
           </div>
           {canClose && (
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -262,7 +262,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 authMode === 'login'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                   : 'text-[#27272A] dark:text-zinc-300'
               }`}
             >
@@ -277,7 +277,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 authMode === 'register'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                   : 'text-[#27272A] dark:text-zinc-300'
               }`}
             >
@@ -308,9 +308,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setEmailOrHandle(e.target.value)}
                   placeholder="thomas.dubois@outlys.fr ou @thomas"
                   required
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                 />
-                <User className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                <User className="w-4 h-4 text-[#6D2932] absolute left-3 top-3" />
               </div>
             </div>
 
@@ -324,13 +324,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                 />
-                <Lock className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[#6D2932] absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                   title={showLoginPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   aria-label={showLoginPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
@@ -344,7 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 id="login-btn-forgot-password"
                 onClick={() => handleForgotPasswordInstant()}
-                className="text-[11px] text-[#5D0D18] dark:text-amber-300 hover:underline font-semibold cursor-pointer"
+                className="text-[11px] text-[#6D2932] dark:text-amber-300 hover:underline font-semibold cursor-pointer"
               >
                 Mot de passe oublié ?
               </button>
@@ -353,7 +353,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading || !emailOrHandle.trim()}
-              className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {loading ? 'Connexion en cours...' : 'Se connecter'}
               <ArrowRight className="w-4 h-4" />
@@ -365,7 +365,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {authMode === 'forgot-password' && (
           <div className="space-y-3.5">
             <div className="text-center">
-              <h4 className="text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+              <h4 className="text-base font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Mot de passe oublié
               </h4>
             </div>
@@ -382,7 +382,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setAuthMode('login');
                     setForgotSuccess(null);
                   }}
-                  className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
+                  className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer"
                 >
                   Retour à l'accueil
                 </button>
@@ -400,16 +400,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       onChange={(e) => setForgotEmail(e.target.value)}
                       placeholder="thomas@exemple.com"
                       required
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                     />
-                    <Mail className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                    <Mail className="w-4 h-4 text-[#6D2932] absolute left-3 top-3" />
                   </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading || !forgotEmail.trim()}
-                  className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {loading ? 'Envoi en cours...' : 'Envoyer le lien'}
                   <ArrowRight className="w-4 h-4" />
@@ -422,7 +422,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       setAuthMode('login');
                       setErrorMsg(null);
                     }}
-                    className="text-xs text-[#27272A]/70 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] font-medium transition-colors cursor-pointer"
+                    className="text-xs text-[#27272A]/70 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] font-medium transition-colors cursor-pointer"
                   >
                     ← Retour
                   </button>
@@ -447,9 +447,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Votre nom ou nom d'affichage"
                   required
-                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                 />
-                <User className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
+                <User className="w-3.5 h-3.5 text-[#6D2932] absolute left-2.5 top-2.5" />
               </div>
             </div>
 
@@ -486,7 +486,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'border-[#C7B7A3]/60'
                   }`}
                 />
-                <AtSign className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
+                <AtSign className="w-3.5 h-3.5 text-[#6D2932] absolute left-2.5 top-2.5" />
               </div>
             </div>
 
@@ -504,7 +504,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB]"
                 />
-                <Mail className="w-3.5 h-3.5 text-[#5D0D18] absolute left-2.5 top-2.5" />
+                <Mail className="w-3.5 h-3.5 text-[#6D2932] absolute left-2.5 top-2.5" />
               </div>
             </div>
 
@@ -523,11 +523,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   className="w-full pl-8 pr-10 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 text-xs text-[#27272A] dark:text-[#FFF9EB]"
                 />
-                <Lock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 absolute left-2.5 top-2.5" />
+                <Lock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 absolute left-2.5 top-2.5" />
                 <button
                   type="button"
                   onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                   title={showRegisterPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   aria-label={showRegisterPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
@@ -537,7 +537,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               {/* Security Checklist (shown when typing or registering) */}
               <div className="mt-2 p-2 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-800/40 border border-[#C7B7A3]/30 dark:border-zinc-700/50 space-y-1">
-                <div className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                <div className="text-[10px] font-bold text-[#6D2932] dark:text-amber-200">
                   Critères de sécurité requis :
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1">
@@ -571,7 +571,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onClick={() => setSelectedAvatar(av.url)}
                     className={`p-1 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                       selectedAvatar === av.url
-                        ? 'ring-2 ring-[#5D0D18] bg-[#FFF9EB] dark:bg-zinc-700'
+                        ? 'ring-2 ring-[#6D2932] bg-[#FFF9EB] dark:bg-zinc-700'
                         : 'opacity-70 hover:opacity-100'
                     }`}
                   >
@@ -584,7 +584,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading || !name.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false}
-              className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}
               <ArrowRight className="w-4 h-4" />

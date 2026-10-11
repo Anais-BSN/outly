@@ -210,7 +210,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <button
               id="notif-modal-close-btn"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

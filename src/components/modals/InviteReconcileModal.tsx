@@ -63,11 +63,11 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#5D0D18] text-[#FFF9EB] flex items-center justify-center shadow-md shrink-0">
+            <div className="w-9 h-9 rounded-2xl bg-[#6D2932] text-[#FFF9EB] flex items-center justify-center shadow-md shrink-0">
               <UserCheck className="w-5 h-5 text-amber-200" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <h3 className="text-base sm:text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 Rapprochement de compte
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -79,7 +79,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Fermer"
           >
             <X className="w-5 h-5" />
@@ -88,7 +88,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
 
         {/* Bannière explicative & Profil de l'utilisateur connecté */}
         <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 text-xs space-y-2.5">
-          <div className="flex items-center gap-1.5 font-bold text-[#5D0D18] dark:text-amber-300">
+          <div className="flex items-center gap-1.5 font-bold text-[#6D2932] dark:text-amber-300">
             <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
             <span>Ce groupe compte des participants ajoutés sans compte. Correspondiez-vous à l'un d'eux ?</span>
           </div>
@@ -101,13 +101,13 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
             <img
               src={currentUser.avatar || '/Avatar_Herisson.jpg'}
               alt={currentUser.name || currentUser.firstName || 'Vous'}
-              className="w-8 h-8 rounded-full object-cover ring-1 ring-[#5D0D18] shrink-0"
+              className="w-8 h-8 rounded-full object-cover ring-1 ring-[#6D2932] shrink-0"
             />
             <div className="min-w-0">
               <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
                 {currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Utilisateur'} (Vous)
               </div>
-              <div className="text-[10.5px] text-[#5D0D18] dark:text-amber-300 truncate font-semibold">
+              <div className="text-[10.5px] text-[#6D2932] dark:text-amber-300 truncate font-semibold">
                 {currentUser.handle || currentUser.email}
               </div>
             </div>
@@ -116,7 +116,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
 
         {/* Section 1 : Liste des participants sans compte avec action « C'est moi » */}
         <div className="space-y-2">
-          <label className="block text-[11px] font-bold text-[#5D0D18] dark:text-zinc-300 uppercase tracking-wider">
+          <label className="block text-[11px] font-bold text-[#6D2932] dark:text-zinc-300 uppercase tracking-wider">
             Associer à un participant sans compte existant :
           </label>
 
@@ -132,7 +132,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
                   type="button"
                   disabled={Boolean(mergingId) || isJoiningAsNew}
                   onClick={() => handleMergeClick(vm)}
-                  className="w-full p-3 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-amber-400/80 dark:border-amber-600/70 hover:border-[#5D0D18] dark:hover:border-amber-400 flex items-center justify-between gap-3 text-left transition-all hover:shadow-md cursor-pointer group active:scale-98 disabled:opacity-50 shadow-xs"
+                  className="w-full p-3 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-amber-400/80 dark:border-amber-600/70 hover:border-[#6D2932] dark:hover:border-amber-400 flex items-center justify-between gap-3 text-left transition-all hover:shadow-md cursor-pointer group active:scale-98 disabled:opacity-50 shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <img
@@ -150,7 +150,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-bold group-hover:bg-[#5D0D18] group-hover:text-white transition-colors shrink-0 flex items-center gap-1 shadow-2xs">
+                  <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-bold group-hover:bg-[#6D2932] group-hover:text-white transition-colors shrink-0 flex items-center gap-1 shadow-2xs">
                     {isThisMerging ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -171,7 +171,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
 
         {/* Section 2 : Option « Je suis un nouveau membre » */}
         <div className="space-y-1.5 pt-1">
-          <label className="block text-[11px] font-bold text-[#5D0D18] dark:text-zinc-300 uppercase tracking-wider">
+          <label className="block text-[11px] font-bold text-[#6D2932] dark:text-zinc-300 uppercase tracking-wider">
             Rejoindre sans lier :
           </label>
 
@@ -179,10 +179,10 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
             type="button"
             disabled={Boolean(mergingId) || isJoiningAsNew}
             onClick={handleNewClick}
-            className="w-full p-3 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/70 border border-[#C7B7A3] dark:border-zinc-700 hover:border-[#5D0D18] flex items-center justify-between gap-3 text-left transition-all hover:shadow-xs cursor-pointer group active:scale-98 disabled:opacity-50"
+            className="w-full p-3 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/70 border border-[#C7B7A3] dark:border-zinc-700 hover:border-[#6D2932] flex items-center justify-between gap-3 text-left transition-all hover:shadow-xs cursor-pointer group active:scale-98 disabled:opacity-50"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-[#5D0D18] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+              <div className="w-9 h-9 rounded-full bg-[#6D2932] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                 <UserPlus className="w-4 h-4" />
               </div>
               <div className="min-w-0">
@@ -195,19 +195,19 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
               </div>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-black/10 dark:bg-white/10 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] group-hover:bg-[#5D0D18] group-hover:text-white transition-colors shrink-0 flex items-center gap-1">
+            <div className="px-3 py-1.5 rounded-xl bg-black/10 dark:bg-white/10 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] group-hover:bg-[#6D2932] group-hover:text-white transition-colors shrink-0 flex items-center gap-1">
               {isJoiningAsNew ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Rejoindre</span>}
             </div>
           </button>
         </div>
 
         {/* Bouton Annuler */}
-        <div className="pt-2 border-t border-[#C7B7A3]/30 dark:border-zinc-800">
+        <div className="pt-2 border-t border-[#C7B7A3]/30 dark:border-zinc-800 flex justify-end">
           <button
             type="button"
             disabled={Boolean(mergingId) || isJoiningAsNew}
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold text-[#27272A]/70 dark:text-zinc-400 hover:bg-[#E8D8C4]/50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-center"
+            className="w-full py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer text-center"
           >
             Annuler
           </button>

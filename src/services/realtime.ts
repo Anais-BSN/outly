@@ -34,10 +34,16 @@ class RealtimeService {
   }
 
   private initPusher(): void {
-    const pusherKey = (import.meta as any).env?.VITE_PUSHER_KEY || 'ffb22ce4e830df75afc1';
-    const pusherCluster = (import.meta as any).env?.VITE_PUSHER_CLUSTER || 'eu';
+    const PUSHER_HARDCODED_KEY = 'ffb22ce4e830df75afc1';
+    const PUSHER_HARDCODED_CLUSTER = 'eu';
 
-    if (pusherKey && !pusherKey.includes('ton_key')) {
+    const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PUSHER_KEY) || '';
+    const envCluster = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PUSHER_CLUSTER) || '';
+
+    const pusherKey = (envKey && !envKey.includes('ton_key')) ? envKey : PUSHER_HARDCODED_KEY;
+    const pusherCluster = envCluster || PUSHER_HARDCODED_CLUSTER;
+
+    if (pusherKey) {
       try {
         this.pusher = new Pusher(pusherKey, {
           cluster: pusherCluster,
@@ -45,6 +51,29 @@ class RealtimeService {
           enabledTransports: ['ws', 'wss', 'xhr_streaming', 'xhr_polling', 'sockjs'],
           activityTimeout: 60000,
           pongTimeout: 30000,
+        });
+
+        // Diagnostic et écouteur des changements d'état de connexion Pusher
+        this.pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
+          console.debug(`[Realtime:Pusher] État de connexion: ${states.previous} -> ${states.current}`);
+          if (states.current === 'connected') {
+            this.isPusherActive = true;
+            this.reconnectAttempts = 0;
+            if (this.currentUserId) {
+              this.ensureUserChannel(this.currentUserId);
+            }
+            if (this.currentGroupId) {
+              this.ensureGroupChannel(this.currentGroupId);
+            }
+          } else if (states.current === 'disconnected' || states.current === 'unavailable' || states.current === 'failed') {
+            this.isPusherActive = false;
+            console.warn(`[Realtime:Pusher] Connexion interrompue (${states.current}), tentative de reconnexion immédiate...`);
+            setTimeout(() => {
+              if (this.pusher && (this.pusher.connection.state === 'disconnected' || this.pusher.connection.state === 'unavailable' || this.pusher.connection.state === 'failed')) {
+                this.pusher.connect();
+              }
+            }, 500);
+          }
         });
 
         this.pusher.connection.bind('connected', () => {
@@ -67,8 +96,12 @@ class RealtimeService {
         });
 
         // Abonnement au canal global pour tous les événements partagés
-        this.globalChannel = this.pusher.subscribe('global');
-        this.globalChannel.bind_global((eventName: string, data: any) => {
+        const globalCh = this.pusher.channel('global') || this.pusher.subscribe('global');
+        this.globalChannel = globalCh;
+        try {
+          (globalCh as any).unbind_global?.();
+        } catch (_) {}
+        globalCh.bind_global((eventName: string, data: any) => {
           if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
           const normalizedEvent: RealtimeEvent = {
             type: data?.type || eventName,
@@ -90,42 +123,52 @@ class RealtimeService {
 
   private ensureUserChannel(userId: string): void {
     if (!this.pusher || !userId) return;
-    const userChannelName = `user-${userId}`;
-    const existing = this.pusher.channel(userChannelName);
-    if (!existing) {
-      this.userChannel = this.pusher.subscribe(userChannelName);
-      this.userChannel.bind_global((eventName: string, data: any) => {
-        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
-        const normalizedEvent: RealtimeEvent = {
-          type: data?.type || eventName,
-          groupId: data?.groupId,
-          userId: data?.userId || userId,
-          data: data?.data !== undefined ? data.data : data,
-          timestamp: data?.timestamp || new Date().toISOString(),
-        };
-        this.notifyListeners(normalizedEvent);
-      });
+    const cleanUserId = String(userId).trim();
+    const userChannelName = `user-${cleanUserId}`;
+    let ch = this.pusher.channel(userChannelName);
+    if (!ch) {
+      ch = this.pusher.subscribe(userChannelName);
     }
+    this.userChannel = ch;
+    try {
+      (ch as any).unbind_global?.();
+    } catch (_) {}
+    ch.bind_global((eventName: string, data: any) => {
+      if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+      const normalizedEvent: RealtimeEvent = {
+        type: data?.type || eventName,
+        groupId: data?.groupId,
+        userId: data?.userId || cleanUserId,
+        data: data?.data !== undefined ? data.data : data,
+        timestamp: data?.timestamp || new Date().toISOString(),
+      };
+      this.notifyListeners(normalizedEvent);
+    });
   }
 
   private ensureGroupChannel(groupId: string): void {
     if (!this.pusher || !groupId) return;
-    const groupChannelName = `group-${groupId}`;
-    const existing = this.pusher.channel(groupChannelName);
-    if (!existing) {
-      this.activeGroupChannel = this.pusher.subscribe(groupChannelName);
-      this.activeGroupChannel.bind_global((eventName: string, data: any) => {
-        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
-        const normalizedEvent: RealtimeEvent = {
-          type: data?.type || eventName,
-          groupId: data?.groupId || groupId,
-          userId: data?.userId,
-          data: data?.data !== undefined ? data.data : data,
-          timestamp: data?.timestamp || new Date().toISOString(),
-        };
-        this.notifyListeners(normalizedEvent);
-      });
+    const cleanGroupId = String(groupId).trim();
+    const groupChannelName = `group-${cleanGroupId}`;
+    let ch = this.pusher.channel(groupChannelName);
+    if (!ch) {
+      ch = this.pusher.subscribe(groupChannelName);
     }
+    this.activeGroupChannel = ch;
+    try {
+      (ch as any).unbind_global?.();
+    } catch (_) {}
+    ch.bind_global((eventName: string, data: any) => {
+      if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+      const normalizedEvent: RealtimeEvent = {
+        type: data?.type || eventName,
+        groupId: data?.groupId || cleanGroupId,
+        userId: data?.userId,
+        data: data?.data !== undefined ? data.data : data,
+        timestamp: data?.timestamp || new Date().toISOString(),
+      };
+      this.notifyListeners(normalizedEvent);
+    });
   }
 
   private setupNetworkListeners(): void {

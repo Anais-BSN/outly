@@ -85,10 +85,10 @@ class EventBroadcaster {
     if (this.pusher) {
       const channels: string[] = [];
       if (event.groupId) {
-        channels.push(`group-${event.groupId}`);
+        channels.push(`group-${String(event.groupId).trim()}`);
       }
       if (event.userId) {
-        channels.push(`user-${event.userId}`);
+        channels.push(`user-${String(event.userId).trim()}`);
       }
       if (channels.length === 0) {
         channels.push('global');
@@ -100,7 +100,8 @@ class EventBroadcaster {
       });
 
       // Émission également sur le canal générique de l'application
-      if (!channels.includes('global') && !channels.includes(`user-${event.userId}`)) {
+      const userChan = event.userId ? `user-${String(event.userId).trim()}` : null;
+      if (!channels.includes('global') && (!userChan || !channels.includes(userChan))) {
         this.pusher.trigger(channels, 'outlys-event', payload).catch(() => {});
       }
     }

@@ -2622,7 +2622,7 @@ export default function App() {
           <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#6D2932] dark:text-[#FFF9EB]">
                   Mes Groupes & Escapades
                 </h2>
                 <p className="text-xs sm:text-sm text-[#27272A]/70 dark:text-zinc-400 mt-1">
@@ -2676,7 +2676,7 @@ export default function App() {
                       </div>
 
                       <div className="p-4 space-y-1.5">
-                        <h3 className="font-serif font-bold text-base text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                        <h3 className="font-serif font-bold text-base text-[#6D2932] dark:text-[#FFF9EB] truncate">
                           {group.name}
                         </h3>
                         {group.description && (

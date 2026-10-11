@@ -66,14 +66,14 @@ export const ConvertChoicePollModal: React.FC<ConvertChoicePollModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+            <Sparkles className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Convertir en sortie / événement
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -84,7 +84,7 @@ export const ConvertChoicePollModal: React.FC<ConvertChoicePollModalProps> = ({
           <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 block mb-0.5">
             Activité / Option retenue
           </span>
-          <h4 className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+          <h4 className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
             {winningOption ? winningOption.text : poll.title}
           </h4>
         </div>
@@ -137,13 +137,13 @@ export const ConvertChoicePollModal: React.FC<ConvertChoicePollModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-full text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3] cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer"
             >
               Créer l'événement dans l'Agenda
             </button>

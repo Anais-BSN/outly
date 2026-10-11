@@ -248,10 +248,10 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
         {/* En-tête avec titre et bouton fermer */}
         <div className="flex items-center justify-between gap-2 mb-2 px-1 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-[#5D0D18] text-amber-200 flex items-center justify-center text-sm shadow-xs">
+            <div className="w-7 h-7 rounded-xl bg-[#6D2932] text-amber-200 flex items-center justify-center text-sm shadow-xs">
               <Smile className="w-4 h-4" />
             </div>
-            <span className="font-serif font-bold text-sm text-[#5D0D18] dark:text-[#FFF9EB]">
+            <span className="font-serif font-bold text-sm text-[#6D2932] dark:text-[#FFF9EB]">
               {title}
             </span>
           </div>
@@ -268,10 +268,10 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
 
         {/* Aperçu du message sélectionné (Rappel contextuel clair) */}
         {messagePreview && (messagePreview.text || messagePreview.senderName || messagePreview.imageUrl) && (
-          <div className="mb-2.5 px-3 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/80 border-l-4 border-l-[#5D0D18] border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs shrink-0 flex items-center justify-between gap-2">
+          <div className="mb-2.5 px-3 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/80 border-l-4 border-l-[#6D2932] border border-[#C7B7A3]/50 dark:border-zinc-700 text-xs shrink-0 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               {messagePreview.senderName && (
-                <p className="font-bold text-[11px] text-[#5D0D18] dark:text-amber-200 truncate">
+                <p className="font-bold text-[11px] text-[#6D2932] dark:text-amber-200 truncate">
                   {messagePreview.senderName}
                 </p>
               )}
@@ -291,9 +291,9 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
 
         {/* Barre de texte en cours de rédaction avec prévisualisation dynamique au fur et à mesure des clics émojis */}
         {draftInput && (
-          <div className="mb-2.5 px-3.5 py-2 rounded-2xl bg-[#E8D8C4]/80 dark:bg-zinc-800/90 border-2 border-[#5D0D18]/30 dark:border-amber-400/30 shadow-xs shrink-0 animate-fade-in">
+          <div className="mb-2.5 px-3.5 py-2 rounded-2xl bg-[#E8D8C4]/80 dark:bg-zinc-800/90 border-2 border-[#6D2932]/30 dark:border-amber-400/30 shadow-xs shrink-0 animate-fade-in">
             <div className="flex items-center justify-between gap-1 mb-1">
-              <span className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-300 uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#6D2932] dark:text-amber-300 uppercase tracking-wider">
                 Message en cours de rédaction
               </span>
               {draftInput.text && (
@@ -322,7 +322,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                     onClose();
                   }}
                   disabled={!draftInput.text.trim()}
-                  className="p-1.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs"
+                  className="p-1.5 rounded-full bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs"
                   title="Envoyer le message"
                 >
                   <Send className="w-3.5 h-3.5" />
@@ -334,7 +334,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
 
         {/* Barre de recherche d'émojis */}
         <div className="relative mb-2.5 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5D0D18]/70 dark:text-amber-200/70 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6D2932]/70 dark:text-amber-200/70 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -342,7 +342,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher un émoji"
-            className="w-full pl-9 pr-8 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/90 border border-[#C7B7A3] dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/50 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#5D0D18]"
+            className="w-full pl-9 pr-8 py-2 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/90 border border-[#C7B7A3] dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/50 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#6D2932]"
           />
           {searchQuery && (
             <button
@@ -373,7 +373,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                   onClick={() => handleCategoryTabClick(cat.id)}
                   className={`px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer font-medium border ${
                     isActive
-                      ? 'bg-[#5D0D18] text-amber-200 border-[#5D0D18] shadow-xs'
+                      ? 'bg-[#6D2932] text-amber-200 border-[#6D2932] shadow-xs'
                       : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A]/80 dark:text-zinc-300 border-transparent hover:bg-[#E8D8C4] dark:hover:bg-zinc-700'
                   }`}
                   title={cat.name}
@@ -395,12 +395,12 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
           {/* Résultats de recherche */}
           {searchQuery && filteredEmojis && (
             <div>
-              <div className="text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 mb-2 px-1 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-[#6D2932] dark:text-amber-200 mb-2 px-1 flex items-center justify-between">
                 <span>{filteredEmojis.length} résultat{filteredEmojis.length > 1 ? 's' : ''} pour « {searchQuery} »</span>
               </div>
               {filteredEmojis.length === 0 ? (
                 <div className="text-center py-8 text-xs text-zinc-500 dark:text-zinc-400">
-                  <Smile className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#5D0D18]" />
+                  <Smile className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#6D2932]" />
                   <p>Aucun émoji trouvé pour cette recherche.</p>
                   <p className="text-[10px] mt-1 opacity-75">Essayez un autre mot-clé ou parcourez les catégories ci-dessus.</p>
                 </div>
@@ -432,7 +432,7 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                 return (
                   <div key={cat.id} id={`emoji-cat-${cat.id}`} className="scroll-mt-2">
                     <div className="sticky top-0 bg-[#FFF9EB]/95 dark:bg-[#18181B]/95 backdrop-blur-xs py-1 px-1 z-10 flex items-center justify-between border-b border-[#C7B7A3]/30 dark:border-zinc-800/60 mb-1.5">
-                      <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-200 flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200 flex items-center gap-1.5">
                         <span>{cat.icon}</span>
                         <span>{cat.name}</span>
                       </span>

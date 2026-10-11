@@ -110,15 +110,15 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+            <Calendar className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Mon calendrier
             </h3>
           </div>
           <button
             id="calendar-modal-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -136,7 +136,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 id="calendar-group-select"
                 value={selectedGroupId}
                 onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full px-3 py-1.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
               >
                 <option value="all">Tous mes groupes ({groups.length})</option>
                 {groups.map((g) => (
@@ -154,8 +154,8 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18]'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932]'
                 }`}
               >
                 Grille
@@ -166,8 +166,8 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18]'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932]'
                 }`}
               >
                 Liste
@@ -183,7 +183,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 onClick={() => setFilterTime('upcoming')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   filterTime === 'upcoming'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    ? 'bg-[#6D2932] text-[#FFF9EB]'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
                 }`}
               >
@@ -194,7 +194,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 onClick={() => setFilterTime('past')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   filterTime === 'past'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    ? 'bg-[#6D2932] text-[#FFF9EB]'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
                 }`}
               >
@@ -205,7 +205,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                 onClick={() => setFilterTime('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   filterTime === 'all'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                    ? 'bg-[#6D2932] text-[#FFF9EB]'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300'
                 }`}
               >
@@ -215,14 +215,14 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
           )}
         </div>
 
-        {/* View Mode 1: Grille mensuelle responsive avec pastilles bordeaux (#5D0D18) */}
+        {/* View Mode 1: Grille mensuelle responsive avec pastilles bordeaux (#6D2932) */}
         {viewMode === 'grid' && (
           <div className="space-y-3 pt-2">
             {/* Month Navigation */}
             <div className="flex items-center justify-between px-2 py-1 bg-[#E8D8C4]/50 dark:bg-zinc-800/60 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700">
               <button
                 onClick={prevMonth}
-                className="p-1 rounded-lg hover:bg-[#E8D8C4] text-[#5D0D18] dark:text-[#FFF9EB] cursor-pointer"
+                className="p-1 rounded-lg hover:bg-[#E8D8C4] text-[#6D2932] dark:text-[#FFF9EB] cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -231,7 +231,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
               </div>
               <button
                 onClick={nextMonth}
-                className="p-1 rounded-lg hover:bg-[#E8D8C4] text-[#5D0D18] dark:text-[#FFF9EB] cursor-pointer"
+                className="p-1 rounded-lg hover:bg-[#E8D8C4] text-[#6D2932] dark:text-[#FFF9EB] cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -240,7 +240,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
             {/* Calendar Grid */}
             <div className="bg-[#E8D8C4]/30 dark:bg-zinc-900 p-2 sm:p-3 rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-800">
               {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] font-bold text-[#5D0D18] dark:text-zinc-400 mb-2">
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] font-bold text-[#6D2932] dark:text-zinc-400 mb-2">
                 {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => (
                   <div key={d}>{d}</div>
                 ))}
@@ -277,9 +277,9 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                       }}
                       className={`min-h-[58px] sm:min-h-[76px] p-1 sm:p-1.5 rounded-xl border flex flex-col justify-between transition-all cursor-pointer ${
                         isSelected
-                          ? 'ring-2 ring-[#5D0D18] bg-[#E8D8C4] dark:bg-zinc-700'
+                          ? 'ring-2 ring-[#6D2932] bg-[#E8D8C4] dark:bg-zinc-700'
                           : isToday
-                          ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] ring-2 ring-[#5D0D18]'
+                          ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#6D2932] ring-2 ring-[#6D2932]'
                           : 'bg-[#FFF9EB]/80 dark:bg-zinc-800/50 border-[#C7B7A3]/40 dark:border-zinc-800 hover:bg-[#FFF9EB]'
                       }`}
                     >
@@ -287,18 +287,18 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                         <span
                           className={`text-[10px] sm:text-[11px] font-bold px-1 rounded-md ${
                             isToday
-                              ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                              ? 'bg-[#6D2932] text-[#FFF9EB]'
                               : 'text-[#27272A] dark:text-zinc-300'
                           }`}
                         >
                           {dayNum}
                         </span>
                         {dayEvents.length > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#5D0D18] dark:bg-amber-400 shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#6D2932] dark:bg-amber-400 shrink-0" />
                         )}
                       </div>
 
-                      {/* Pastilles bordeaux (#5D0D18) */}
+                      {/* Pastilles bordeaux (#6D2932) */}
                       <div className="space-y-0.5 overflow-hidden mt-1">
                         {dayEvents.slice(0, 2).map((evt) => (
                           <div
@@ -308,14 +308,14 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                               onSelectGroupFromEvent(evt.groupId);
                               onClose();
                             }}
-                            className="px-1 py-0.5 rounded-md bg-[#5D0D18] text-[#FFF9EB] text-[8px] sm:text-[9px] font-bold truncate cursor-pointer hover:bg-[#450912] shadow-xs"
+                            className="px-1 py-0.5 rounded-md bg-[#6D2932] text-[#FFF9EB] text-[8px] sm:text-[9px] font-bold truncate cursor-pointer hover:bg-[#541C24] shadow-xs"
                             title={evt.title}
                           >
                             {evt.title.length > 14 ? `${evt.title.substring(0, 12)}…` : evt.title}
                           </div>
                         ))}
                         {dayEvents.length > 2 && (
-                          <div className="text-[8px] font-bold text-[#5D0D18] dark:text-amber-300 text-center">
+                          <div className="text-[8px] font-bold text-[#6D2932] dark:text-amber-300 text-center">
                             +{dayEvents.length - 2} autre{dayEvents.length - 2 > 1 ? 's' : ''}
                           </div>
                         )}
@@ -330,12 +330,12 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
             {selectedDayEvents && (
               <div className="p-3.5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-md space-y-2.5 animate-fade-in">
                 <div className="flex items-center justify-between pb-1.5 border-b border-[#C7B7A3]/50">
-                  <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+                  <span className="text-xs font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                     Sorties du {formatDateOnly(selectedDayEvents.dateStr)}
                   </span>
                   <button
                     onClick={() => setSelectedDayEvents(null)}
-                    className="p-1 rounded-lg text-xs hover:bg-[#C7B7A3]/40 text-[#27272A] dark:text-zinc-300"
+                    className="px-3 py-1 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
                   >
                     Fermer
                   </button>
@@ -351,7 +351,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                       >
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="px-1.5 py-0.5 rounded bg-[#5D0D18] text-[#FFF9EB] text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-[#6D2932] text-[#FFF9EB] text-[9px] font-bold">
                               {group?.name || 'Groupe'}
                             </span>
                             <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
@@ -367,7 +367,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                             onSelectGroupFromEvent(evt.groupId);
                             onClose();
                           }}
-                          className="px-3 py-1.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] shrink-0 cursor-pointer"
+                          className="px-3 py-1.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] shrink-0 cursor-pointer"
                         >
                           Voir
                         </button>
@@ -400,23 +400,23 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-md bg-[#5D0D18] text-[#FFF9EB] text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-[#6D2932] text-[#FFF9EB] text-[10px] font-bold">
                             {group?.name || 'Groupe'}
                           </span>
-                          <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+                          <span className="text-xs font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                             {event.title}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-3 text-xs text-[#27272A]/80 dark:text-zinc-300">
                           <div className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                            <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                             <span>{formatDateTime(event.startDateTime)}</span>
                           </div>
 
                           {event.location && (
                             <div className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                              <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                               <span className="truncate max-w-[150px]">{event.location}</span>
                             </div>
                           )}
@@ -428,7 +428,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                           onSelectGroupFromEvent(event.groupId);
                           onClose();
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 text-xs font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] border border-[#C7B7A3]/50 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-[#FFF9EB] dark:bg-zinc-800 text-xs font-bold text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] border border-[#C7B7A3]/50 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
                       >
                         Ouvrir dans le groupe
                       </button>

@@ -100,7 +100,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
 
           {/* Group Name & Member count */}
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] tracking-tight truncate">
+            <h2 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] tracking-tight truncate">
               {group.name}
             </h2>
 
@@ -128,14 +128,14 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                   />
                 ))}
                 {safeMembers.length > 5 && (
-                  <div className="w-6 h-6 rounded-full bg-[#5D0D18] border-2 border-[#FFF9EB] dark:border-[#18181B] flex items-center justify-center text-[9px] text-white font-bold">
+                  <div className="w-6 h-6 rounded-full bg-[#6D2932] border-2 border-[#FFF9EB] dark:border-[#18181B] flex items-center justify-center text-[9px] text-white font-bold">
                     +{safeMembers.length - 5}
                   </div>
                 )}
               </div>
               <button
                 onClick={onOpenMembersList}
-                className="text-xs font-semibold text-[#5D0D18]/80 dark:text-zinc-300 hover:underline cursor-pointer"
+                className="text-xs font-semibold text-[#6D2932]/80 dark:text-zinc-300 hover:underline cursor-pointer"
               >
                 {safeMembers.length} {safeMembers.length > 1 ? 'membres' : 'membre'}
               </button>
@@ -151,7 +151,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
               id="banner-btn-context-menu"
               onClick={() => setShowMenu(!showMenu)}
               aria-label="Options du groupe"
-              className="p-2 border border-[#C7B7A3] bg-[#FFF9EB]/90 dark:bg-zinc-800 text-[#5D0D18] dark:text-[#FFF9EB] rounded-full hover:bg-white dark:hover:bg-zinc-700 transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center"
+              className="p-2 border border-[#C7B7A3] bg-[#FFF9EB]/90 dark:bg-zinc-800 text-[#6D2932] dark:text-[#FFF9EB] rounded-full hover:bg-white dark:hover:bg-zinc-700 transition-all shadow-xs cursor-pointer active:scale-95 flex items-center justify-center"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
@@ -170,7 +170,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                 }}
                 className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
               >
-                <UserPlus className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                <UserPlus className="w-4 h-4 text-[#6D2932] dark:text-zinc-400" />
                 <span>Ajouter un membre</span>
               </button>
 
@@ -183,7 +183,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                   }}
                   className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
                 >
-                  <Edit className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                  <Edit className="w-4 h-4 text-[#6D2932] dark:text-zinc-400" />
                   <span>Modifier le groupe</span>
                 </button>
               )}
@@ -197,7 +197,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                   }}
                   className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                  <LogOut className="w-4 h-4 text-[#6D2932] dark:text-zinc-400" />
                   <span>Quitter le groupe</span>
                 </button>
               )}
@@ -213,7 +213,7 @@ export const GroupBanner: React.FC<GroupBannerProps> = ({
                     }}
                     className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
                   >
-                    <Trash2 className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                    <Trash2 className="w-4 h-4 text-[#6D2932] dark:text-zinc-400" />
                     <span>Supprimer le groupe</span>
                   </button>
                 </>

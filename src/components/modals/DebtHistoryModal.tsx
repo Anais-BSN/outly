@@ -80,11 +80,11 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#C7B7A3]/40 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300">
+            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-300">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Historique des remboursements
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -96,7 +96,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
             type="button"
             id="debt-history-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -107,7 +107,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
           {settledList.length === 0 ? (
             <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700 my-4">
               <Receipt className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <p className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 Aucun remboursement soldé
               </p>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
@@ -140,7 +140,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
                   {/* Date & Time Header */}
                   <div className="flex items-center justify-between text-[11px] font-semibold text-[#27272A]/60 dark:text-zinc-400">
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                      <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                       <span>{formattedDate ? formatDateTime(formattedDate) : 'Date non renseignée'}</span>
                     </div>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#9FB2AC]/30 text-[#18181B] dark:text-[#9FB2AC]">
@@ -166,7 +166,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
                         referrerPolicy="no-referrer"
                       />
                       <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                        <span className="block text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
                           {isFromMe ? 'Toi' : fromInfo.name}
                         </span>
                         <span className="block text-[10px] text-[#27272A]/60 dark:text-zinc-400">
@@ -177,7 +177,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
 
                     {/* Amount & Arrow */}
                     <div className="flex flex-col items-center shrink-0 px-2">
-                      <span className="text-sm sm:text-base font-extrabold text-[#5D0D18] dark:text-amber-300 font-serif">
+                      <span className="text-sm sm:text-base font-extrabold text-[#6D2932] dark:text-amber-300 font-serif">
                         {formatCurrency(settle.amount)}
                       </span>
                       <ArrowRight className="w-4 h-4 text-[#9FB2AC] mt-0.5" />
@@ -186,7 +186,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
                     {/* To User */}
                     <div className="flex items-center gap-2 min-w-0 justify-end text-right">
                       <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                        <span className="block text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
                           {isToMe ? 'Toi' : toInfo.name}
                         </span>
                         <span className="block text-[10px] text-[#27272A]/60 dark:text-zinc-400">
@@ -218,7 +218,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] shadow-xs active:scale-95 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
           >
             Fermer
           </button>

@@ -591,7 +591,7 @@ export const initLocalNotifications = async (
           visibility: 1,
           vibration: true,
           lights: true,
-          lightColor: '#5D0D18',
+          lightColor: '#6D2932',
           sound: 'default',
         });
 
@@ -603,7 +603,7 @@ export const initLocalNotifications = async (
           visibility: 1,
           vibration: true,
           lights: true,
-          lightColor: '#5D0D18',
+          lightColor: '#6D2932',
           sound: 'default',
         });
       } catch (cErr) {
@@ -656,7 +656,7 @@ export const sendNativeLocalNotification = async (
             visibility: 1,
             vibration: true,
             lights: true,
-            lightColor: '#5D0D18',
+            lightColor: '#6D2932',
             sound: 'default',
           });
         } catch (_) {}
@@ -672,7 +672,7 @@ export const sendNativeLocalNotification = async (
             body: body || '',
             channelId: 'outlys_notifications',
             smallIcon: 'ic_stat_outlys',
-            iconColor: '#5D0D18',
+            iconColor: '#6D2932',
             extra: data || {},
             autoCancel: true,
           },
@@ -715,7 +715,7 @@ export const sendNativeIncomingCallAlert = async (callSession: any): Promise<voi
           visibility: 1,
           vibration: true,
           lights: true,
-          lightColor: '#5D0D18',
+          lightColor: '#6D2932',
           sound: 'default',
         });
       } catch (_) {}
@@ -735,7 +735,7 @@ export const sendNativeIncomingCallAlert = async (callSession: any): Promise<voi
           channelId: 'outlys_calls',
           actionTypeId: 'CALL_NOTIFICATION_ACTIONS',
           smallIcon: 'ic_stat_outlys',
-          iconColor: '#5D0D18',
+          iconColor: '#6D2932',
           extra: {
             type: 'group_call',
             groupId: callSession.groupId,

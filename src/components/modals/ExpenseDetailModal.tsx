@@ -147,15 +147,15 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#C7B7A3]/40 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2.5 rounded-2xl bg-[#5D0D18] text-[#FFF9EB] shadow-xs shrink-0">
+            <div className="p-2.5 rounded-2xl bg-[#6D2932] text-[#FFF9EB] shadow-xs shrink-0">
               <Receipt className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif truncate">
+                <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif truncate">
                   {expense.title}
                 </h3>
-                <span className="bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#C7B7A3]/50">
+                <span className="bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#C7B7A3]/50">
                   {expense.category}
                 </span>
               </div>
@@ -173,7 +173,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                   type="button"
                   id="expense-detail-menu-btn"
                   onClick={() => setShowActionMenu(!showActionMenu)}
-                  className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                   title="Options de la dépense"
                 >
                   <MoreVertical className="w-5 h-5" />
@@ -188,7 +188,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                         onClick={handleEdit}
                         className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
                       >
-                        <Edit className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400" />
+                        <Edit className="w-4 h-4 text-[#6D2932] dark:text-zinc-400" />
                         <span>Modifier</span>
                       </button>
                     )}
@@ -211,7 +211,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             <button
               id="expense-detail-close-btn"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -221,7 +221,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1">
           {/* Main Total Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#5D0D18] via-[#6D2932] to-[#450912] text-[#FFF9EB] shadow-md border border-[#8B3D48]/30 flex items-center justify-between">
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#6D2932] via-[#8A3440] to-[#541C24] text-[#FFF9EB] shadow-md border border-[#8B3D48]/30 flex items-center justify-between">
             <div>
               <span className="text-xs text-[#FFF9EB]/90 font-semibold tracking-wide uppercase block">
                 Montant total réglé
@@ -247,21 +247,21 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                     onViewAvatar(expense.paidByAvatar, expense.paidByName);
                   }
                 }}
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-[#5D0D18] shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-[#6D2932] shrink-0 cursor-pointer hover:scale-105 transition-transform"
                 referrerPolicy="no-referrer"
               />
               <div className="min-w-0">
                 <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 block font-semibold">
                   Réglé par
                 </span>
-                <span className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate block">
+                <span className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate block">
                   {isPayerMe ? `${safeCurrentUser.name || safeCurrentUser.firstName} (Moi)` : (expense.paidByName && expense.paidByName !== 'Membre' ? expense.paidByName : 'Utilisateur supprimé')}
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-[#27272A] dark:text-[#FFF9EB] font-bold px-3 py-1.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/50">
-              <Calendar className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
               <span>{formatDateOnly(expense.date)}</span>
             </div>
           </div>
@@ -269,7 +269,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
           {/* Breakdown / Répartition par participant */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" />
                 <span>Pour qui était cette dépense</span>
               </span>
@@ -282,7 +282,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
               {breakdownList.map((item) => (
                 <div
                   key={item.uid}
-                  className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-zinc-800/90 border border-[#C7B7A3]/50 dark:border-zinc-700/80 flex items-center justify-between gap-3 shadow-2xs hover:border-[#5D0D18]/40 transition-colors"
+                  className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-zinc-800/90 border border-[#C7B7A3]/50 dark:border-zinc-700/80 flex items-center justify-between gap-3 shadow-2xs hover:border-[#6D2932]/40 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
@@ -303,7 +303,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                           {item.displayName}
                         </span>
                         {item.isMe && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#5D0D18] text-[#FFF9EB] font-bold">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#6D2932] text-[#FFF9EB] font-bold">
                             Moi
                           </span>
                         )}
@@ -320,7 +320,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-xs sm:text-sm font-extrabold text-[#5D0D18] dark:text-amber-300 font-serif">
+                    <span className="text-xs sm:text-sm font-extrabold text-[#6D2932] dark:text-amber-300 font-serif">
                       {formatCurrency(item.shareAmount)}
                     </span>
                   </div>

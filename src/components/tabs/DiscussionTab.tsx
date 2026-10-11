@@ -251,8 +251,8 @@ const MessageItem = React.memo<MessageItemProps>(({
           className="flex flex-col sm:flex-row items-center justify-center gap-1.5 my-2.5 py-1 px-4 text-center select-none text-[11px] sm:text-xs font-medium text-[#27272A]/70 dark:text-zinc-400 tracking-wide animate-fade-in"
         >
           <div className="flex items-center gap-1.5">
-            <CallIcon className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 opacity-80 shrink-0" />
-            <span className="font-semibold text-[#5D0D18] dark:text-[#FFF9EB]/90">{cleanCallText || rawText}</span>
+            <CallIcon className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 opacity-80 shrink-0" />
+            <span className="font-semibold text-[#6D2932] dark:text-[#FFF9EB]/90">{cleanCallText || rawText}</span>
             <span className="text-[10px] opacity-60">
               • {formatTimeOnly(message.timestamp)}
             </span>
@@ -710,10 +710,10 @@ const MessageItem = React.memo<MessageItemProps>(({
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer ${
                       isMe
                         ? hasReacted
-                          ? 'bg-[#FFF9EB] text-[#5D0D18] dark:bg-[#450912] dark:text-[#FFF9EB] dark:border dark:border-[#5D0D18] dark:ring-1 dark:ring-[#5D0D18] font-bold shadow-xs'
-                          : 'bg-[#450912]/30 text-[#FFF9EB] hover:bg-[#450912]/50 dark:bg-[#35070E] dark:text-[#FFF9EB] border border-white/20 dark:border-[#5D0D18]/60 font-semibold'
+                          ? 'bg-[#FFF9EB] text-[#6D2932] dark:bg-[#541C24] dark:text-[#FFF9EB] dark:border dark:border-[#6D2932] dark:ring-1 dark:ring-[#6D2932] font-bold shadow-xs'
+                          : 'bg-[#541C24]/30 text-[#FFF9EB] hover:bg-[#541C24]/50 dark:bg-[#35070E] dark:text-[#FFF9EB] border border-white/20 dark:border-[#6D2932]/60 font-semibold'
                         : hasReacted
-                        ? 'bg-[#5D0D18] text-[#FFF9EB] dark:bg-[#450912] dark:text-[#FFF9EB] dark:border dark:border-[#5D0D18] font-bold shadow-xs'
+                        ? 'bg-[#6D2932] text-[#FFF9EB] dark:bg-[#541C24] dark:text-[#FFF9EB] dark:border dark:border-[#6D2932] font-bold shadow-xs'
                         : 'bg-[#FFF9EB] text-[#27272A] dark:bg-zinc-800 dark:text-zinc-200 hover:bg-[#E8D8C4] border border-[#C7B7A3]/60 dark:border-zinc-700 font-semibold'
                     }`}
                   >
@@ -956,7 +956,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                 triggerHaptic('light');
                 onBackToTabs();
               }}
-              className="p-1 -ml-1 rounded-full text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+              className="p-1 -ml-1 rounded-full text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
               title="Retour aux onglets du groupe"
               aria-label="Retour"
             >
@@ -982,14 +982,14 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
               />
             </div>
           ) : (
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#5D0D18] flex items-center justify-center text-white text-sm sm:text-base font-serif font-bold shadow-xs shrink-0 select-none">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#6D2932] flex items-center justify-center text-white text-sm sm:text-base font-serif font-bold shadow-xs shrink-0 select-none">
               {groupName?.charAt(0) || 'G'}
             </div>
           )}
 
           {/* Nom du groupe uniquement */}
           <div className="min-w-0">
-            <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+            <h4 className="text-sm sm:text-base font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] truncate">
               {groupName || 'Discussion du groupe'}
             </h4>
           </div>
@@ -1007,9 +1007,9 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                   onStartCall('audio');
                 }}
                 title="Démarrer un appel audio"
-                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#E8D8C4]/80 dark:bg-zinc-800 hover:bg-[#E8D8C4] dark:hover:bg-zinc-750 text-[#5D0D18] dark:text-zinc-200 border border-[#C7B7A3]/40 dark:border-zinc-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#E8D8C4]/80 dark:bg-zinc-800 hover:bg-[#E8D8C4] dark:hover:bg-zinc-750 text-[#6D2932] dark:text-zinc-200 border border-[#C7B7A3]/40 dark:border-zinc-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
               >
-                <Phone className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
+                <Phone className="w-4 h-4 text-[#6D2932] dark:text-amber-300" />
                 <span className="hidden md:inline">Appel audio</span>
               </button>
               <button
@@ -1020,7 +1020,7 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
                   onStartCall('video');
                 }}
                 title="Démarrer un appel vidéo"
-                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#5D0D18] hover:bg-[#450912] text-[#FFF9EB] font-semibold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#6D2932] hover:bg-[#541C24] text-[#FFF9EB] font-semibold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
               >
                 <Video className="w-4 h-4 text-[#FFF9EB]" />
                 <span className="hidden md:inline">Appel vidéo</span>

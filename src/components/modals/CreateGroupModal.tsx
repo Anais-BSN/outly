@@ -106,15 +106,15 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-              <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
+              <Users className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 Créer un nouveau groupe
               </h3>
             </div>
             <button
               id="create-group-close-btn"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -133,7 +133,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Escapade Normandie, Soirée Bowling, etc."
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
               />
             </div>
 
@@ -145,7 +145,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 </label>
                 <label
                   htmlFor="create-group-file-upload"
-                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Importer une photo</span>
@@ -160,7 +160,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               </div>
 
               {/* Current Active Banner Preview */}
-              <div className="mb-2 relative w-full aspect-[3/1] rounded-2xl overflow-hidden border-2 border-[#5D0D18] shadow-sm bg-black/5">
+              <div className="mb-2 relative w-full aspect-[3/1] rounded-2xl overflow-hidden border-2 border-[#6D2932] shadow-sm bg-black/5">
                 <img src={coverImage} alt="Aperçu de la bannière" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end justify-between p-2.5">
                   <span className="text-[11px] font-bold text-white flex items-center gap-1">
@@ -176,13 +176,13 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                     onClick={() => setCoverImage(url)}
                     className={`relative h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
                       coverImage === url
-                        ? 'border-[#5D0D18] ring-2 ring-[#5D0D18]'
+                        ? 'border-[#6D2932] ring-2 ring-[#6D2932]'
                         : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img src={url} alt={`Couverture ${i}`} className="w-full h-full object-cover" />
                     {coverImage === url && (
-                      <div className="absolute inset-0 bg-[#5D0D18]/30 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-[#6D2932]/30 flex items-center justify-center">
                         <Check className="w-5 h-5 text-white stroke-[3]" />
                       </div>
                     )}
@@ -207,7 +207,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                       onClick={() => toggleFriend(friend.id)}
                       className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                         isSelected
-                          ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] shadow-xs'
+                          ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#6D2932] shadow-xs'
                           : 'bg-[#E8D8C4]/40 dark:bg-zinc-900 border-[#C7B7A3]/30'
                       }`}
                     >
@@ -226,7 +226,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                       <div
                         className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${
                           isSelected
-                            ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                            ? 'bg-[#6D2932] text-[#FFF9EB]'
                             : 'border border-[#C7B7A3] text-transparent'
                         }`}
                       >
@@ -243,7 +243,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3] cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
               >
                 Annuler
               </button>
@@ -252,7 +252,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 type="submit"
                 id="submit-create-group-btn"
                 disabled={!name.trim()}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer"
               >
                 Créer le groupe
               </button>

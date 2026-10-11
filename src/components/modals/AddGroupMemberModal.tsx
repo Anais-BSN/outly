@@ -307,7 +307,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
           <button
             id="close-add-group-member-modal"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -437,7 +437,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
                   activeTab === 'friends'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                     : 'text-[#27272A] dark:text-zinc-300'
                 }`}
               >
@@ -452,7 +452,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
                   activeTab === 'invite'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                     : 'text-[#27272A] dark:text-zinc-300'
                 }`}
               >
@@ -544,7 +544,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                       <button
                         type="button"
                         onClick={handleShareLink}
-                        className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>Partager</span>

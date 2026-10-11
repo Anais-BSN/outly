@@ -363,14 +363,14 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <BarChart2 className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-display">
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               {isEditing ? 'Modifier le sondage' : 'Créer un sondage'}
             </h3>
           </div>
           <button
             id="create-poll-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -389,11 +389,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 onClick={() => setType('date')}
                 className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   type === 'date'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] border-[#6D2932] shadow-sm'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
-                <Calendar className={`w-4 h-4 ${type === 'date' ? 'text-[#FFF9EB]' : 'text-[#5D0D18] dark:text-amber-300'}`} />
+                <Calendar className={`w-4 h-4 ${type === 'date' ? 'text-[#FFF9EB]' : 'text-[#6D2932] dark:text-amber-300'}`} />
                 <div className="font-bold text-xs text-center">
                   Sondage de date
                 </div>
@@ -405,11 +405,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 onClick={() => setType('choice')}
                 className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                   type === 'choice'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] border-[#5D0D18] shadow-sm'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] border-[#6D2932] shadow-sm'
                     : 'bg-[#E8D8C4]/50 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 border-[#C7B7A3]/60 dark:border-zinc-700 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
-                <BarChart2 className={`w-4 h-4 ${type === 'choice' ? 'text-[#FFF9EB]' : 'text-[#5D0D18] dark:text-amber-300'}`} />
+                <BarChart2 className={`w-4 h-4 ${type === 'choice' ? 'text-[#FFF9EB]' : 'text-[#6D2932] dark:text-amber-300'}`} />
                 <div className="font-bold text-xs text-center">
                   Autres sondages
                 </div>
@@ -429,7 +429,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               onChange={(e) => setTitle(e.target.value)}
               placeholder={type === 'date' ? "Quel créneau pour notre prochain week-end ?" : "Quel menu pour samedi soir ?"}
               required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
             />
           </div>
 
@@ -464,8 +464,8 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                     className="p-3 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/60 border border-[#C7B7A3]/50 dark:border-zinc-700 space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                      <span className="text-xs font-bold text-[#6D2932] dark:text-amber-300 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
                         <span>Option {idx + 1} : {formatDateDisplay(opt)}</span>
                       </span>
                       {dateOptions.length > 2 && (
@@ -483,7 +483,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                          <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300" />
                           <span>Début *</span>
                         </label>
                         <input
@@ -500,7 +500,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-[#27272A]/80 dark:text-zinc-300 mb-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                          <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300" />
                           <span>Fin *</span>
                         </label>
                         <input
@@ -539,7 +539,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               <div className="space-y-1.5">
                 {choiceOptions.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span className="w-5 text-center text-xs font-bold text-[#5D0D18] dark:text-amber-300">
+                    <span className="w-5 text-center text-xs font-bold text-[#6D2932] dark:text-amber-300">
                       {idx + 1}.
                     </span>
                     <input
@@ -598,7 +598,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-full text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
             >
               Annuler
             </button>
@@ -611,7 +611,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                 !title.trim() ||
                 (type === 'date' ? dateOptions.length < 2 : choiceOptions.length < 2)
               }
-              className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

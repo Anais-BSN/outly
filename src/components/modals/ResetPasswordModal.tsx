@@ -120,14 +120,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h3 className="text-xl font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+            <KeyRound className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h3 className="text-xl font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Nouveau mot de passe
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -135,7 +135,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
         {verifying ? (
           <div className="py-8 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-[#5D0D18] border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-3 border-[#6D2932] border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
               Vérification de la validité du lien...
             </p>
@@ -152,7 +152,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all cursor-pointer shadow-md"
+              className="w-full py-2.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all cursor-pointer shadow-md"
             >
               Retourner à l'accueil
             </button>
@@ -169,7 +169,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             <button
               type="button"
               onClick={onSuccess}
-              className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all cursor-pointer shadow-md"
+              className="w-full py-2.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all cursor-pointer shadow-md"
             >
               Se connecter maintenant
             </button>
@@ -202,13 +202,13 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                 />
-                <Lock className="w-4 h-4 text-[#5D0D18] dark:text-amber-300 absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[#6D2932] dark:text-amber-300 absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                   title={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   aria-label={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
@@ -218,7 +218,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
               {/* Security Checklist */}
               <div className="mt-2 p-2 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-800/40 border border-[#C7B7A3]/30 dark:border-zinc-700/50 space-y-1">
-                <div className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                <div className="text-[10px] font-bold text-[#6D2932] dark:text-amber-200">
                   Critères de sécurité requis :
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1">
@@ -251,13 +251,13 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                 />
-                <Lock className="w-4 h-4 text-[#5D0D18] absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[#6D2932] absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                   title={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
@@ -269,7 +269,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             <button
               type="submit"
               disabled={loading || !newPassword || !confirmPassword}
-              className="w-full py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {loading ? 'Mise à jour...' : 'Enregistrer le nouveau mot de passe'}
               <ArrowRight className="w-4 h-4" />

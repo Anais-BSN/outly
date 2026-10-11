@@ -294,11 +294,11 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200">
+            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200">
               <Crop className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <h3 className="text-base sm:text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 {title}
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -309,7 +309,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           <button
             id="image-cropper-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -319,10 +319,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-[#27272A]/70 dark:text-zinc-400">
             <span className="flex items-center gap-1 font-medium">
-              <Move className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+              <Move className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
               Glissez l'image pour cadrer la portion souhaitée
             </span>
-            <span className="font-semibold text-[#5D0D18] dark:text-amber-200">
+            <span className="font-semibold text-[#6D2932] dark:text-amber-200">
               {Math.round(zoom * 100)}%
             </span>
           </div>
@@ -342,7 +342,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             {/* Exact Crop Mask Box Overlay */}
             <div
               ref={cropBoxRef}
-              className={`relative overflow-hidden pointer-events-none rounded-xl border-2 border-[#FFF9EB] ring-2 ring-[#5D0D18]/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.7)] ${
+              className={`relative overflow-hidden pointer-events-none rounded-xl border-2 border-[#FFF9EB] ring-2 ring-[#6D2932]/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.7)] ${
                 isBanner
                   ? 'w-[94%] max-w-[500px] aspect-[3/1]'
                   : 'w-[88%] max-w-[440px] aspect-[2/1]'
@@ -389,7 +389,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             <button
               type="button"
               onClick={() => handleZoomChange(zoom - 0.15)}
-              className="p-1.5 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#6D2932] dark:text-amber-300 cursor-pointer"
               title="Dézoomer"
             >
               <ZoomOut className="w-4 h-4" />
@@ -401,12 +401,12 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               step="0.01"
               value={zoom}
               onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-              className="flex-1 accent-[#5D0D18] h-1.5 bg-[#C7B7A3]/50 rounded-lg cursor-pointer"
+              className="flex-1 accent-[#6D2932] h-1.5 bg-[#C7B7A3]/50 rounded-lg cursor-pointer"
             />
             <button
               type="button"
               onClick={() => handleZoomChange(zoom + 0.15)}
-              className="p-1.5 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-300 cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#6D2932] dark:text-amber-300 cursor-pointer"
               title="Zoomer"
             >
               <ZoomIn className="w-4 h-4" />
@@ -419,7 +419,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               setZoom(1.0);
               setPan({ x: 0, y: 0 });
             }}
-            className="px-3 py-1.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 flex items-center gap-1.5 cursor-pointer border border-[#C7B7A3]/50 dark:border-zinc-700 transition-colors shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 flex items-center gap-1.5 cursor-pointer border border-[#C7B7A3]/60 dark:border-zinc-700 transition-colors shrink-0"
             title="Recentrer et réinitialiser le zoom"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -432,7 +432,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-full text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-[#C7B7A3] dark:hover:bg-zinc-700 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
           >
             Annuler
           </button>
@@ -440,7 +440,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             type="button"
             id="image-cropper-confirm-btn"
             onClick={handleApply}
-            className="px-5 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
             <span>Valider le cadrage</span>

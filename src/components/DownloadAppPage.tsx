@@ -28,10 +28,10 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#121214] text-[#27272A] dark:text-[#FFF9EB] flex flex-col selection:bg-[#5D0D18] selection:text-[#FFF9EB] transition-colors relative overflow-hidden">
+    <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#121214] text-[#27272A] dark:text-[#FFF9EB] flex flex-col selection:bg-[#6D2932] selection:text-[#FFF9EB] transition-colors relative overflow-hidden">
       {/* Background Decorative Ambient Glows */}
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-gradient-to-b from-[#5D0D18]/15 via-amber-500/10 to-transparent blur-3xl pointer-events-none rounded-full" />
-      <div className="absolute -bottom-32 left-1/4 w-[400px] h-[400px] bg-gradient-to-t from-[#5D0D18]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-gradient-to-b from-[#6D2932]/15 via-amber-500/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -bottom-32 left-1/4 w-[400px] h-[400px] bg-gradient-to-t from-[#6D2932]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
 
       {/* Top Unified Navigation Bar */}
       <header className="sticky top-0 z-30 w-full bg-[#E8D8C4] dark:bg-[#18181B] border-b border-[#C7B7A3] dark:border-zinc-800 transition-colors">
@@ -82,7 +82,7 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
               type="button"
               id="btn-download-apk-primary"
               onClick={handleDownloadApk}
-              className="w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-[#5D0D18] via-[#7B1120] to-[#5D0D18] text-[#FFF9EB] text-sm sm:text-base font-bold hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 shadow-md border border-[#9A1E30]"
+              className="w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-[#6D2932] via-[#85323D] to-[#6D2932] text-[#FFF9EB] text-sm sm:text-base font-bold hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 shadow-md border border-[#85323D]"
             >
               <Download className="w-5 h-5 stroke-[2.5]" />
               <span>Télécharger l'APK Android</span>
@@ -112,7 +112,7 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
                 </div>
               </div>
 
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-700 text-[#5D0D18] dark:text-amber-200 border border-[#5D0D18]/20 dark:border-zinc-600 shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6D2932]/10 dark:bg-zinc-700 text-[#6D2932] dark:text-amber-200 border border-[#6D2932]/20 dark:border-zinc-600 shrink-0">
                 Bientôt
               </span>
             </div>
@@ -132,7 +132,7 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
                 </div>
               </div>
 
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5D0D18]/10 dark:bg-zinc-700 text-[#5D0D18] dark:text-amber-200 border border-[#5D0D18]/20 dark:border-zinc-600 shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6D2932]/10 dark:bg-zinc-700 text-[#6D2932] dark:text-amber-200 border border-[#6D2932]/20 dark:border-zinc-600 shrink-0">
                 Bientôt
               </span>
             </div>

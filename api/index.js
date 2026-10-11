@@ -449,10 +449,10 @@ var EventBroadcaster = class {
     if (this.pusher) {
       const channels = [];
       if (event.groupId) {
-        channels.push(`group-${event.groupId}`);
+        channels.push(`group-${String(event.groupId).trim()}`);
       }
       if (event.userId) {
-        channels.push(`user-${event.userId}`);
+        channels.push(`user-${String(event.userId).trim()}`);
       }
       if (channels.length === 0) {
         channels.push("global");
@@ -460,7 +460,8 @@ var EventBroadcaster = class {
       this.pusher.trigger(channels, event.type, payload).catch((err) => {
         console.warn("[Pusher] Erreur lors de l'\xE9mission de l'\xE9v\xE9nement:", err?.message || err);
       });
-      if (!channels.includes("global") && !channels.includes(`user-${event.userId}`)) {
+      const userChan = event.userId ? `user-${String(event.userId).trim()}` : null;
+      if (!channels.includes("global") && (!userChan || !channels.includes(userChan))) {
         this.pusher.trigger(channels, "outlys-event", payload).catch(() => {
         });
       }

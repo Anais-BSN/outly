@@ -69,14 +69,14 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
               onClick={() => handleSelect(tab.id)}
               className={`relative flex-1 w-full h-full py-1 px-0.5 sm:px-1 flex flex-col items-center justify-center transition-all select-none cursor-pointer rounded-xl ${
                 isActive
-                  ? 'bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-[#FFF9EB] font-bold shadow-xs'
-                  : 'text-[#27272A]/70 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-zinc-200 hover:bg-[#E8D8C4]/40'
+                  ? 'bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-[#FFF9EB] font-bold shadow-xs'
+                  : 'text-[#27272A]/70 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-zinc-200 hover:bg-[#E8D8C4]/40'
               }`}
             >
               <div className="relative flex items-center justify-center">
                 <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
                 {tab.id !== 'galerie' && typeof badgeCount === 'number' && badgeCount > 0 && (
-                  <span className="absolute -top-1.5 -right-3 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#5D0D18] text-[#FFF9EB] flex items-center justify-center shadow-xs">
+                  <span className="absolute -top-1.5 -right-3 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#6D2932] text-[#FFF9EB] flex items-center justify-center shadow-xs">
                     {badgeCount}
                   </span>
                 )}
@@ -88,7 +88,7 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
               </span>
 
               {isActive && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#5D0D18] dark:bg-[#FFF9EB] rounded-full" />
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#6D2932] dark:bg-[#FFF9EB] rounded-full" />
               )}
             </button>
           );

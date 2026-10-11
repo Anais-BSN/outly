@@ -41,7 +41,7 @@ export const AppDownloadBanner: React.FC<AppDownloadBannerProps> = ({
     <>
       <aside
         aria-label="Promotion application mobile Outlys"
-        className="relative z-10 w-full bg-gradient-to-r from-[#5D0D18] via-[#7B1120] to-[#5D0D18] text-[#FFF9EB] py-2.5 px-3 sm:px-6 shadow-md border-y border-[#3d0810] animate-fade-in"
+        className="relative z-10 w-full bg-gradient-to-r from-[#6D2932] via-[#85343E] to-[#6D2932] text-[#FFF9EB] py-2.5 px-3 sm:px-6 shadow-md border-y border-[#541C24] animate-fade-in"
       >
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Côté gauche : Icône + Message promotionnel */}
@@ -63,7 +63,7 @@ export const AppDownloadBanner: React.FC<AppDownloadBannerProps> = ({
               type="button"
               id="banner-btn-install"
               onClick={handleInstallClick}
-              className="px-3.5 py-1.5 rounded-full bg-[#FFF9EB] text-[#5D0D18] text-xs font-bold hover:bg-white hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-1.5 rounded-full bg-[#FFF9EB] text-[#6D2932] text-xs font-bold hover:bg-white hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Download className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Installer</span>

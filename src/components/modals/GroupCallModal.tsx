@@ -331,7 +331,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
             src={currentUser.avatar || '/Avatar_Herisson.jpg'}
             alt="Avatar"
             className={`w-10 h-10 rounded-full object-cover ring-2 transition-all ${
-              localSpeaking ? 'ring-emerald-400 scale-105' : 'ring-[#5D0D18]'
+              localSpeaking ? 'ring-emerald-400 scale-105' : 'ring-[#6D2932]'
             }`}
           />
           {localSpeaking && (
@@ -389,7 +389,7 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
         {/* Barre Supérieure du Salon Épurée */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-zinc-900/90 border-b border-zinc-800 backdrop-blur-sm z-10">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-[#5D0D18]/40 text-amber-200">
+            <div className="p-2 rounded-full bg-[#6D2932]/40 text-amber-200">
               {callSession.type === 'video' ? <Video className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </div>
             <div>

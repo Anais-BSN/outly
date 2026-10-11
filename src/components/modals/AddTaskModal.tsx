@@ -76,14 +76,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-display">
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Ajouter une tâche
             </h3>
           </div>
           <button
             id="add-task-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -169,7 +169,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3]"
+              className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
             >
               Annuler
             </button>

@@ -155,7 +155,7 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                           <button
                             onClick={() => onEditPoll(poll)}
                             title="Modifier le sondage"
-                            className="p-1.5 rounded-lg text-[#5D0D18] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-[#6D2932] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
@@ -333,7 +333,7 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                        <Sparkles className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                         <span>
                           {poll.type === 'date' ? 'Date en tête :' : 'Option en tête :'} <strong>{bestOption?.text}</strong>
                         </span>
@@ -350,7 +350,7 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                         onConvertPollToEvent(poll, bestOption);
                       }
                     }}
-                    className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-xs active:scale-95 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-xs active:scale-95 cursor-pointer"
                   >
                     <CalendarPlus className="w-4 h-4" />
                     <span>{isTied ? 'Départager et convertir' : 'Convertir en événement'}</span>

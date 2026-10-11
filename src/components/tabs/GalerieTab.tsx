@@ -88,9 +88,9 @@ const PhotoCard = React.memo<PhotoCardProps>(({
       }}
       className={`group relative aspect-square rounded-2xl overflow-hidden bg-black/5 border transition-all cursor-pointer shadow-xs select-none ${
         isSelected
-          ? 'border-[#5D0D18] ring-3 ring-[#5D0D18] scale-[0.97]'
+          ? 'border-[#6D2932] ring-3 ring-[#6D2932] scale-[0.97]'
           : isSelectionMode
-          ? 'border-[#C7B7A3]/70 hover:border-[#5D0D18]'
+          ? 'border-[#C7B7A3]/70 hover:border-[#6D2932]'
           : 'border-[#C7B7A3]/50 dark:border-zinc-800 hover:shadow-md hover:scale-[1.02]'
       }`}
     >
@@ -107,7 +107,7 @@ const PhotoCard = React.memo<PhotoCardProps>(({
           <div
             className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
               isSelected
-                ? 'bg-[#5D0D18] text-white shadow-md'
+                ? 'bg-[#6D2932] text-white shadow-md'
                 : 'bg-black/40 text-white/80 backdrop-blur-xs border border-white/60'
             }`}
           >
@@ -119,7 +119,7 @@ const PhotoCard = React.memo<PhotoCardProps>(({
       {/* Subtle hover overlay with zoom icon (only when not in selection mode) */}
       {!isSelectionMode && (
         <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="p-2 rounded-full bg-[#FFF9EB]/90 text-[#5D0D18] shadow-sm backdrop-blur-xs">
+          <div className="p-2 rounded-full bg-[#FFF9EB]/90 text-[#6D2932] shadow-sm backdrop-blur-xs">
             <Maximize2 className="w-3.5 h-3.5" />
           </div>
         </div>
@@ -332,7 +332,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
               className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 isSelectionMode
                   ? 'bg-[#E8D8C4] text-[#27272A] hover:bg-[#C7B7A3]'
-                  : 'bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-[#5D0D18] dark:text-amber-300 hover:bg-[#E8D8C4]'
+                  : 'bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-[#6D2932] dark:text-amber-300 hover:bg-[#E8D8C4]'
               }`}
             >
               {isSelectionMode ? <X className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
@@ -354,7 +354,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
             id="gallery-btn-import"
             onClick={() => fileInputRef.current?.click()}
             disabled={isCompressing}
-            className="px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+            className="px-4 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 disabled:opacity-50"
           >
             {isCompressing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -370,7 +370,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       {pendingImages.length > 0 && (
         <div className="p-4 rounded-3xl bg-[#FFF9EB] dark:bg-[#18181B] border border-[#C7B7A3] dark:border-zinc-700 shadow-lg space-y-3 animate-fade-in">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
+            <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB]">
               {pendingImages.length} photo{pendingImages.length > 1 ? 's prêtes' : ' prête'} à être publiée{pendingImages.length > 1 ? 's' : ''} dans la galerie
             </span>
             <span className="text-[11px] opacity-70">
@@ -384,7 +384,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
                 key={i}
                 src={img}
                 alt={`Aperçu ${i + 1}`}
-                className="w-16 h-16 object-cover rounded-2xl ring-2 ring-[#5D0D18] shrink-0"
+                className="w-16 h-16 object-cover rounded-2xl ring-2 ring-[#6D2932] shrink-0"
               />
             ))}
           </div>
@@ -401,7 +401,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
               id="gallery-confirm-upload-btn"
               onClick={handleConfirmUpload}
               disabled={isUploading}
-              className="px-5 py-1.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              className="px-5 py-1.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
               <span>{isUploading ? 'Publication en cours...' : `Publier ${pendingImages.length} photo${pendingImages.length > 1 ? 's' : ''}`}</span>
@@ -446,7 +446,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       {/* Floating Batch Download Action Bar (appears at the bottom when in selection mode) */}
       {isSelectionMode && (
         <div className="fixed bottom-20 sm:bottom-8 left-4 right-4 max-w-xl mx-auto z-40 animate-slide-up">
-          <div className="p-3 sm:p-4 rounded-3xl bg-[#5D0D18] text-[#FFF9EB] shadow-2xl border border-white/20 flex items-center justify-between gap-3">
+          <div className="p-3 sm:p-4 rounded-3xl bg-[#6D2932] text-[#FFF9EB] shadow-2xl border border-white/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <button
                 type="button"
@@ -482,7 +482,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
                 id="gallery-btn-batch-download"
                 disabled={selectedIds.size === 0 || isDownloading}
                 onClick={handleBatchDownload}
-                className="px-4 py-1.5 rounded-full bg-[#FFF9EB] text-[#5D0D18] text-xs font-bold hover:bg-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                className="px-4 py-1.5 rounded-full bg-[#FFF9EB] text-[#6D2932] text-xs font-bold hover:bg-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
               >
                 {isDownloading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

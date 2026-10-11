@@ -317,15 +317,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-[#5D0D18] dark:text-white" />
-            <h3 className="text-lg font-bold text-[#5D0D18] dark:text-white font-serif">
+            <User className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Mon profil
             </h3>
           </div>
           <button
             id="profile-modal-close-btn"
             onClick={handleClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -342,7 +342,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <img
                 src={avatar}
                 alt="Avatar aperçu"
-                className="w-16 h-16 rounded-full object-cover ring-3 ring-[#5D0D18] shadow-sm"
+                className="w-16 h-16 rounded-full object-cover ring-3 ring-[#6D2932] shadow-sm"
                 referrerPolicy="no-referrer"
               />
 
@@ -353,7 +353,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     onClick={() => setActiveTab('cartoon')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       activeTab === 'cartoon'
-                        ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                        ? 'bg-[#6D2932] text-[#FFF9EB]'
                         : 'bg-[#FFF9EB] dark:bg-zinc-700 text-[#27272A] dark:text-zinc-300'
                     }`}
                   >
@@ -368,7 +368,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       activeTab === 'upload'
-                        ? 'bg-[#5D0D18] text-[#FFF9EB]'
+                        ? 'bg-[#6D2932] text-[#FFF9EB]'
                         : 'bg-[#FFF9EB] dark:bg-zinc-700 text-[#27272A] dark:text-zinc-300'
                     }`}
                   >
@@ -397,7 +397,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     onClick={() => handleSelectAvatar(item.url)}
                     className={`relative p-1 rounded-xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                       avatar === item.url
-                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] ring-2 ring-[#5D0D18]'
+                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#6D2932] ring-2 ring-[#6D2932]'
                         : 'border-transparent hover:bg-[#FFF9EB]/60'
                     }`}
                   >
@@ -410,7 +410,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       {item.name}
                     </span>
                     {avatar === item.url && (
-                      <div className="absolute -top-1 -right-1 bg-[#5D0D18] text-white rounded-full p-0.5">
+                      <div className="absolute -top-1 -right-1 bg-[#6D2932] text-white rounded-full p-0.5">
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                     )}
@@ -423,8 +423,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           {/* Informations Personnelles & Coordonnées (Affichage par défaut en lecture seule et édition unitaire) */}
           <div className="p-4 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
             <div className="flex items-center gap-2 pb-1 border-b border-[#C7B7A3]/30 dark:border-zinc-700/50">
-              <User className="w-4 h-4 text-[#5D0D18] dark:text-white" />
-              <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] uppercase tracking-wider">
+              <User className="w-4 h-4 text-[#6D2932] dark:text-white" />
+              <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] uppercase tracking-wider">
                 Mes coordonnées
               </span>
             </div>
@@ -435,7 +435,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 Nom (ou nom d'affichage)
               </label>
               {isEditingName ? (
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#6D2932]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
                   <input
                     type="text"
                     id="profile-input-name"
@@ -457,7 +457,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="button"
                     id="profile-save-name-btn"
                     onClick={handleSaveName}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
+                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#541C24] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
                   >
                     <span>Enregistrer</span>
                   </button>
@@ -471,7 +471,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="button"
                     id="profile-edit-name-btn"
                     onClick={() => setIsEditingName(true)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
+                    className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
                   >
                     <Pencil className="w-3 h-3" />
                     <span>Modifier</span>
@@ -485,11 +485,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               {/* E-mail */}
               <div className="space-y-1 w-full min-w-0 overflow-hidden" ref={emailRef}>
                 <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  <Mail className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
+                  <Mail className="w-3.5 h-3.5 text-[#6D2932] dark:text-white" />
                   <span>Adresse e-mail</span>
                 </div>
                 {isEditingEmail ? (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#5D0D18]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/90 dark:bg-zinc-900/90 border border-[#6D2932]/60 dark:border-zinc-600 w-full min-w-0 h-[42px] box-border">
                     <input
                       type="email"
                       id="profile-input-email"
@@ -511,7 +511,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       type="button"
                       id="profile-save-email-btn"
                       onClick={handleSaveEmail}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#541C24] transition-colors cursor-pointer shrink-0 h-[26px] whitespace-nowrap shadow-2xs"
                     >
                       <span>Enregistrer</span>
                     </button>
@@ -525,7 +525,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       type="button"
                       id="profile-edit-email-btn"
                       onClick={() => setIsEditingEmail(true)}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 h-[26px]"
                     >
                       <Pencil className="w-3 h-3" />
                       <span>Modifier</span>
@@ -537,11 +537,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               {/* Pseudo (@handle) */}
               <div className="space-y-1 w-full min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1 text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                  <AtSign className="w-3.5 h-3.5 text-[#5D0D18] dark:text-white" />
+                  <AtSign className="w-3.5 h-3.5 text-[#6D2932] dark:text-white" />
                   <span>Pseudo</span>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#FFF9EB]/50 dark:bg-zinc-900/40 border border-[#C7B7A3]/30 dark:border-zinc-700/40 w-full min-w-0 h-[42px] box-border">
-                  <span className="text-xs font-bold text-[#5D0D18] dark:text-white truncate min-w-0 px-1">
+                  <span className="text-xs font-bold text-[#6D2932] dark:text-white truncate min-w-0 px-1">
                     {currentUser.handle || (currentUser.email ? `@${currentUser.email.split('@')[0]}` : '@utilisateur')}
                   </span>
                 </div>
@@ -568,14 +568,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   id="profile-shares-minus-btn"
                   onClick={decrementShares}
                   disabled={shares <= 1}
-                  className="p-1 rounded-lg text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] disabled:opacity-30 transition-colors cursor-pointer"
+                  className="p-1 rounded-lg text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] disabled:opacity-30 transition-colors cursor-pointer"
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
                 </button>
 
                 <span
                   id="profile-shares-value-display"
-                  className="text-base font-extrabold text-[#5D0D18] dark:text-amber-300 min-w-6 text-center"
+                  className="text-base font-extrabold text-[#6D2932] dark:text-amber-300 min-w-6 text-center"
                 >
                   {shares}
                 </span>
@@ -585,7 +585,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   id="profile-shares-plus-btn"
                   onClick={incrementShares}
                   disabled={shares >= 20}
-                  className="p-1 rounded-lg text-[#5D0D18] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] disabled:opacity-30 transition-colors cursor-pointer"
+                  className="p-1 rounded-lg text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] disabled:opacity-30 transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -608,8 +608,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onClick={() => handleThemeToggle('light')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   themePreference === 'light'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#5D0D18] dark:hover:bg-zinc-700 dark:hover:text-white'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#6D2932] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
@@ -622,8 +622,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onClick={() => handleThemeToggle('dark')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   themePreference === 'dark'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#5D0D18] dark:hover:bg-zinc-700 dark:hover:text-white'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-200 hover:bg-[#E8D8C4]/70 hover:text-[#6D2932] dark:hover:bg-zinc-700 dark:hover:text-white'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
@@ -637,7 +637,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <button
               type="button"
               onClick={() => setShowPasswordSection(!showPasswordSection)}
-              className="w-full p-3.5 bg-[#E8D8C4]/60 dark:bg-zinc-800/60 flex items-center justify-between text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] cursor-pointer"
+              className="w-full p-3.5 bg-[#E8D8C4]/60 dark:bg-zinc-800/60 flex items-center justify-between text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <KeyRound className="w-4 h-4" />
@@ -665,7 +665,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                       title={showCurrentPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                       aria-label={showCurrentPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     >
@@ -690,7 +690,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                         title={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                         aria-label={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                       >
@@ -713,7 +713,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#5D0D18] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#27272A]/60 dark:text-zinc-400 hover:text-[#6D2932] dark:hover:text-[#FFF9EB] transition-colors cursor-pointer p-0.5"
                         title={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                         aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                       >
@@ -737,7 +737,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   type="button"
                   onClick={handleChangePassword}
                   disabled={changingPassword || !newPassword}
-                  className="px-4 py-2 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {changingPassword ? 'Mise à jour...' : 'Confirmer le nouveau mot de passe'}
                 </button>
@@ -749,8 +749,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="p-4 rounded-2xl bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border border-[#C7B7A3]/50 dark:border-zinc-700/60 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
-                <label className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
+                <ShieldCheck className="w-4 h-4 text-[#6D2932] dark:text-amber-300" />
+                <label className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB]">
                   Comptes mémorisés sur cet appareil
                 </label>
               </div>
@@ -767,7 +767,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     key={u.id}
                     className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
                       isCurrent
-                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#5D0D18] dark:border-amber-300/40 shadow-xs'
+                        ? 'bg-[#FFF9EB] dark:bg-zinc-800 border-[#6D2932] dark:border-amber-300/40 shadow-xs'
                         : 'bg-[#FFF9EB]/70 dark:bg-zinc-900/60 border-[#C7B7A3]/40 dark:border-zinc-800 hover:bg-[#FFF9EB] dark:hover:bg-zinc-800 dark:hover:border-zinc-700'
                     }`}
                   >
@@ -783,7 +783,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                             {u.name || u.firstName || 'Utilisateur'}
                           </span>
                           {isCurrent && (
-                            <span className="px-1.5 py-0.5 bg-[#5D0D18] text-[#FFF9EB] text-[9px] font-bold rounded-full shrink-0">
+                            <span className="px-1.5 py-0.5 bg-[#6D2932] text-[#FFF9EB] text-[9px] font-bold rounded-full shrink-0">
                               Actif
                             </span>
                           )}
@@ -802,7 +802,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                             onSwitchUser(u);
                             onClose();
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#450912] transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-[11px] font-bold hover:bg-[#541C24] transition-colors cursor-pointer"
                         >
                           Basculer
                         </button>
@@ -832,7 +832,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     handleClose();
                     onOpenAddAccount();
                   }}
-                  className="flex-1 py-2 rounded-xl border border-dashed border-[#5D0D18]/40 dark:border-amber-300/40 text-[#5D0D18] dark:text-amber-300 text-xs font-bold hover:bg-[#5D0D18]/5 dark:hover:bg-zinc-700/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="flex-1 py-2 rounded-xl border border-dashed border-[#6D2932]/40 dark:border-amber-300/40 text-[#6D2932] dark:text-amber-300 text-xs font-bold hover:bg-[#6D2932]/5 dark:hover:bg-zinc-700/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Se connecter à un autre compte</span>

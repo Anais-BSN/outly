@@ -36,7 +36,7 @@ const FriendItem = React.memo<FriendItemProps>(({ friend, onDeleteFriend }) => {
   return (
     <div
       id={`friend-card-${friend.id}`}
-      className="p-2.5 rounded-xl bg-[#E8D8C4]/50 dark:bg-zinc-800/60 border border-[#C7B7A3]/40 dark:border-zinc-700/60 flex items-center justify-between gap-2"
+      className="p-3 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3]/70 dark:border-zinc-700 shadow-xs flex items-center justify-between gap-2"
     >
       <div className="flex items-center gap-2.5">
         <img
@@ -49,7 +49,7 @@ const FriendItem = React.memo<FriendItemProps>(({ friend, onDeleteFriend }) => {
           <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
             {friend.name || friend.firstName}
           </div>
-          <div className="text-[10px] text-[#5D0D18] dark:text-zinc-400">
+          <div className="text-[10px] text-[#6D2932] dark:text-zinc-400">
             {friend.handle} • {friend.shares} {friend.shares > 1 ? 'parts' : 'part'}
           </div>
         </div>
@@ -88,20 +88,20 @@ interface PendingFriendItemProps {
 const PendingFriendItem = React.memo<PendingFriendItemProps>(({ req, onAccept, onDecline }) => {
   return (
     <div
-      className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-zinc-800 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center justify-between gap-2"
+      className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-[#27272A] border border-[#C7B7A3]/70 dark:border-zinc-700 shadow-xs flex items-center justify-between gap-2"
     >
       <div className="flex items-center gap-2.5">
         <img
           src={req.avatar}
           alt={req.name || req.firstName || 'Ami'}
-          className="w-9 h-9 rounded-full object-cover ring-1 ring-[#5D0D18]"
+          className="w-9 h-9 rounded-full object-cover ring-1 ring-[#6D2932]"
           referrerPolicy="no-referrer"
         />
         <div>
           <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
             {req.name || req.firstName}
           </div>
-          <div className="text-[11px] text-[#5D0D18] dark:text-zinc-400 font-medium">
+          <div className="text-[11px] text-[#6D2932] dark:text-zinc-400 font-medium">
             {req.handle}
           </div>
         </div>
@@ -272,8 +272,8 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-              <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <Users className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 Mes amis & invitations
               </h3>
             </div>
@@ -301,12 +301,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
             }}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               inviteMode === 'pseudo'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                 : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]/80 dark:hover:bg-zinc-700'
             }`}
           >
             <AtSign className="w-3.5 h-3.5" />
-            <span>Ajout par pseudo</span>
+            <span>Rechercher un pseudo</span>
           </button>
           <button
             type="button"
@@ -317,7 +317,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
             }}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               inviteMode === 'email'
-                ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
+                ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
                 : 'text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]/80 dark:hover:bg-zinc-700'
             }`}
           >
@@ -331,7 +331,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-zinc-800/60 border border-[#C7B7A3]/60 dark:border-zinc-700 space-y-3">
             <div>
               <label htmlFor="friend-pseudo-input" className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Rechercher par pseudo
+                Rechercher un pseudo
               </label>
             </div>
 
@@ -350,11 +350,11 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                   placeholder="Ex : @nom.exemple"
                   required
                   disabled={isSending}
-                  className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#6D2932] disabled:opacity-50"
                 />
-                <AtSign className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <AtSign className="w-4 h-4 text-[#6D2932] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 {isSearchingPseudo && (
-                  <Loader2 className="w-4 h-4 text-[#5D0D18] dark:text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-[#6D2932] dark:text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 animate-spin" />
                 )}
               </div>
 
@@ -362,7 +362,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                 type="submit"
                 id="friends-send-pseudo-btn"
                 disabled={isSending || !pseudoInput.trim()}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
               >
                 {isSending ? (
                   <>
@@ -381,7 +381,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
             {/* Suggestions / Résultats instantanés de recherche par pseudo */}
             {pseudoSearchResults.length > 0 && (
               <div className="space-y-1.5 pt-1 border-t border-[#C7B7A3]/40 dark:border-zinc-700 animate-fade-in">
-                <span className="text-[10px] font-bold text-[#5D0D18] dark:text-amber-300 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-[#6D2932] dark:text-amber-300 uppercase tracking-wider">
                   Utilisateurs trouvés ({pseudoSearchResults.length})
                 </span>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
@@ -407,7 +407,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                             <div className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate">
                               {displayName}
                             </div>
-                            <div className="text-[10px] text-[#5D0D18] dark:text-zinc-400 truncate">
+                            <div className="text-[10px] text-[#6D2932] dark:text-zinc-400 truncate">
                               {user.handle || (user.email ? user.email : '@pseudo')}
                             </div>
                           </div>
@@ -428,7 +428,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                             type="button"
                             disabled={isSending}
                             onClick={() => handleSendInviteByPseudo(user.name || user.handle || user.id)}
-                            className="px-3 py-1.5 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
+                            className="px-3 py-1.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
                           >
                             <UserPlus className="w-3 h-3" />
                             <span>Ajouter</span>
@@ -475,16 +475,16 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                   placeholder="nom@exemple.com"
                   required
                   disabled={isSending}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#5D0D18] disabled:opacity-50"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#FFF9EB] dark:bg-zinc-900 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] placeholder:text-[#27272A]/40 dark:placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-[#6D2932] disabled:opacity-50"
                 />
-                <Mail className="w-4 h-4 text-[#5D0D18] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-[#6D2932] dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
 
               <button
                 type="submit"
                 id="friends-send-invite-btn"
                 disabled={isSending || !email.trim()}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#4A0A13] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-98"
               >
                 {isSending ? (
                   <>
@@ -519,7 +519,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
         {/* Pending Requests Received */}
         {pendingReceived.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-bold text-[#5D0D18] dark:text-amber-300 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-[#6D2932] dark:text-amber-300 uppercase tracking-wider">
               Demandes reçues ({pendingReceived.length})
             </h4>
 
@@ -557,7 +557,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filtrer mes amis..."
-              className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
             />
             <Search className="w-3.5 h-3.5 text-[#27272A]/60 absolute left-2.5 top-2.5" />
           </div>

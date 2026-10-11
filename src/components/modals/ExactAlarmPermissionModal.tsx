@@ -42,7 +42,7 @@ export const ExactAlarmPermissionModal: React.FC<ExactAlarmPermissionModalProps>
 
         {/* Badge Icone avec pulsation */}
         <div className="relative my-1">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#5D0D18] to-amber-600 flex items-center justify-center shadow-lg shadow-[#5D0D18]/40 ring-4 ring-zinc-800">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#6D2932] to-amber-600 flex items-center justify-center shadow-lg shadow-[#6D2932]/40 ring-4 ring-zinc-800">
             <Bell className="w-8 h-8 text-white animate-bounce" />
           </div>
         </div>
@@ -63,7 +63,7 @@ export const ExactAlarmPermissionModal: React.FC<ExactAlarmPermissionModalProps>
         {/* Liste des bénéfices */}
         <div className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl p-3.5 space-y-2.5 text-left text-xs">
           <div className="flex items-start gap-2.5">
-            <div className="p-1.5 rounded-lg bg-[#5D0D18]/30 text-amber-400 shrink-0 mt-0.5">
+            <div className="p-1.5 rounded-lg bg-[#6D2932]/30 text-amber-400 shrink-0 mt-0.5">
               <Bell className="w-4 h-4" />
             </div>
             <div>
@@ -73,7 +73,7 @@ export const ExactAlarmPermissionModal: React.FC<ExactAlarmPermissionModalProps>
           </div>
 
           <div className="flex items-start gap-2.5">
-            <div className="p-1.5 rounded-lg bg-[#5D0D18]/30 text-amber-400 shrink-0 mt-0.5">
+            <div className="p-1.5 rounded-lg bg-[#6D2932]/30 text-amber-400 shrink-0 mt-0.5">
               <Clock className="w-4 h-4" />
             </div>
             <div>
@@ -83,7 +83,7 @@ export const ExactAlarmPermissionModal: React.FC<ExactAlarmPermissionModalProps>
           </div>
 
           <div className="flex items-start gap-2.5">
-            <div className="p-1.5 rounded-lg bg-[#5D0D18]/30 text-amber-400 shrink-0 mt-0.5">
+            <div className="p-1.5 rounded-lg bg-[#6D2932]/30 text-amber-400 shrink-0 mt-0.5">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
@@ -97,14 +97,14 @@ export const ExactAlarmPermissionModal: React.FC<ExactAlarmPermissionModalProps>
         <div className="w-full flex flex-col gap-2 pt-1">
           <button
             onClick={handleOpenSettings}
-            className="w-full py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#5D0D18] to-rose-700 hover:from-[#75111F] hover:to-rose-600 text-white shadow-lg shadow-[#5D0D18]/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-[#6D2932] hover:bg-[#541C24] text-[#FFF9EB] shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Activer dans les paramètres</span>
             <ExternalLink className="w-4 h-4" />
           </button>
           <button
             onClick={handleClose}
-            className="w-full py-2.5 px-4 rounded-xl text-xs font-medium text-zinc-400 hover:text-white transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             Plus tard
           </button>

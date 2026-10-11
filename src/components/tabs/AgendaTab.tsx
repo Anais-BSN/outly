@@ -234,8 +234,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
               onClick={() => setActiveSubView('events')}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 activeSubView === 'events'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18]'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932]'
               }`}
             >
               Événements ({safeEvents.length})
@@ -245,8 +245,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
               onClick={() => setActiveSubView('teams_scheduler')}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 activeSubView === 'teams_scheduler'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18]'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932]'
               }`}
             >
               Assistant de planification
@@ -394,7 +394,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
           <div className="pt-2 flex items-center justify-end">
             <button
               onClick={() => onOpenCreateEvent(selectedDate)}
-              className="px-4 py-2 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-4 py-2 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Créer une sortie</span>
@@ -409,16 +409,16 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
           {/* Section 1: Événements à venir */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
+              <h4 className="font-bold font-serif text-base text-[#6D2932] dark:text-[#FFF9EB] flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#6D2932] dark:text-[#FFF9EB]" />
                 <span>Événements à venir ({upcomingEvents.length})</span>
               </h4>
             </div>
 
             {upcomingEvents.length === 0 ? (
               <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
-                <Calendar className="w-10 h-10 text-[#5D0D18]/50 dark:text-zinc-500 mx-auto mb-2" />
-                <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+                <Calendar className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
+                <p className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                   Aucun événement à venir prévu pour le moment
                 </p>
                 <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
@@ -426,7 +426,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 </p>
                 <button
                   onClick={() => onOpenCreateEvent()}
-                  className="mt-3 px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] cursor-pointer shadow-xs"
+                  className="mt-3 px-4 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] cursor-pointer shadow-xs"
                 >
                   Créer un événement
                 </button>
@@ -450,7 +450,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {event.bannerImage ? (
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#5D0D18]">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[#C7B7A3]/80 shadow-xs shrink-0 bg-[#6D2932]">
                                 <img
                                   src={event.bannerImage}
                                   alt={event.title}
@@ -458,13 +458,13 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                 />
                               </div>
                             ) : (
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#5D0D18] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#6D2932] text-white flex items-center justify-center text-xs font-serif font-bold shadow-xs shrink-0">
                                 {event.title.charAt(0) || 'E'}
                               </div>
                             )}
 
                             <div className="min-w-0">
-                              <h4 className="text-sm sm:text-base font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] leading-snug truncate">
+                              <h4 className="text-sm sm:text-base font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] leading-snug truncate">
                                 {event.title}
                               </h4>
                               <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
@@ -479,7 +479,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                               <button
                                 onClick={() => onEditEvent(event)}
                                 title="Modifier l'événement"
-                                className="p-1.5 rounded-lg text-[#5D0D18] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-[#6D2932] dark:text-zinc-300 hover:bg-[#FFF9EB]/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
@@ -502,7 +502,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
                         {/* Date & Time */}
                         <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
-                          <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                          <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
                           <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
                         </div>
 
@@ -595,7 +595,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                             onClick={() => setOpenExportMenuId(openExportMenuId === event.id ? null : event.id)}
                             className="w-full py-1.5 px-3 rounded-xl bg-[#FFF9EB]/80 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#FFF9EB] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                           >
-                            <Share2 className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                            <Share2 className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                             <span>Exporter vers mon agenda personnel</span>
                             <ChevronDown className="w-3 h-3 ml-1" />
                           </button>
@@ -623,7 +623,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                 }}
                                 className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8D8C4]/60 dark:hover:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] flex items-center gap-2 cursor-pointer"
                               >
-                                <Download className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                                <Download className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                                 <span>Télécharger le fichier calendrier (.ics pour Apple & Outlook)</span>
                               </button>
                             </div>
@@ -637,7 +637,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                             onClick={() =>
                               setExpandedOrganisationEventId(isOrgExpanded ? null : event.id)
                             }
-                            className="w-full py-2 px-3 rounded-xl bg-[#5D0D18]/10 dark:bg-zinc-800/80 border border-[#5D0D18]/30 dark:border-zinc-700 text-xs font-bold text-[#5D0D18] dark:text-amber-300 hover:bg-[#5D0D18]/20 flex items-center justify-between cursor-pointer transition-colors"
+                            className="w-full py-2 px-3 rounded-xl bg-[#6D2932]/10 dark:bg-zinc-800/80 border border-[#6D2932]/30 dark:border-zinc-700 text-xs font-bold text-[#6D2932] dark:text-amber-300 hover:bg-[#6D2932]/20 flex items-center justify-between cursor-pointer transition-colors"
                           >
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4" />
@@ -654,7 +654,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => onOpenAddTask(event.id)}
-                                    className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] flex items-center gap-1 cursor-pointer shadow-2xs"
+                                    className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-white text-[10px] font-bold hover:bg-[#541C24] flex items-center gap-1 cursor-pointer shadow-2xs"
                                   >
                                     <Plus className="w-3 h-3" />
                                     <span>Ajouter un élément</span>
@@ -700,7 +700,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
                                         <div className="flex items-center gap-1.5 shrink-0">
                                           {t.assignedToId ? (
-                                            <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#5D0D18] dark:text-amber-200">
+                                            <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#6D2932] dark:text-amber-200">
                                               <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
                                               {onUnclaimTask && (
                                                 <button
@@ -718,7 +718,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                               <button
                                                 type="button"
                                                 onClick={() => onClaimTask(t.id)}
-                                                className="px-2 py-0.5 rounded-full bg-[#5D0D18] text-white text-[10px] font-bold hover:bg-[#450912] cursor-pointer"
+                                                className="px-2 py-0.5 rounded-full bg-[#6D2932] text-white text-[10px] font-bold hover:bg-[#541C24] cursor-pointer"
                                               >
                                                 Je prends
                                               </button>
@@ -760,8 +760,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
           <div className="pt-6 border-t border-[#C7B7A3]/50 dark:border-zinc-800 space-y-3">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
-                <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB]">
+                <History className="w-4 h-4 text-[#6D2932] dark:text-[#FFF9EB]" />
+                <h4 className="font-bold font-serif text-base text-[#6D2932] dark:text-[#FFF9EB]">
                   Historique des événements
                 </h4>
               </div>
@@ -771,7 +771,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                   type="button"
                   id="agenda-btn-view-all-history"
                   onClick={() => setIsEventHistoryOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
                 >
                   <History className="w-3.5 h-3.5" />
                   <span>Tout voir</span>
@@ -792,21 +792,21 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                   return (
                     <div
                       key={event.id}
-                      className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-[#27272A]/80 border border-[#C7B7A3]/60 dark:border-zinc-700/80 shadow-xs flex flex-col justify-between space-y-2 hover:border-[#5D0D18]/40 transition-colors"
+                      className="p-3.5 rounded-2xl bg-[#E8D8C4]/60 dark:bg-[#27272A]/80 border border-[#C7B7A3]/60 dark:border-zinc-700/80 shadow-xs flex flex-col justify-between space-y-2 hover:border-[#6D2932]/40 transition-colors"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
-                          <h5 className="text-xs sm:text-sm font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] truncate">
+                          <h5 className="text-xs sm:text-sm font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] truncate">
                             {event.title}
                           </h5>
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
-                          <Clock className="w-3 h-3 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                          <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
                           <span className="truncate">{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
                         </div>
                         {event.location && (
                           <div className="flex items-center gap-1 text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-                            <MapPin className="w-3 h-3 text-[#5D0D18] dark:text-amber-300 shrink-0" />
+                            <MapPin className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
                             <span className="truncate">{event.location}</span>
                           </div>
                         )}
@@ -860,9 +860,9 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
           <div className="relative w-full max-w-md bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl shadow-2xl border border-[#C7B7A3]/60 dark:border-zinc-800 p-5 sm:p-6 z-10 max-h-[90vh] overflow-y-auto custom-scrollbar animate-scale-in space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
+                <Users className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+                  <h3 className="text-base sm:text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                     Présences : {viewingAttendeesEvent.title}
                   </h3>
                   <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
@@ -873,7 +873,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
               <button
                 onClick={() => setViewingAttendeesEvent(null)}
-                className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -947,8 +947,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                               <span>Décliné</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#E8D8C4]/70 text-[#5D0D18] dark:bg-zinc-800 dark:text-amber-200 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center gap-1">
-                              <HelpCircle className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#E8D8C4]/70 text-[#6D2932] dark:bg-zinc-800 dark:text-amber-200 border border-[#C7B7A3]/50 dark:border-zinc-700 flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3 text-[#6D2932] dark:text-amber-300" />
                               <span>Sans réponse</span>
                             </span>
                           )}
@@ -964,7 +964,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
               <button
                 type="button"
                 onClick={() => setViewingAttendeesEvent(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#E8D8C4] dark:bg-zinc-800 text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#C7B7A3]"
+                className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
               >
                 Fermer
               </button>

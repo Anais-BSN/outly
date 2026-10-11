@@ -226,15 +226,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-              <h3 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-display">
+              <Calendar className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 {isEditing ? 'Modifier l\'événement' : 'Nouvel événement'}
               </h3>
             </div>
             <button
               id="create-event-close-btn"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -253,7 +253,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Randonnée Crêtes du Jura & Pique-Nique"
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
               />
             </div>
 
@@ -332,7 +332,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   placeholder="Ex: Col de la Faucille, 01170 Gex"
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm text-[#27272A] dark:text-[#FFF9EB]"
                 />
-                <MapPin className="w-4 h-4 text-[#5D0D18] dark:text-amber-200 absolute left-3 top-3" />
+                <MapPin className="w-4 h-4 text-[#6D2932] dark:text-amber-200 absolute left-3 top-3" />
               </div>
             </div>
 
@@ -354,9 +354,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             {/* 24h Reminder Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-[#E8D8C4]/40 dark:bg-zinc-800/40 border border-[#C7B7A3]/50 dark:border-zinc-700">
               <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-[#5D0D18] dark:text-amber-300" />
+                <Bell className="w-4 h-4 text-[#6D2932] dark:text-amber-300" />
                 <div>
-                  <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] block">
+                  <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] block">
                     Rappel automatique 24 h avant
                   </span>
                   <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
@@ -369,7 +369,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 id="event-reminder-checkbox"
                 checked={reminder24h}
                 onChange={(e) => setReminder24h(e.target.checked)}
-                className="w-4 h-4 rounded text-[#5D0D18] focus:ring-[#5D0D18]"
+                className="w-4 h-4 rounded text-[#6D2932] focus:ring-[#6D2932]"
               />
             </div>
 
@@ -383,7 +383,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isCompressing}
-                  className="px-2.5 py-1 rounded-lg bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-2.5 py-1 rounded-lg bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Importer une photo</span>
@@ -416,7 +416,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     onClick={() => setBannerImage(imgUrl)}
                     className={`relative h-12 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
                       bannerImage === imgUrl
-                        ? 'border-[#5D0D18] ring-2 ring-[#5D0D18]/40 scale-105'
+                        ? 'border-[#6D2932] ring-2 ring-[#6D2932]/40 scale-105'
                         : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
@@ -445,7 +445,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-full bg-[#E8D8C4] text-[#27272A] text-xs font-bold hover:bg-[#C7B7A3] transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
                 >
                   Annuler
                 </button>
@@ -453,9 +453,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   type="submit"
                   id="create-event-submit-btn"
-                  className="px-6 py-2.5 rounded-full bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#450912] transition-all shadow-md active:scale-95 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer"
                 >
-                  {isEditing ? 'Enregistrer les modifications' : 'Créer l\'événement'}
+                  {isEditing ? 'Enregistrer' : 'Créer l\'événement'}
                 </button>
               </div>
             </div>

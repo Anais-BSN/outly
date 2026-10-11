@@ -217,14 +217,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
-            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-display">
+            <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               {isEditing ? 'Modifier la dépense' : 'Ajouter une dépense'}
             </h3>
           </div>
           <button
             id="add-expense-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -276,14 +276,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             {/* Category */}
             <div>
               <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                <Tag className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                 <span>Catégorie *</span>
               </label>
               <select
                 id="expense-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -296,7 +296,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             {/* Date */}
             <div>
               <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                <Calendar className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                 <span>Date *</span>
               </label>
               <input
@@ -305,7 +305,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] [color-scheme:light] dark:[color-scheme:dark] focus:ring-2 focus:ring-[#5D0D18]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB] [color-scheme:light] dark:[color-scheme:dark] focus:ring-2 focus:ring-[#6D2932]"
               >
               </input>
             </div>
@@ -424,7 +424,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   type="button"
                   id="btn-add-virtual-participant-toggle"
                   onClick={() => setShowAddVirtualInput(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#5D0D18] dark:text-amber-200 bg-[#E8D8C4]/60 dark:bg-zinc-800 hover:bg-[#E8D8C4] transition-all cursor-pointer border border-[#C7B7A3]/50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#6D2932] dark:text-amber-200 bg-[#E8D8C4]/60 dark:bg-zinc-800 hover:bg-[#E8D8C4] transition-all cursor-pointer border border-[#C7B7A3]/50"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ Ajouter un participant sans compte</span>
@@ -432,7 +432,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               ) : (
                 <div className="p-3 rounded-2xl bg-[#E8D8C4]/70 dark:bg-zinc-800/80 border border-[#C7B7A3] dark:border-zinc-700 space-y-2 animate-fade-in">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#5D0D18] dark:text-[#FFF9EB] flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#6D2932] dark:text-[#FFF9EB] flex items-center gap-1.5">
                       <UserPlus className="w-3.5 h-3.5" />
                       <span>Ajouter un ami occasionnel (sans compte)</span>
                     </span>
@@ -459,14 +459,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       }}
                       placeholder="Prénom de l'ami (ex : Lucas)"
                       autoFocus
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#5D0D18]"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#C7B7A3] dark:border-zinc-600 text-xs font-semibold text-[#27272A] dark:text-[#FFF9EB] focus:ring-2 focus:ring-[#6D2932]"
                     />
                     <button
                       type="button"
                       id="btn-confirm-add-virtual-member"
                       onClick={handleCreateVirtualMember}
                       disabled={!virtualFirstName.trim() || isAddingVirtual}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#5D0D18] text-white text-xs font-bold hover:bg-[#450912] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#6D2932] text-white text-xs font-bold hover:bg-[#541C24] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
                     >
                       {isAddingVirtual ? 'Ajout...' : 'Ajouter'}
                     </button>
@@ -501,7 +501,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-full bg-[#E8D8C4] text-[#27272A] text-xs font-bold hover:bg-[#C7B7A3] transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
             >
               Annuler
             </button>
@@ -510,9 +510,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               type="submit"
               id="add-expense-submit-btn"
               disabled={parsedAmount <= 0 || !title.trim() || participantIds.length === 0}
-              className="px-6 py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {isEditing ? 'Enregistrer les modifications' : 'Enregistrer la dépense'}
+              {isEditing ? 'Enregistrer' : 'Enregistrer la dépense'}
             </button>
           </div>
         </form>

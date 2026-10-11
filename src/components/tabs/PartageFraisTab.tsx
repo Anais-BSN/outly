@@ -41,7 +41,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; hex: string }>
   Restaurant: { bg: 'bg-[#C28B38]', text: 'text-[#C28B38]', hex: '#C28B38' }, // Warm Caramel Gold
   Courses: { bg: 'bg-[#5E7A68]', text: 'text-[#5E7A68]', hex: '#5E7A68' },       // Sage Green
   Transport: { bg: 'bg-[#485665]', text: 'text-[#485665]', hex: '#485665' },     // Indigo Slate
-  Logement: { bg: 'bg-[#5D0D18]', text: 'text-[#5D0D18]', hex: '#5D0D18' },       // Outlys Burgundy
+  Logement: { bg: 'bg-[#6D2932]', text: 'text-[#6D2932]', hex: '#6D2932' },       // Outlys Burgundy
   Activités: { bg: 'bg-[#8E4A5B]', text: 'text-[#8E4A5B]', hex: '#8E4A5B' },     // Dusty Rose
   Autre: { bg: 'bg-[#8C7D70]', text: 'text-[#8C7D70]', hex: '#8C7D70' },         // Warm Taupe
 };
@@ -291,7 +291,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         <button
           id="frais-btn-add-expense-top"
           onClick={onOpenAddExpense}
-          className="px-4 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
+          className="px-4 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Nouvelle dépense</span>
@@ -303,11 +303,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         {/* Card 1: Total Dépensé */}
         <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#5D0D18] dark:text-zinc-400 uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6D2932] dark:text-zinc-400 uppercase tracking-wider">
               <Wallet className="w-4 h-4" />
               <span>Total dépensé par le groupe</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#5D0D18] dark:text-[#FFF9EB] font-serif mt-1">
+            <div className="text-2xl sm:text-3xl font-extrabold text-[#6D2932] dark:text-[#FFF9EB] font-serif mt-1">
               {formatCurrency(totalSpent)}
             </div>
             <div className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 mt-0.5">
@@ -319,7 +319,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         {/* Card 2: Mon Équilibre */}
         <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#5D0D18] dark:text-zinc-400 uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6D2932] dark:text-zinc-400 uppercase tracking-wider">
               <Scale className="w-4 h-4" />
               <span>Mon équilibre ({currentUser.shares} {currentUser.shares > 1 ? 'parts' : 'part'})</span>
             </div>
@@ -345,10 +345,10 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
             <span
               className={`text-2xl sm:text-3xl font-extrabold font-serif ${
                 isNeutral
-                  ? 'text-[#5D0D18] dark:text-[#FFF9EB]'
+                  ? 'text-[#6D2932] dark:text-[#FFF9EB]'
                   : isPositive
                   ? 'text-[#18181B] dark:text-[#9FB2AC]'
-                  : 'text-[#5D0D18] dark:text-red-400'
+                  : 'text-[#6D2932] dark:text-red-400'
               }`}
             >
               {isPositive ? `+${formatCurrency(myBalance)}` : formatCurrency(myBalance)}
@@ -366,8 +366,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
       <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+            <Scale className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h4 className="font-bold text-base font-serif text-[#6D2932] dark:text-[#FFF9EB]">
               Équilibrage des dettes
             </h4>
           </div>
@@ -375,7 +375,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
           <button
             id="frais-btn-history"
             onClick={() => setIsHistoryOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer"
           >
             <History className="w-3.5 h-3.5" />
             <span>Historique</span>
@@ -422,7 +422,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                         <span className="font-bold text-[#27272A] dark:text-[#FFF9EB]">
                           {settle.fromUserId === currentUser.id ? 'Tu dois' : `${settle.fromUserName} doit`}
                         </span>{' '}
-                        <strong className="text-[#5D0D18] dark:text-amber-300 font-extrabold text-sm sm:text-base">
+                        <strong className="text-[#6D2932] dark:text-amber-300 font-extrabold text-sm sm:text-base">
                           {formatCurrency(settle.amount)}
                         </strong>{' '}
                         <span className="text-[#27272A] dark:text-[#FFF9EB]">
@@ -448,7 +448,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     <button
                       id={`toggle-settle-btn-${settle.id}`}
                       onClick={() => handleSettleClick(settle)}
-                      className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#C7B7A3] active:scale-95"
+                      className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 hover:bg-[#C7B7A3] active:scale-95"
                     >
                       <Clock className="w-4 h-4" />
                       <span>Marquer comme soldé</span>
@@ -465,8 +465,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h4 className="font-bold font-serif text-base text-[#5D0D18] dark:text-[#FFF9EB]">
+            <Receipt className="w-4 h-4 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h4 className="font-bold font-serif text-base text-[#6D2932] dark:text-[#FFF9EB]">
               Historique des dépenses
             </h4>
           </div>
@@ -476,7 +476,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               type="button"
               id="frais-header-btn-view-all"
               onClick={() => setIsExpenseHistoryOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 border border-[#C7B7A3]/60 dark:border-zinc-700 shadow-xs transition-all cursor-pointer active:scale-95"
             >
               <Receipt className="w-3.5 h-3.5" />
               <span>Tout voir</span>
@@ -523,7 +523,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     />
 
                     <div className="min-w-0">
-                      <h5 className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate group-hover/card:text-[#450912] dark:group-hover/card:text-amber-200 transition-colors">
+                      <h5 className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate group-hover/card:text-[#541C24] dark:group-hover/card:text-amber-200 transition-colors">
                         {expense.title}
                       </h5>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#27272A]/70 dark:text-zinc-400 flex-wrap">
@@ -564,13 +564,13 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
       <div className="p-5 sm:p-6 rounded-3xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <PieChartIcon className="w-5 h-5 text-[#5D0D18] dark:text-[#FFF9EB]" />
-            <h4 className="font-bold text-base font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+            <PieChartIcon className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <h4 className="font-bold text-base font-serif text-[#6D2932] dark:text-[#FFF9EB]">
               Budget
             </h4>
           </div>
 
-          <span className="text-xs font-bold text-[#5D0D18] dark:text-amber-300">
+          <span className="text-xs font-bold text-[#6D2932] dark:text-amber-300">
             Total : {formatCurrency(filteredTotalSpent)}
           </span>
         </div>
@@ -585,8 +585,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               onClick={() => setScopeFilter('all')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 scopeFilter === 'all'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-white'
               }`}
             >
               Tout
@@ -597,8 +597,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               onClick={() => setScopeFilter('me')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 scopeFilter === 'me'
-                  ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                  ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                  : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-white'
               }`}
             >
               Mes dépenses
@@ -614,8 +614,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 onClick={() => setTimeFilter('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   timeFilter === 'all'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-white'
                 }`}
               >
                 Tout
@@ -626,8 +626,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 onClick={() => setTimeFilter('year')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   timeFilter === 'year'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-white'
                 }`}
               >
                 Année
@@ -638,8 +638,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                 onClick={() => setTimeFilter('month')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   timeFilter === 'month'
-                    ? 'bg-[#5D0D18] text-[#FFF9EB] shadow-xs'
-                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#5D0D18] dark:hover:text-white'
+                    ? 'bg-[#6D2932] text-[#FFF9EB] shadow-xs'
+                    : 'text-[#27272A] dark:text-zinc-300 hover:text-[#6D2932] dark:hover:text-white'
                 }`}
               >
                 Mois
@@ -657,11 +657,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                   onClick={handlePrevPeriod}
                   aria-label="Période précédente"
                   title="Période précédente"
-                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
+                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#6D2932] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
                 >
                   <ChevronLeft className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>
-                <span className="text-xs font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB] px-2 min-w-[85px] text-center select-none">
+                <span className="text-xs font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] px-2 min-w-[85px] text-center select-none">
                   {formattedPeriodLabel}
                 </span>
                 <button
@@ -670,7 +670,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                   onClick={handleNextPeriod}
                   aria-label="Période suivante"
                   title="Période suivante"
-                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
+                  className="p-1 rounded-lg hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#6D2932] dark:text-amber-200 transition-colors cursor-pointer active:scale-95"
                 >
                   <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>
@@ -707,7 +707,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
               {categoryBreakdown.map((item) => (
                 <div
                   key={item.category}
-                  className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-[#18181B] border border-[#C7B7A3]/50 dark:border-zinc-800 flex items-center justify-between gap-2.5 shadow-2xs hover:border-[#5D0D18]/40 transition-colors"
+                  className="p-3 rounded-2xl bg-[#FFF9EB] dark:bg-[#18181B] border border-[#C7B7A3]/50 dark:border-zinc-800 flex items-center justify-between gap-2.5 shadow-2xs hover:border-[#6D2932]/40 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
@@ -725,10 +725,10 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-xs font-extrabold text-[#5D0D18] dark:text-amber-300 font-serif block">
+                    <span className="text-xs font-extrabold text-[#6D2932] dark:text-amber-300 font-serif block">
                       {formatCurrency(item.total)}
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-[#5D0D18]/10 dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-[#6D2932]/10 dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200">
                       {item.percentage.toFixed(1)}%
                     </span>
                   </div>

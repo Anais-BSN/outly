@@ -54,7 +54,7 @@ export class ExpenseHistoryErrorBoundary extends React.Component<ErrorBoundaryPr
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="w-full max-w-md bg-[#FFF9EB] dark:bg-[#18181B] rounded-3xl p-6 shadow-2xl border border-[#C7B7A3] text-center space-y-4">
-            <h4 className="text-lg font-bold text-[#5D0D18] dark:text-[#FFF9EB]">
+            <h4 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB]">
               Impossible d'afficher l'historique
             </h4>
             <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -66,7 +66,7 @@ export class ExpenseHistoryErrorBoundary extends React.Component<ErrorBoundaryPr
                 this.setState({ hasError: false });
                 if (this.props.onClose) this.props.onClose();
               }}
-              className="px-5 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] cursor-pointer transition-colors"
+              className="px-5 py-2 rounded-full text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] cursor-pointer transition-colors"
             >
               Retour à l'onglet Frais
             </button>
@@ -147,11 +147,11 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
         {/* Header - Croix de fermeture uniquement */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#C7B7A3]/40 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-300">
+            <div className="p-2 rounded-xl bg-[#E8D8C4] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-300">
               <Receipt className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#5D0D18] dark:text-[#FFF9EB]">
+              <h3 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Historique des dépenses
               </h3>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
@@ -163,7 +163,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
             type="button"
             id="expense-history-close-btn"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#27272A] dark:text-zinc-400 hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[#E8D8C4] dark:hover:bg-zinc-800 text-[#27272A] dark:text-zinc-400 transition-colors cursor-pointer"
             title="Fermer"
           >
             <X className="w-5 h-5" />
@@ -175,7 +175,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
           {sortedExpenses.length === 0 ? (
             <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700 my-4">
               <Receipt className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] font-serif">
+              <p className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
                 Aucune dépense enregistrée
               </p>
               <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-1">
@@ -200,11 +200,11 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                   {/* Date & Category Header */}
                   <div className="flex items-center justify-between text-[11px] font-semibold text-[#27272A]/60 dark:text-zinc-400">
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#5D0D18] dark:text-amber-300" />
+                      <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
                       <span>{expense.date ? formatDateOnly(expense.date) : 'Date non renseignée'}</span>
                     </div>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#5D0D18] dark:text-amber-200 border border-[#C7B7A3]/40 dark:border-zinc-700">
-                      <Tag className="w-3 h-3 text-[#5D0D18] dark:text-amber-300" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF9EB] dark:bg-zinc-800 text-[#6D2932] dark:text-amber-200 border border-[#C7B7A3]/40 dark:border-zinc-700">
+                      <Tag className="w-3 h-3 text-[#6D2932] dark:text-amber-300" />
                       {expense.category || 'Autre'}
                     </span>
                   </div>
@@ -230,7 +230,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                         referrerPolicy="no-referrer"
                       />
                       <div className="min-w-0">
-                        <h5 className="text-xs sm:text-sm font-bold text-[#5D0D18] dark:text-[#FFF9EB] truncate group-hover:text-[#450912] dark:group-hover:text-amber-200 transition-colors">
+                        <h5 className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate group-hover:text-[#541C24] dark:group-hover:text-amber-200 transition-colors">
                           {expense.title || 'Dépense'}
                         </h5>
                         <span className="block text-[10px] sm:text-[11px] text-[#27272A]/70 dark:text-zinc-400 truncate">
@@ -242,7 +242,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                     {/* Amount & Arrow */}
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right">
-                        <span className="text-sm sm:text-base font-extrabold text-[#5D0D18] dark:text-amber-300 font-serif block">
+                        <span className="text-sm sm:text-base font-extrabold text-[#6D2932] dark:text-amber-300 font-serif block">
                           {formatCurrency(expense.amount, currency)}
                         </span>
                         <span className="block text-[10px] text-[#27272A]/60 dark:text-zinc-400">
@@ -269,7 +269,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-full text-xs font-bold bg-[#5D0D18] text-[#FFF9EB] hover:bg-[#450912] shadow-xs active:scale-95 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
           >
             Fermer
           </button>
