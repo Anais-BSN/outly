@@ -96,11 +96,20 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
               download={`outlys-photo-${item.id}.jpg`}
               target="_blank"
               rel="noreferrer"
-              className="px-4 py-2 rounded-xl bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-full bg-[#E8D8C4] text-[#27272A] text-xs font-bold hover:bg-[#C7B7A3] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
               <span>Télécharger</span>
             </a>
+
+            <button
+              type="button"
+              id="image-viewer-footer-close-btn"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>Fermer</span>
+            </button>
           </div>
         </div>
       </div>

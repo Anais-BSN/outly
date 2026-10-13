@@ -2743,6 +2743,13 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
       ]
     );
 
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [senderId]);
+    const user = userRes.rows[0];
+    const senderName = isSystem
+      ? 'Outlys Bot'
+      : user?.name || 'Membre';
+    const senderAvatar = isSystem ? '' : user?.avatar || '';
+
     // Si une ou plusieurs images sont jointes, on les ajoute automatiquement à la galerie
     for (const img of allImages) {
       const existingGal = await query(
@@ -2760,24 +2767,20 @@ apiRouter.post('/messages', async (req: Request, res: Response) => {
         realtimeBroadcaster.broadcast({
           type: 'gallery:uploaded',
           groupId,
+          userId: senderId,
           data: {
             id: galId,
             groupId,
             imageUrl: img,
             uploaderId: senderId,
+            uploaderName: senderName,
+            uploaderAvatar: senderAvatar,
             caption: text || 'Photo partagée dans le fil',
             timestamp,
           },
         });
       }
     }
-
-    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [senderId]);
-    const user = userRes.rows[0];
-    const senderName = isSystem
-      ? 'Outlys Bot'
-      : user?.name || 'Membre';
-    const senderAvatar = isSystem ? '' : user?.avatar || '';
 
     const newMsg = {
       id,
@@ -3336,6 +3339,7 @@ apiRouter.post('/gallery', async (req: Request, res: Response) => {
     realtimeBroadcaster.broadcast({
       type: 'gallery:uploaded',
       groupId,
+      userId: uploaderId,
       data: newItem,
     });
 

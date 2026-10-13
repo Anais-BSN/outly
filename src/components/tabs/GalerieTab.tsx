@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Upload,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { GalleryItem, UserProfile, GroupMember } from '../../types';
 import { compressImage } from '../../utils/imageCompressor';
+import { realtimeService } from '../../services/realtime';
 
 interface GalerieTabProps {
   galleryItems?: GalleryItem[];
@@ -136,8 +137,32 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
   onUploadImage,
   onViewImage,
 }) => {
-  const safeItems = galleryItems || [];
+  const [photos, setPhotos] = useState<GalleryItem[]>(galleryItems || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronisation des photos avec les props
+  useEffect(() => {
+    setPhotos(galleryItems || []);
+  }, [galleryItems]);
+
+  // Écouteur en direct Pusher pour l'insertion instantanée des nouvelles photos
+  useEffect(() => {
+    const unsubscribe = realtimeService.subscribe((event) => {
+      if (event.type === 'gallery:uploaded' && event.data) {
+        const newItem: GalleryItem = event.data;
+        setPhotos((prev) => {
+          const exists = prev.some((p) => p.id === newItem.id || p.imageUrl === newItem.imageUrl);
+          if (exists) return prev;
+          return [newItem, ...prev];
+        });
+      } else if (event.type === 'gallery:deleted' && event.data?.id) {
+        setPhotos((prev) => prev.filter((p) => p.id !== event.data.id));
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Multi-upload state
   const [pendingImages, setPendingImages] = useState<string[]>([]);
@@ -210,10 +235,10 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === safeItems.length) {
+    if (selectedIds.size === photos.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(safeItems.map((i) => i.id)));
+      setSelectedIds(new Set(photos.map((i) => i.id)));
     }
   };
 
@@ -268,7 +293,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
   };
 
   const handleBatchDownload = async () => {
-    const itemsToDownload = safeItems.filter((i) => selectedIds.has(i.id));
+    const itemsToDownload = photos.filter((i) => selectedIds.has(i.id));
     if (itemsToDownload.length === 0) return;
 
     setIsDownloading(true);
@@ -319,7 +344,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {safeItems.length > 0 && (
+          {photos.length > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -411,7 +436,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       )}
 
       {/* Grid of photos */}
-      {safeItems.length === 0 ? (
+      {photos.length === 0 ? (
         <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
           <ImageIcon className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
           <p className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
@@ -429,7 +454,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-2.5">
-          {safeItems.map((item) => (
+          {photos.map((item) => (
             <PhotoCard
               key={item.id}
               item={item}
@@ -453,13 +478,13 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
                 onClick={handleSelectAll}
                 className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1 shrink-0"
               >
-                {selectedIds.size === safeItems.length ? (
+                {selectedIds.size === photos.length ? (
                   <CheckSquare className="w-4 h-4" />
                 ) : (
                   <Square className="w-4 h-4" />
                 )}
                 <span className="hidden sm:inline">
-                  {selectedIds.size === safeItems.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  {selectedIds.size === photos.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </span>
               </button>
 

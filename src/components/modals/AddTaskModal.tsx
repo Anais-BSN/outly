@@ -8,7 +8,7 @@ import {
   Sparkles,
   UserCheck
 } from 'lucide-react';
-import { GroupMember, LogisticsTask, TaskCategory, UserProfile } from '../../types';
+import { GroupMember, LogisticsTask, UserProfile } from '../../types';
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -19,8 +19,6 @@ interface AddTaskModalProps {
   eventId?: string | null;
   onAddTask: (taskData: Partial<LogisticsTask>) => void;
 }
-
-const CATEGORIES: TaskCategory[] = ['Matériel', 'Nourriture', 'Organisation', 'Autre'];
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   isOpen,
@@ -35,7 +33,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const [title, setTitle] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [category, setCategory] = useState<TaskCategory>('Matériel');
   const [assignedToId, setAssignedToId] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -49,7 +46,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       eventId: eventId || undefined,
       title: title.trim(),
       quantity: quantity.trim(),
-      category,
+      category: 'Matériel',
       completed: false,
       assignedToId: assignedToId || undefined,
       assignedToName: assignedMember?.name,
@@ -119,29 +116,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               placeholder="Ex: 2 packs, 1 grande table, etc."
               className="w-full px-3.5 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs text-[#27272A] dark:text-[#FFF9EB]"
             />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1.5">
-              Catégorie
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all text-center ${
-                    category === cat
-                      ? 'bg-[#6D2932] text-[#FFF9EB]'
-                      : 'bg-[#E8D8C4]/60 dark:bg-zinc-800 text-[#27272A] dark:text-zinc-300 hover:bg-[#E8D8C4]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Assignee */}

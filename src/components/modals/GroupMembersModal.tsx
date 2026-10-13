@@ -252,13 +252,14 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
         )}
 
         {/* Footer Close */}
-        <div className="pt-2 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-end">
+        <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-end">
           <button
             type="button"
+            id="group-members-footer-close-btn"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
           >
-            Fermer
+            <span>Fermer</span>
           </button>
         </div>
       </div>

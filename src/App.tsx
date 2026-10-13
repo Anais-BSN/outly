@@ -2456,8 +2456,27 @@ export default function App() {
       (m) => m.userId === currentUser?.id || m.id === currentUser?.id
     );
 
+  const nowMs = Date.now();
+  const upcomingGroupEventsCount = groupEvents.filter((ev) => {
+    let endMs = 0;
+    const dateStr = ev.endDateTime || ev.startDateTime;
+    if (dateStr) {
+      if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const parts = dateStr.split('-');
+        endMs = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 23, 59, 59, 999).getTime();
+      } else {
+        endMs = new Date(dateStr).getTime();
+      }
+    }
+    const startMs = new Date(ev.startDateTime).getTime();
+    const isPast =
+      (endMs > 0 && endMs < nowMs) ||
+      (startMs > 0 && startMs < nowMs && (!ev.endDateTime || endMs < nowMs));
+    return !isPast;
+  }).length;
+
   const tabBadges = {
-    agenda: groupEvents.length,
+    agenda: upcomingGroupEventsCount,
     discussion: unreadMessagesCount,
     sondages: groupPolls.length,
     logistique: groupTasks.filter((t) => !t.completed).length,

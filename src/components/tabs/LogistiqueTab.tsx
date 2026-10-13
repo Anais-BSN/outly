@@ -58,11 +58,11 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
-      {/* 1. Header: Titre 'Organisation & Matériel' et Bouton 'Ajouter un élément' alignés sur la même ligne */}
+      {/* 1. Header: Titre 'Organisation & matériel' et Bouton 'Ajouter un élément' alignés sur la même ligne */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-1 text-[#6D2932] dark:text-[#FFF9EB]">
-            Organisation & Matériel
+            Organisation & matériel
           </h3>
           <p className="text-xs sm:text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
             Attribuez les tâches et le matériel à apporter pour ne rien oublier.
@@ -167,17 +167,21 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                    {task.title} {task.quantity ? `(${task.quantity})` : ''}
+                    {task.title}{' '}
+                    {task.quantity && (() => {
+                      const str = String(task.quantity).trim();
+                      const num = parseFloat(str);
+                      if (!isNaN(num)) {
+                        return num > 1 ? `×${num}` : '';
+                      }
+                      return `×${str.replace(/^[×xX\s]+/, '')}`;
+                    })()}
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] opacity-75 font-semibold text-[#6D2932] dark:text-zinc-400 mt-0.5 flex-wrap">
-                    <span className="uppercase tracking-widest">{task.category}</span>
-                    {creatorName && (
-                      <>
-                        <span>•</span>
-                        <span>Créé par {creatorName}</span>
-                      </>
-                    )}
-                  </div>
+                  {creatorName && (
+                    <div className="text-[10px] opacity-75 font-semibold text-[#6D2932] dark:text-zinc-400 mt-0.5">
+                      <span>Créé par {creatorName}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

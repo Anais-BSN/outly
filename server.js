@@ -2821,6 +2821,10 @@ apiRouter.post("/messages", async (req, res) => {
         JSON.stringify(reactions)
       ]
     );
+    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [senderId]);
+    const user = userRes.rows[0];
+    const senderName = isSystem ? "Outlys Bot" : user?.name || "Membre";
+    const senderAvatar = isSystem ? "" : user?.avatar || "";
     for (const img of allImages) {
       const existingGal = await query(
         `SELECT id FROM gallery_items WHERE group_id = $1 AND image_url = $2`,
@@ -2837,21 +2841,20 @@ apiRouter.post("/messages", async (req, res) => {
         realtimeBroadcaster.broadcast({
           type: "gallery:uploaded",
           groupId,
+          userId: senderId,
           data: {
             id: galId,
             groupId,
             imageUrl: img,
             uploaderId: senderId,
+            uploaderName: senderName,
+            uploaderAvatar: senderAvatar,
             caption: text || "Photo partag\xE9e dans le fil",
             timestamp
           }
         });
       }
     }
-    const userRes = await query(`SELECT name, avatar FROM users WHERE id = $1`, [senderId]);
-    const user = userRes.rows[0];
-    const senderName = isSystem ? "Outlys Bot" : user?.name || "Membre";
-    const senderAvatar = isSystem ? "" : user?.avatar || "";
     const newMsg = {
       id,
       groupId,
@@ -3313,6 +3316,7 @@ apiRouter.post("/gallery", async (req, res) => {
     realtimeBroadcaster.broadcast({
       type: "gallery:uploaded",
       groupId,
+      userId: uploaderId,
       data: newItem
     });
     res.json(newItem);

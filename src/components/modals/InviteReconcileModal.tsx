@@ -201,13 +201,13 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
           </button>
         </div>
 
-        {/* Bouton Annuler */}
-        <div className="pt-2 border-t border-[#C7B7A3]/30 dark:border-zinc-800 flex justify-end">
+        {/* Bouton Annuler / Fermer */}
+        <div className="pt-3 border-t border-[#C7B7A3]/30 dark:border-zinc-800 flex justify-end">
           <button
             type="button"
             disabled={Boolean(mergingId) || isJoiningAsNew}
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl border border-[#C7B7A3]/60 dark:border-zinc-700 bg-[#E8D8C4]/60 dark:bg-zinc-800 text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] hover:bg-[#E8D8C4] dark:hover:bg-zinc-700 transition-all cursor-pointer text-center"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 text-center disabled:opacity-50"
           >
             Annuler
           </button>
