@@ -33,9 +33,9 @@ class EventBroadcaster {
   }
 
   private initPusher(): void {
-    const appId = process.env.PUSHER_APP_ID;
-    const key = process.env.PUSHER_KEY;
-    const secret = process.env.PUSHER_SECRET;
+    const appId = process.env.PUSHER_APP_ID || '2201234';
+    const key = process.env.PUSHER_KEY || 'ffb22ce4e830df75afc1';
+    const secret = process.env.PUSHER_SECRET || '29a8aec981809149bbe6';
     const cluster = process.env.PUSHER_CLUSTER || 'eu';
 
     if (appId && key && secret && !appId.includes('ton_app_id')) {
@@ -90,7 +90,7 @@ class EventBroadcaster {
       if (event.userId) {
         channels.push(`user-${String(event.userId).trim()}`);
       }
-      if (channels.length === 0) {
+      if (!channels.includes('global')) {
         channels.push('global');
       }
 
@@ -99,11 +99,8 @@ class EventBroadcaster {
         console.warn('[Pusher] Erreur lors de l\'émission de l\'événement:', err?.message || err);
       });
 
-      // Émission également sur le canal générique de l'application
-      const userChan = event.userId ? `user-${String(event.userId).trim()}` : null;
-      if (!channels.includes('global') && (!userChan || !channels.includes(userChan))) {
-        this.pusher.trigger(channels, 'outlys-event', payload).catch(() => {});
-      }
+      // Émission également sur l'événement générique outlys-event
+      this.pusher.trigger(channels, 'outlys-event', payload).catch(() => {});
     }
 
     // 2. Diffusion via SSE (flux résilient / fallback)

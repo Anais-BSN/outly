@@ -87,7 +87,7 @@ export const DebtHistoryModal: React.FC<DebtHistoryModalProps> = ({
               <h3 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Historique des remboursements
               </h3>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
+              <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
                 Liste chronologique des dettes soldées du groupe
               </p>
             </div>

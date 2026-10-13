@@ -277,7 +277,7 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
                 Mes amis & invitations
               </h3>
             </div>
-            <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 font-medium pl-7">
+            <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300 pl-7">
               Recherchez ou invitez de nouvelles personnes
             </p>
           </div>
@@ -539,12 +539,15 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
         {/* Search inside existing friends */}
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] uppercase tracking-wider">
-              Mes amis ({acceptedFriends.length})
-            </h4>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h4 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
+                Mes amis ({acceptedFriends.length})
+              </h4>
+            </div>
 
             {pendingSent.length > 0 && (
-              <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
+              <span className="text-xs opacity-70 text-[#6D2932] dark:text-zinc-300">
                 {pendingSent.length} demande(s) en attente
               </span>
             )}

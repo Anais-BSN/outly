@@ -1,6 +1,7 @@
 import Pusher, { Channel } from 'pusher-js';
 import { App as CapacitorApp } from '@capacitor/app';
 import { getApiBaseUrl } from './api';
+import { getPusherKey, getPusherCluster, PUSHER_FALLBACK_CONFIG } from '../config/pusher';
 
 export interface RealtimeEvent {
   type: string;
@@ -34,14 +35,8 @@ class RealtimeService {
   }
 
   private initPusher(): void {
-    const PUSHER_HARDCODED_KEY = 'ffb22ce4e830df75afc1';
-    const PUSHER_HARDCODED_CLUSTER = 'eu';
-
-    const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PUSHER_KEY) || '';
-    const envCluster = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PUSHER_CLUSTER) || '';
-
-    const pusherKey = (envKey && !envKey.includes('ton_key')) ? envKey : PUSHER_HARDCODED_KEY;
-    const pusherCluster = envCluster || PUSHER_HARDCODED_CLUSTER;
+    const pusherKey = getPusherKey() || PUSHER_FALLBACK_CONFIG.key;
+    const pusherCluster = getPusherCluster() || PUSHER_FALLBACK_CONFIG.cluster;
 
     if (pusherKey) {
       try {
@@ -49,22 +44,17 @@ class RealtimeService {
           cluster: pusherCluster,
           forceTLS: true,
           enabledTransports: ['ws', 'wss', 'xhr_streaming', 'xhr_polling', 'sockjs'],
-          activityTimeout: 60000,
-          pongTimeout: 30000,
+          activityTimeout: 25000,
+          pongTimeout: 10000,
         });
 
-        // Diagnostic et écouteur des changements d'état de connexion Pusher
+        // Diagnostic et écouteur des changements d'état de connexion Pusher avec reconnexion agressive
         this.pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
           console.debug(`[Realtime:Pusher] État de connexion: ${states.previous} -> ${states.current}`);
           if (states.current === 'connected') {
             this.isPusherActive = true;
             this.reconnectAttempts = 0;
-            if (this.currentUserId) {
-              this.ensureUserChannel(this.currentUserId);
-            }
-            if (this.currentGroupId) {
-              this.ensureGroupChannel(this.currentGroupId);
-            }
+            this.resubscribeAllChannels();
           } else if (states.current === 'disconnected' || states.current === 'unavailable' || states.current === 'failed') {
             this.isPusherActive = false;
             console.warn(`[Realtime:Pusher] Connexion interrompue (${states.current}), tentative de reconnexion immédiate...`);
@@ -72,19 +62,14 @@ class RealtimeService {
               if (this.pusher && (this.pusher.connection.state === 'disconnected' || this.pusher.connection.state === 'unavailable' || this.pusher.connection.state === 'failed')) {
                 this.pusher.connect();
               }
-            }, 500);
+            }, 150);
           }
         });
 
         this.pusher.connection.bind('connected', () => {
           this.isPusherActive = true;
           console.debug('[Realtime:Pusher] Connecté avec succès au cluster', pusherCluster);
-          if (this.currentUserId) {
-            this.ensureUserChannel(this.currentUserId);
-          }
-          if (this.currentGroupId) {
-            this.ensureGroupChannel(this.currentGroupId);
-          }
+          this.resubscribeAllChannels();
         });
 
         this.pusher.connection.bind('error', (err: any) => {
@@ -95,29 +80,48 @@ class RealtimeService {
           this.isPusherActive = false;
         });
 
-        // Abonnement au canal global pour tous les événements partagés
-        const globalCh = this.pusher.channel('global') || this.pusher.subscribe('global');
-        this.globalChannel = globalCh;
-        try {
-          (globalCh as any).unbind_global?.();
-        } catch (_) {}
-        globalCh.bind_global((eventName: string, data: any) => {
-          if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
-          const normalizedEvent: RealtimeEvent = {
-            type: data?.type || eventName,
-            groupId: data?.groupId,
-            userId: data?.userId,
-            data: data?.data !== undefined ? data.data : data,
-            timestamp: data?.timestamp || new Date().toISOString(),
-          };
-          this.notifyListeners(normalizedEvent);
-        });
+        // Abonnement initial au canal global
+        this.ensureGlobalChannel();
       } catch (err) {
         console.error('[Realtime:Pusher] Erreur initialisation Pusher:', err);
         this.isPusherActive = false;
       }
     } else {
       console.debug('[Realtime] Clés Pusher non configurées, bascule sur flux temps réel standard');
+    }
+  }
+
+  private ensureGlobalChannel(): void {
+    if (!this.pusher) return;
+    try {
+      const globalCh = this.pusher.channel('global') || this.pusher.subscribe('global');
+      this.globalChannel = globalCh;
+      try {
+        (globalCh as any).unbind_global?.();
+      } catch (_) {}
+      globalCh.bind_global((eventName: string, data: any) => {
+        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+        const normalizedEvent: RealtimeEvent = {
+          type: data?.type || eventName,
+          groupId: data?.groupId,
+          userId: data?.userId,
+          data: data?.data !== undefined ? data.data : data,
+          timestamp: data?.timestamp || new Date().toISOString(),
+        };
+        this.notifyListeners(normalizedEvent);
+      });
+    } catch (err) {
+      console.warn('[Realtime:Pusher] Erreur abonnement canal global:', err);
+    }
+  }
+
+  private resubscribeAllChannels(): void {
+    this.ensureGlobalChannel();
+    if (this.currentUserId) {
+      this.ensureUserChannel(this.currentUserId);
+    }
+    if (this.currentGroupId) {
+      this.ensureGroupChannel(this.currentGroupId);
     }
   }
 
@@ -175,18 +179,12 @@ class RealtimeService {
     if (typeof window === 'undefined' || this.networkListenersAttached) return;
 
     const handleAppResume = () => {
-      console.debug('[Realtime:Capacitor] Reprise application (reconnexion Pusher)');
+      console.debug('[Realtime:Capacitor] Reprise immédiate de l\'application (reconnexion & réabonnement Pusher)');
       if (this.pusher) {
-        const state = this.pusher.connection.state;
-        if (state !== 'connected' && state !== 'connecting') {
+        if (this.pusher.connection.state !== 'connected') {
           this.pusher.connect();
         }
-      }
-      if (this.currentUserId) {
-        this.ensureUserChannel(this.currentUserId);
-      }
-      if (this.currentGroupId) {
-        this.ensureGroupChannel(this.currentGroupId);
+        this.resubscribeAllChannels();
       }
       if (!this.isPusherActive) {
         this.reconnectImmediately();
@@ -209,6 +207,10 @@ class RealtimeService {
     window.addEventListener('online', () => {
       console.debug('[Realtime] Réseau rétabli (online)');
       this.reconnectAttempts = 0;
+      handleAppResume();
+    });
+
+    window.addEventListener('focus', () => {
       handleAppResume();
     });
 

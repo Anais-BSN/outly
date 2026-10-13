@@ -159,7 +159,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                   {expense.category}
                 </span>
               </div>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 mt-0.5">
+              <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300 mt-0.5">
                 Détail de la dépense
               </p>
             </div>
@@ -328,6 +328,18 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Footer avec bouton Fermer bien visible */}
+        <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex justify-end shrink-0">
+          <button
+            type="button"
+            id="expense-detail-footer-close-btn"
+            onClick={onClose}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Fermer</span>
+          </button>
         </div>
       </div>
     </div>

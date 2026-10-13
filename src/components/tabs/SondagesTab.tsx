@@ -186,9 +186,16 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                       (v) => v.status === 'available' || v.status === 'yes'
                     );
 
+                    // Tous les membres ayant exprimé leur vote (qu'ils aient répondu « Dispo » ou « Pas dispo »)
+                    const expressedVotes = optVotes.filter(
+                      (v) => v.status === 'available' || v.status === 'unavailable' || v.status === 'yes' || v.status === 'no'
+                    );
+                    const votedMemberIds = new Set(expressedVotes.map((v) => v.userId));
+                    const totalVotedCount = votedMemberIds.size;
+
                     const myVote = optVotes.find((v) => v.userId === currentUser.id);
-                    const totalPossible = safeMembers.length;
-                    const percent = Math.round((availableVotes.length / (totalPossible || 1)) * 100);
+                    const totalPossible = safeMembers.length || 1;
+                    const percent = Math.round((availableVotes.length / totalPossible) * 100);
 
                     const isWinning = topCandidates.some((c) => c.option.id === option.id) && availableVotes.length > 0;
 
@@ -205,16 +212,13 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                         {/* Option title & vote percentage */}
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            {isWinning && (
-                              <Sparkles className="w-4 h-4 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                            )}
                             <span className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
                               {option.text}
                             </span>
                           </div>
 
                           <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200 shrink-0">
-                            {availableVotes.length} / {totalPossible} ({percent}%)
+                            {totalVotedCount} / {safeMembers.length} ({percent}%)
                           </span>
                         </div>
 
@@ -332,12 +336,9 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                         </span>
                       </>
                     ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
-                        <span>
-                          {poll.type === 'date' ? 'Date en tête :' : 'Option en tête :'} <strong>{bestOption?.text}</strong>
-                        </span>
-                      </>
+                      <span>
+                        {poll.type === 'date' ? 'Date en tête :' : 'Option en tête :'} <strong>{bestOption?.text}</strong>
+                      </span>
                     )}
                   </div>
 

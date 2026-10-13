@@ -303,9 +303,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         {/* Card 1: Total Dépensé */}
         <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6D2932] dark:text-zinc-400 uppercase tracking-wider">
-              <Wallet className="w-4 h-4" />
-              <span>Total dépensé par le groupe</span>
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h4 className="font-bold text-base font-serif text-[#6D2932] dark:text-[#FFF9EB]">
+                Total dépensé par le groupe
+              </h4>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-[#6D2932] dark:text-[#FFF9EB] font-serif mt-1">
               {formatCurrency(totalSpent)}
@@ -319,9 +321,11 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
         {/* Card 2: Mon Équilibre */}
         <div className="p-5 rounded-2xl bg-[#E8D8C4] dark:bg-[#27272A] border border-[#C7B7A3] dark:border-zinc-700 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6D2932] dark:text-zinc-400 uppercase tracking-wider">
-              <Scale className="w-4 h-4" />
-              <span>Mon équilibre ({currentUser.shares} {currentUser.shares > 1 ? 'parts' : 'part'})</span>
+            <div className="flex items-center gap-2">
+              <Scale className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+              <h4 className="font-bold text-base font-serif text-[#6D2932] dark:text-[#FFF9EB]">
+                Mon équilibre ({currentUser.shares} {currentUser.shares > 1 ? 'parts' : 'part'})
+              </h4>
             </div>
 
             <span
@@ -465,7 +469,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <Receipt className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h4 className="font-bold font-serif text-base text-[#6D2932] dark:text-[#FFF9EB]">
               Historique des dépenses
             </h4>

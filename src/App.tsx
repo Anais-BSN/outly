@@ -762,6 +762,7 @@ export default function App() {
           }
           break;
         case 'friend:requested':
+        case 'friend:accepted':
         case 'friend:updated':
         case 'friend:deleted':
           api.getFriends(currentUser.id).then(setFriends).catch(() => {});
@@ -2625,7 +2626,7 @@ export default function App() {
                 <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#6D2932] dark:text-[#FFF9EB]">
                   Mes Groupes & Escapades
                 </h2>
-                <p className="text-xs sm:text-sm text-[#27272A]/70 dark:text-zinc-400 mt-1">
+                <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300 mt-1">
                   Sélectionnez un groupe pour voir les événements, l'organisation et partager les frais.
                 </p>
               </div>

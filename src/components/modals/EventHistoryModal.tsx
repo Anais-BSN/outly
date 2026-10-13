@@ -71,7 +71,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
               <h3 className="text-lg sm:text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB]">
                 Historique des événements
               </h3>
-              <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
+              <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
                 {events.length} sortie{events.length > 1 ? 's' : ''} archivée{events.length > 1 ? 's' : ''}
               </p>
             </div>
