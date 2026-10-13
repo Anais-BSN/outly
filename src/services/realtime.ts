@@ -100,9 +100,10 @@ class RealtimeService {
         (globalCh as any).unbind_global?.();
       } catch (_) {}
       globalCh.bind_global((eventName: string, data: any) => {
-        if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+        if (eventName.startsWith('pusher:')) return;
+        const targetType = (eventName === 'outlys-event' && data?.type) ? data.type : (data?.type || eventName);
         const normalizedEvent: RealtimeEvent = {
-          type: data?.type || eventName,
+          type: targetType,
           groupId: data?.groupId,
           userId: data?.userId,
           data: data?.data !== undefined ? data.data : data,
@@ -161,18 +162,28 @@ class RealtimeService {
     this.activeGroupChannel = ch;
     try {
       (ch as any).unbind_global?.();
+      ch.unbind('gallery:uploaded');
+      ch.unbind('photo:uploaded');
+      ch.unbind('outlys-event');
     } catch (_) {}
-    ch.bind_global((eventName: string, data: any) => {
-      if (eventName.startsWith('pusher:') || eventName === 'outlys-event') return;
+
+    const onGroupEvent = (eventName: string, data: any) => {
+      if (eventName.startsWith('pusher:')) return;
+      const targetType = (eventName === 'outlys-event' && data?.type) ? data.type : (data?.type || eventName);
       const normalizedEvent: RealtimeEvent = {
-        type: data?.type || eventName,
+        type: targetType,
         groupId: data?.groupId || cleanGroupId,
         userId: data?.userId,
         data: data?.data !== undefined ? data.data : data,
         timestamp: data?.timestamp || new Date().toISOString(),
       };
       this.notifyListeners(normalizedEvent);
-    });
+    };
+
+    ch.bind_global(onGroupEvent);
+    ch.bind('gallery:uploaded', (data: any) => onGroupEvent('gallery:uploaded', data));
+    ch.bind('photo:uploaded', (data: any) => onGroupEvent('gallery:uploaded', data));
+    ch.bind('outlys-event', (data: any) => onGroupEvent('outlys-event', data));
   }
 
   private setupNetworkListeners(): void {
@@ -377,7 +388,7 @@ class RealtimeService {
   private notifyListeners(event: RealtimeEvent): void {
     // Évite les doublons d'événements reçus quasi-simultanément (ex: SSE + Pusher ou triggers multiples)
     const now = Date.now();
-    const eventIdentifier = event.data?.id || event.data?.messageId || event.data?.eventId || event.data?.pollId || event.data?.optionId || '';
+    const eventIdentifier = event.data?.id || event.data?.imageUrl || event.data?.image_url || event.data?.messageId || event.data?.eventId || event.data?.pollId || event.data?.optionId || '';
     const dedupeKey = `${event.type}:${event.groupId || ''}:${eventIdentifier}`;
 
     if (dedupeKey.length > 5) {

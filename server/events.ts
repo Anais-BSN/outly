@@ -85,19 +85,29 @@ class EventBroadcaster {
     if (this.pusher) {
       const channels: string[] = [];
       if (event.groupId) {
-        channels.push(`group-${String(event.groupId).trim()}`);
+        const cleanG = String(event.groupId).trim();
+        const prefixed = cleanG.startsWith('group-') ? cleanG : `group-${cleanG}`;
+        if (!channels.includes(prefixed)) channels.push(prefixed);
+        if (!channels.includes(cleanG)) channels.push(cleanG);
       }
       if (event.userId) {
-        channels.push(`user-${String(event.userId).trim()}`);
+        const cleanU = String(event.userId).trim();
+        const prefixedU = cleanU.startsWith('user-') ? cleanU : `user-${cleanU}`;
+        if (!channels.includes(prefixedU)) channels.push(prefixedU);
       }
       if (!channels.includes('global')) {
         channels.push('global');
       }
 
-      // Émission sur les canaux ciblés avec le nom de l'événement exact (ex: message:created, poll:voted)
+      // Émission sur les canaux ciblés avec le nom de l'événement exact (ex: message:created, gallery:uploaded)
       this.pusher.trigger(channels, event.type, payload).catch((err: any) => {
         console.warn('[Pusher] Erreur lors de l\'émission de l\'événement:', err?.message || err);
       });
+
+      // Si c'est un événement de galerie, doubler également l'émission sur photo:uploaded pour compatibilité totale
+      if (event.type === 'gallery:uploaded') {
+        this.pusher.trigger(channels, 'photo:uploaded', payload).catch(() => {});
+      }
 
       // Émission également sur l'événement générique outlys-event
       this.pusher.trigger(channels, 'outlys-event', payload).catch(() => {});
@@ -107,8 +117,8 @@ class EventBroadcaster {
     const message = `data: ${JSON.stringify(payload)}\n\n`;
     for (const [id, sub] of this.subscribers.entries()) {
       try {
-        // If event targets a specific user and subscriber has different userId, skip
-        if (event.userId && sub.userId && event.userId !== sub.userId) {
+        // Si l'événement cible exclusivement un utilisateur (sans groupId), filtrer
+        if (!event.groupId && event.userId && sub.userId && event.userId !== sub.userId) {
           continue;
         }
         sub.res.write(message);

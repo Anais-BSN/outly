@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { AppNotification, Group } from '../../types';
 import { formatRelativeTime } from '../../utils/formatters';
+import { NotificationIcon } from '../icons/NotificationIcon';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -185,7 +186,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
+            <NotificationIcon className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Notifications
             </h3>

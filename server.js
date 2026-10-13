@@ -454,10 +454,15 @@ var EventBroadcaster = class {
     if (this.pusher) {
       const channels = [];
       if (event.groupId) {
-        channels.push(`group-${String(event.groupId).trim()}`);
+        const cleanG = String(event.groupId).trim();
+        const prefixed = cleanG.startsWith("group-") ? cleanG : `group-${cleanG}`;
+        if (!channels.includes(prefixed)) channels.push(prefixed);
+        if (!channels.includes(cleanG)) channels.push(cleanG);
       }
       if (event.userId) {
-        channels.push(`user-${String(event.userId).trim()}`);
+        const cleanU = String(event.userId).trim();
+        const prefixedU = cleanU.startsWith("user-") ? cleanU : `user-${cleanU}`;
+        if (!channels.includes(prefixedU)) channels.push(prefixedU);
       }
       if (!channels.includes("global")) {
         channels.push("global");
@@ -465,6 +470,10 @@ var EventBroadcaster = class {
       this.pusher.trigger(channels, event.type, payload).catch((err) => {
         console.warn("[Pusher] Erreur lors de l'\xE9mission de l'\xE9v\xE9nement:", err?.message || err);
       });
+      if (event.type === "gallery:uploaded") {
+        this.pusher.trigger(channels, "photo:uploaded", payload).catch(() => {
+        });
+      }
       this.pusher.trigger(channels, "outlys-event", payload).catch(() => {
       });
     }
@@ -473,7 +482,7 @@ var EventBroadcaster = class {
 `;
     for (const [id, sub] of this.subscribers.entries()) {
       try {
-        if (event.userId && sub.userId && event.userId !== sub.userId) {
+        if (!event.groupId && event.userId && sub.userId && event.userId !== sub.userId) {
           continue;
         }
         sub.res.write(message);
@@ -3390,11 +3399,29 @@ apiRouter.post("/tasks", async (req, res) => {
     if (!createdBy || createdBy === "user-me") {
       return res.status(401).json({ error: "Session non authentifi\xE9e" });
     }
+    let finalEventId = eventId || null;
+    if (!finalEventId && groupId) {
+      const evRes = await query(
+        `SELECT id FROM events WHERE group_id = $1 AND (end_date_time >= NOW() OR start_date_time >= NOW()) ORDER BY start_date_time ASC LIMIT 1`,
+        [groupId]
+      );
+      if (evRes.rows.length > 0) {
+        finalEventId = evRes.rows[0].id;
+      } else {
+        const anyEvRes = await query(`SELECT id FROM events WHERE group_id = $1 ORDER BY start_date_time DESC LIMIT 1`, [groupId]);
+        if (anyEvRes.rows.length > 0) {
+          finalEventId = anyEvRes.rows[0].id;
+        }
+      }
+    }
+    if (!finalEventId) {
+      return res.status(400).json({ error: "Chaque \xE9l\xE9ment d'organisation et de mat\xE9riel doit \xEAtre obligatoirement rattach\xE9 \xE0 son \xE9v\xE9nement sp\xE9cifique (event_id)" });
+    }
     const taskId = `task-${Date.now()}`;
     await query(
       `INSERT INTO logistics_tasks (id, group_id, event_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, NOW())`,
-      [taskId, groupId, eventId || null, title, quantity, assignedToId, category, createdBy]
+      [taskId, groupId, finalEventId, title, quantity, assignedToId, category, createdBy]
     );
     let assignedToName = null;
     let assignedToAvatar = null;
@@ -3408,7 +3435,7 @@ apiRouter.post("/tasks", async (req, res) => {
     const newTask = {
       id: taskId,
       groupId,
-      eventId: eventId || null,
+      eventId: finalEventId,
       title,
       quantity,
       assignedToId,

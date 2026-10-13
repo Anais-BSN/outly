@@ -22,6 +22,7 @@ interface GalerieTabProps {
   galleryItems?: GalleryItem[];
   currentUser: UserProfile;
   members?: GroupMember[];
+  groupId?: string;
   onUploadImage: (imageUrl: string, caption?: string) => Promise<void> | void;
   onViewImage: (item: GalleryItem) => void;
 }
@@ -134,6 +135,7 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
   galleryItems = [],
   currentUser,
   members = [],
+  groupId,
   onUploadImage,
   onViewImage,
 }) => {
@@ -147,9 +149,27 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
 
   // Écouteur en direct Pusher pour l'insertion instantanée des nouvelles photos
   useEffect(() => {
-    const unsubscribe = realtimeService.subscribe((event) => {
-      if (event.type === 'gallery:uploaded' && event.data) {
-        const newItem: GalleryItem = event.data;
+    const handleRealtimePhoto = (event: any) => {
+      if ((event.type === 'gallery:uploaded' || event.type === 'photo:uploaded') && event.data) {
+        const raw = event.data;
+        const newItem: GalleryItem = {
+          id: raw.id || `gal-${Date.now()}`,
+          groupId: raw.groupId || raw.group_id || groupId || '',
+          imageUrl: raw.imageUrl || raw.image_url,
+          uploaderId: raw.uploaderId || raw.uploader_id,
+          uploaderName: raw.uploaderName || raw.uploader_name || 'Membre',
+          uploaderAvatar: raw.uploaderAvatar || raw.uploader_avatar || '',
+          caption: raw.caption || '',
+          timestamp: raw.timestamp || new Date().toISOString(),
+        };
+
+        if (!newItem.imageUrl) return;
+
+        // Si l'événement est pour un autre groupe et qu'on a un groupId défini, ignorer
+        if (groupId && newItem.groupId && newItem.groupId !== groupId && newItem.groupId !== 'global') {
+          return;
+        }
+
         setPhotos((prev) => {
           const exists = prev.some((p) => p.id === newItem.id || p.imageUrl === newItem.imageUrl);
           if (exists) return prev;
@@ -158,11 +178,13 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
       } else if (event.type === 'gallery:deleted' && event.data?.id) {
         setPhotos((prev) => prev.filter((p) => p.id !== event.data.id));
       }
-    });
+    };
+
+    const unsubscribe = realtimeService.subscribe(handleRealtimePhoto);
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [groupId]);
 
   // Multi-upload state
   const [pendingImages, setPendingImages] = useState<string[]>([]);

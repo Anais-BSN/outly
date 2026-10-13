@@ -229,7 +229,7 @@ CREATE INDEX IF NOT EXISTS idx_gallery_items_uploader_id ON gallery_items(upload
 CREATE TABLE IF NOT EXISTS logistics_tasks (
     id VARCHAR(100) PRIMARY KEY,
     group_id VARCHAR(100) REFERENCES groups(id) ON DELETE CASCADE,
-    event_id VARCHAR(100) REFERENCES events(id) ON DELETE SET NULL,
+    event_id VARCHAR(100) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     quantity INTEGER DEFAULT 1,
     assigned_to_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,

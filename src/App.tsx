@@ -609,9 +609,21 @@ export default function App() {
           });
           break;
         case 'gallery:uploaded':
+        case 'photo:uploaded':
           if (event.data) {
             setGalleryItems((prev) => {
-              const newItem = event.data;
+              const raw = event.data;
+              const newItem: GalleryItem = {
+                id: raw.id || `gal-${Date.now()}`,
+                groupId: raw.groupId || raw.group_id || '',
+                imageUrl: raw.imageUrl || raw.image_url,
+                uploaderId: raw.uploaderId || raw.uploader_id,
+                uploaderName: raw.uploaderName || raw.uploader_name || 'Membre',
+                uploaderAvatar: raw.uploaderAvatar || raw.uploader_avatar || '',
+                caption: raw.caption || '',
+                timestamp: raw.timestamp || new Date().toISOString(),
+              };
+              if (!newItem.imageUrl) return prev;
               const filtered = prev.filter(
                 (item) => item.id !== newItem.id && item.imageUrl !== newItem.imageUrl
               );
@@ -2831,6 +2843,7 @@ export default function App() {
                   galleryItems={groupGallery}
                   currentUser={currentUser}
                   members={activeGroup.members}
+                  groupId={activeGroupId || activeGroup?.id}
                   onUploadImage={handleUploadGalleryImage}
                   onViewImage={(item) => setViewingImage(item)}
                 />
@@ -3099,6 +3112,7 @@ export default function App() {
           members={activeGroup.members}
           groupId={activeGroupId}
           eventId={eventIdForTask}
+          events={groupEvents}
           onAddTask={handleAddTask}
         />
       )}

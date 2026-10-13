@@ -8,7 +8,7 @@ import {
   Sparkles,
   UserCheck
 } from 'lucide-react';
-import { GroupMember, LogisticsTask, UserProfile } from '../../types';
+import { GroupMember, LogisticsTask, UserProfile, EventItem } from '../../types';
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ interface AddTaskModalProps {
   members: GroupMember[];
   groupId: string;
   eventId?: string | null;
+  events?: EventItem[];
   onAddTask: (taskData: Partial<LogisticsTask>) => void;
 }
 
@@ -27,6 +28,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   members,
   groupId,
   eventId,
+  events = [],
   onAddTask,
 }) => {
   if (!isOpen) return null;
@@ -34,16 +36,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [quantity, setQuantity] = useState('');
   const [assignedToId, setAssignedToId] = useState<string>('');
+  const [selectedEventId, setSelectedEventId] = useState<string>(eventId || events[0]?.id || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     const assignedMember = members.find((m) => m.userId === assignedToId);
+    const finalEventId = eventId || selectedEventId || events[0]?.id;
 
     onAddTask({
       groupId,
-      eventId: eventId || undefined,
+      eventId: finalEventId || undefined,
       title: title.trim(),
       quantity: quantity.trim(),
       category: 'Matériel',
@@ -74,7 +78,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <div className="flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
-              Ajouter une tâche
+              Ajouter un élément
             </h3>
           </div>
           <button
@@ -87,6 +91,27 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Event Selector (if eventId not already locked) */}
+          {!eventId && events.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
+                Événement rattaché *
+              </label>
+              <select
+                id="task-event-select"
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border border-[#C7B7A3]/60 dark:border-zinc-700 text-xs sm:text-sm font-semibold text-[#27272A] dark:text-[#FFF9EB]"
+                required
+              >
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
@@ -154,7 +179,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               disabled={!title.trim()}
               className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#6D2932] text-[#FFF9EB] hover:bg-[#541C24] disabled:opacity-40 transition-all shadow-md active:scale-95"
             >
-              Ajouter une tâche
+              Ajouter un élément
             </button>
           </div>
         </form>

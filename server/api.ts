@@ -3427,11 +3427,31 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Session non authentifiée' });
     }
 
+    let finalEventId = eventId || null;
+    if (!finalEventId && groupId) {
+      const evRes = await query(
+        `SELECT id FROM events WHERE group_id = $1 AND (end_date_time >= NOW() OR start_date_time >= NOW()) ORDER BY start_date_time ASC LIMIT 1`,
+        [groupId]
+      );
+      if (evRes.rows.length > 0) {
+        finalEventId = evRes.rows[0].id;
+      } else {
+        const anyEvRes = await query(`SELECT id FROM events WHERE group_id = $1 ORDER BY start_date_time DESC LIMIT 1`, [groupId]);
+        if (anyEvRes.rows.length > 0) {
+          finalEventId = anyEvRes.rows[0].id;
+        }
+      }
+    }
+
+    if (!finalEventId) {
+      return res.status(400).json({ error: 'Chaque élément d\'organisation et de matériel doit être obligatoirement rattaché à son événement spécifique (event_id)' });
+    }
+
     const taskId = `task-${Date.now()}`;
     await query(
       `INSERT INTO logistics_tasks (id, group_id, event_id, title, quantity, assigned_to_id, completed, category, created_by, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, NOW())`,
-      [taskId, groupId, eventId || null, title, quantity, assignedToId, category, createdBy]
+      [taskId, groupId, finalEventId, title, quantity, assignedToId, category, createdBy]
     );
 
     let assignedToName = null;
@@ -3447,7 +3467,7 @@ apiRouter.post('/tasks', async (req: Request, res: Response) => {
     const newTask = {
       id: taskId,
       groupId,
-      eventId: eventId || null,
+      eventId: finalEventId,
       title,
       quantity,
       assignedToId,

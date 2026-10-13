@@ -436,7 +436,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 {upcomingEvents.map((event) => {
                   const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
                   const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
-                  const eventTasks = tasks.filter((t) => t.eventId === event.id || (!t.eventId && t.groupId === event.groupId));
+                  const eventTasks = tasks.filter((t) => t.eventId === event.id);
                   const isOrgExpanded = expandedOrganisationEventId === event.id;
 
                   return (
@@ -641,7 +641,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           >
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4" />
-                              <span>Organisation & Matériel ({eventTasks.length} éléments)</span>
+                              <span>Organisation & matériel ({eventTasks.length} éléments)</span>
                             </div>
                             {isOrgExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
@@ -694,7 +694,15 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                             </button>
                                           )}
                                           <span className="truncate font-semibold text-[#27272A] dark:text-[#FFF9EB]">
-                                            {t.title} {t.quantity ? `(${t.quantity})` : ''}
+                                            {t.title}{' '}
+                                            {t.quantity && (() => {
+                                              const str = String(t.quantity).trim();
+                                              const num = parseFloat(str);
+                                              if (!isNaN(num)) {
+                                                return num > 1 ? `×${num}` : '';
+                                              }
+                                              return `×${str.replace(/^[×xX\s]+/, '')}`;
+                                            })()}
                                           </span>
                                         </div>
 

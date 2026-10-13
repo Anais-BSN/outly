@@ -155,7 +155,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
                 Historique des dépenses
               </h3>
               <p className="text-sm opacity-70 text-[#6D2932] dark:text-zinc-300">
-                Liste chronologique de toutes les dépenses du groupe
+                Liste des dépenses du groupe
               </p>
             </div>
           </div>
@@ -262,10 +262,7 @@ const ExpenseHistoryModalContent: React.FC<ExpenseHistoryModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-between text-xs text-[#27272A]/70 dark:text-zinc-400 shrink-0">
-          <span>
-            {sortedExpenses.length} dépense{sortedExpenses.length > 1 ? 's' : ''} au total
-          </span>
+        <div className="pt-3 border-t border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-end shrink-0">
           <button
             type="button"
             id="expense-history-footer-close-btn"
