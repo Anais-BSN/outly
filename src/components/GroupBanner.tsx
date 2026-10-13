@@ -6,7 +6,6 @@ import {
   Trash2,
   Edit,
   Users,
-  HelpCircle
 } from 'lucide-react';
 import { Group, UserProfile } from '../types';
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   X,
+  Bell,
   BellRing,
   CheckCheck,
   Calendar,
@@ -8,8 +9,9 @@ import {
   Receipt,
   UserPlus,
   Users,
+  MessageSquare,
+  CheckSquare,
   Trash2,
-  Sparkles
 } from 'lucide-react';
 import { AppNotification, Group } from '../../types';
 import { formatRelativeTime } from '../../utils/formatters';
@@ -65,8 +67,14 @@ const NotificationItem = React.memo<NotificationItemProps>(({
         return <BarChart2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
       case 'expense':
         return <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+      case 'chat':
+        return <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />;
+      case 'task':
+        return <CheckSquare className="w-5 h-5 text-teal-600 dark:text-teal-400" />;
+      case 'rsvp':
+        return <Calendar className="w-5 h-5 text-rose-600 dark:text-rose-400" />;
       default:
-        return <NotificationIcon className="w-5 h-5" />;
+        return <Bell className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />;
     }
   };
 
@@ -185,7 +193,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <NotificationIcon className="w-5 h-5" />
+            <NotificationIcon className="w-5 h-5 text-[#6D2932] dark:text-[#FFF9EB]" />
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Notifications
             </h3>
@@ -231,7 +239,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         {/* Notifications List */}
         {safeNotifications.length === 0 ? (
           <div className="p-8 text-center bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-dashed border-[#C7B7A3] dark:border-zinc-700">
-            <NotificationIcon className="w-10 h-10 opacity-50 mx-auto mb-2" />
+            <Bell className="w-10 h-10 text-[#6D2932]/50 dark:text-zinc-500 mx-auto mb-2" />
             <p className="text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
               Aucune notification
             </p>
