@@ -8,8 +8,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Smartphone,
+  Bell,
 } from 'lucide-react';
-import { NotificationIcon } from './icons/NotificationIcon';
 import { UserProfile, Group, AppNotification } from '../types';
 import { isNativePlatform } from '../services/nativeService';
 
@@ -166,7 +166,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-full bg-[#6D2932]/10 dark:bg-zinc-800 text-[#6D2932] dark:text-[#FFF9EB]">
-                  <NotificationIcon className="w-4 h-4" />
+                  <Bell className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <span>Notifications</span>
               </div>
