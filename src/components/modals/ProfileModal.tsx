@@ -277,7 +277,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPasswordMsg({ text: err.message || 'Erreur lors du changement de mot de passe', error: true });
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Erreur lors du changement de mot de passe');
+      setPasswordMsg({ text: safeErr, error: true });
     } finally {
       setChangingPassword(false);
     }
@@ -726,7 +727,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 </div>
 
-                {passwordMsg && (
+                {passwordMsg && typeof passwordMsg.text === 'string' && passwordMsg.text.trim() ? (
                   <p
                     className={`text-xs font-semibold ${
                       passwordMsg.error ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
@@ -734,7 +735,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   >
                     {passwordMsg.text}
                   </p>
-                )}
+                ) : null}
 
                 <button
                   type="button"

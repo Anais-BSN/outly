@@ -193,9 +193,10 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
         text: `${friendDisplayName} a été ajouté(e) au groupe "${group.name}" ! 🎉`,
       });
     } catch (err: any) {
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : "Erreur lors de l'ajout du membre au groupe");
       setFeedbackMsg({
         type: 'error',
-        text: err.message || "Erreur lors de l'ajout du membre au groupe",
+        text: safeErr,
       });
     } finally {
       setAddingFriendId(null);
@@ -216,9 +217,10 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
       });
       setReconcileCandidate(null);
     } catch (err: any) {
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : "Erreur lors de la fusion du participant sans compte");
       setFeedbackMsg({
         type: 'error',
-        text: err.message || "Erreur lors de la fusion du participant sans compte",
+        text: safeErr,
       });
     } finally {
       setIsMerging(false);
@@ -463,7 +465,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
             </div>
 
             {/* Feedback Alert */}
-            {feedbackMsg && (
+            {feedbackMsg && typeof feedbackMsg.text === 'string' && feedbackMsg.text.trim() ? (
               <div
                 className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 animate-fade-in ${
                   feedbackMsg.type === 'success'
@@ -478,7 +480,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                 )}
                 <span>{feedbackMsg.text}</span>
               </div>
-            )}
+            ) : null}
 
             {/* TAB 1: FRIENDS SELECTION */}
             {activeTab === 'friends' && (

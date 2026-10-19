@@ -113,7 +113,24 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const errorMsg = data?.error || data?.message || `Erreur requête (${response.status})`;
+    let errorMsg = `Erreur requête (${response.status})`;
+    const rawError = data?.error !== undefined ? data.error : data?.message;
+    if (typeof rawError === 'string' && rawError.trim()) {
+      errorMsg = rawError;
+    } else if (rawError && typeof rawError === 'object') {
+      if (typeof rawError.message === 'string' && rawError.message.trim()) {
+        errorMsg = rawError.message;
+      } else if (typeof rawError.error === 'string' && rawError.error.trim()) {
+        errorMsg = rawError.error;
+      } else {
+        try {
+          const stringified = JSON.stringify(rawError);
+          errorMsg = stringified !== '{}' ? stringified : `Erreur requête (${response.status})`;
+        } catch {
+          errorMsg = `Erreur requête (${response.status})`;
+        }
+      }
+    }
     const error = new Error(errorMsg);
     (error as any).status = response.status;
     throw error;

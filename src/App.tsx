@@ -40,6 +40,7 @@ import { DownloadAppPage } from './components/DownloadAppPage';
 import { LegalPage } from './components/LegalPage';
 import { LegalDocType } from './components/modals/LegalModal';
 import { AdminSite } from './components/AdminSite';
+import { isUserAdmin } from './utils/admin';
 import { NotFoundPage } from './components/NotFoundPage';
 import { formatDateOnly } from './utils/formatters';
 
@@ -400,7 +401,9 @@ export default function App() {
         setNotifications([]);
         setIsAuthOpen(true);
       } else {
-        setLoadError(err.message || 'Impossible de se connecter à la base de données Outlys');
+        const rawErr = err?.message || err?.error || err;
+        const safeErr = typeof rawErr === 'string' && rawErr.trim() ? rawErr : 'Impossible de se connecter à la base de données Outlys';
+        setLoadError(safeErr);
       }
     } finally {
       setIsLoading(false);
@@ -2549,7 +2552,7 @@ export default function App() {
     );
   }
 
-  if (loadError && groups.length === 0) {
+  if (typeof loadError === 'string' && loadError.trim() && groups.length === 0) {
     return (
       <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col items-center justify-center p-6 space-y-4">
         <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl max-w-md text-center">
@@ -2636,16 +2639,18 @@ export default function App() {
           }}
           isDarkMode={isDarkMode}
         />
-      ) : isAdminPage ? (
-        <AdminSite
-          currentUser={currentUser}
-          onGoHome={() => {
-            setIsAdminPage(false);
-            setIsNotFoundPage(false);
-            window.history.pushState({}, '', '/');
-          }}
-          isDarkMode={isDarkMode}
-        />
+      ) : Boolean(isAdminPage) ? (
+        Boolean(currentUser && isUserAdmin(currentUser)) ? (
+          <AdminSite
+            currentUser={currentUser}
+            onGoHome={() => {
+              setIsAdminPage(false);
+              setIsNotFoundPage(false);
+              window.history.pushState({}, '', '/');
+            }}
+            isDarkMode={isDarkMode}
+          />
+        ) : null
       ) : isNotFoundPage ? (
         <NotFoundPage
           onGoHome={() => {

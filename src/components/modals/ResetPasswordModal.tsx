@@ -53,14 +53,16 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             setUserEmail(res.email || null);
           } else {
             setTokenValid(false);
-            setErrorMsg(res.error || 'Ce lien de réinitialisation est invalide ou a expiré.');
+            const rawErr = typeof res.error === 'string' ? res.error : (typeof (res.error as any)?.message === 'string' ? (res.error as any).message : 'Ce lien de réinitialisation est invalide ou a expiré.');
+            setErrorMsg(rawErr);
           }
         }
       })
       .catch((err) => {
         if (isMounted) {
           setTokenValid(false);
-          setErrorMsg(err.message || 'Lien de réinitialisation invalide ou expiré.');
+          const rawErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Lien de réinitialisation invalide ou expiré.');
+          setErrorMsg(rawErr);
         }
       })
       .finally(() => {
@@ -97,7 +99,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         onSuccess();
       }, 2000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Impossible de réinitialiser le mot de passe.');
+      const rawErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Impossible de réinitialiser le mot de passe.');
+      setErrorMsg(rawErr);
     } finally {
       setLoading(false);
     }
@@ -144,7 +147,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
           <div className="py-4 space-y-4 text-center">
             <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2 text-left">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg || 'Ce lien de réinitialisation est invalide ou a expiré.'}</span>
+              <span>{typeof errorMsg === 'string' && errorMsg.trim() ? errorMsg : 'Ce lien de réinitialisation est invalide ou a expiré.'}</span>
             </div>
             <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
               Pour des raisons de sécurité, les liens de réinitialisation expirent au bout d'une heure.
@@ -182,12 +185,12 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               </p>
             )}
 
-            {errorMsg && (
+            {typeof errorMsg === 'string' && errorMsg.trim() ? (
               <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
-            )}
+            ) : null}
 
             {/* Nouveau mot de passe */}
             <div>

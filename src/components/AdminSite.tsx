@@ -70,7 +70,12 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
       if (err.status === 403 || (typeof err?.message === 'string' && err.message.toLowerCase().includes('réservé'))) {
         setIsForbidden(true);
       } else {
-        setErrorMsg(err.message || 'Impossible de récupérer les statistiques administratives.');
+        const messageStr = typeof err?.message === 'string'
+          ? err.message
+          : (typeof err?.error === 'string'
+              ? err.error
+              : (typeof err === 'string' ? err : 'Impossible de récupérer les statistiques administratives.'));
+        setErrorMsg(messageStr);
       }
     } finally {
       setLoading(false);
@@ -81,41 +86,26 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
     fetchStats();
   }, [fetchStats]);
 
-  // Écran d'accès refusé (Sécurité stricte)
+  // Écran d'accès refusé (Sécurité stricte) : renvoie strictement null si non administrateur ou inactif
   if (!currentUser || isForbidden || !isUserAdmin(currentUser)) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] font-sans">
-        <div className="w-full max-w-md p-8 rounded-3xl bg-[#E8D8C4]/60 dark:bg-zinc-900/80 border border-red-300 dark:border-red-900/60 shadow-xl text-center space-y-5 animate-scale-in">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center shadow-inner">
-            <ShieldAlert className="w-9 h-9" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400">
-              Sécurité stricte • Accès 403
-            </span>
-            <h1 className="font-serif font-bold text-2xl text-[#6D2932] dark:text-red-200">
-              Espace Administrateur Réservé
-            </h1>
-            <p className="text-xs sm:text-sm text-[#27272A]/75 dark:text-zinc-400 leading-relaxed">
-              Cet écran analytique est strictement réservé à l'administrateur système officiel d'Outlys.
-              Votre compte actuel n'est pas habilité à consulter ces métriques.
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onGoHome}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#5D0D18] text-[#FFF9EB] text-xs font-bold hover:bg-[#430810] transition-colors cursor-pointer shadow-xs"
-            >
-              Retourner à l'application
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
+
+  const displayUsers = typeof stats?.totalUsers === 'number' && !isNaN(stats.totalUsers)
+    ? stats.totalUsers
+    : (loading ? '-' : 0);
+
+  const displayEvents = typeof stats?.totalEvents === 'number' && !isNaN(stats.totalEvents)
+    ? stats.totalEvents
+    : (loading ? '-' : 0);
+
+  const displayGroups = typeof stats?.activeGroups === 'number' && !isNaN(stats.activeGroups)
+    ? stats.activeGroups
+    : (loading ? '-' : 0);
+
+  const displayPhotos = typeof stats?.totalPhotos === 'number' && !isNaN(stats.totalPhotos)
+    ? stats.totalPhotos
+    : (loading ? '-' : 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] font-sans antialiased selection:bg-[#5D0D18] selection:text-[#FFF9EB]">
@@ -133,7 +123,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
 
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-800/50">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Session Administrateur vérifiée ({adminEmail || currentUser?.email || 'Admin'})</span>
+            <span>Session Administrateur vérifiée ({typeof adminEmail === 'string' && adminEmail ? adminEmail : (typeof currentUser?.email === 'string' && currentUser.email ? currentUser.email : '-')})</span>
           </div>
         </div>
 
@@ -170,7 +160,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
           <div className="flex flex-col items-start sm:items-end gap-1 text-xs text-[#27272A]/60 dark:text-zinc-400">
             <div className="flex items-center gap-1.5 font-medium">
               <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
-              <span>Dernier relevé : {lastUpdated || 'En cours...'}</span>
+              <span>Dernier relevé : {typeof lastUpdated === 'string' && lastUpdated ? lastUpdated : '-'}</span>
             </div>
             <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -179,11 +169,11 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
           </div>
         </div>
 
-        {errorMsg && (
+        {typeof errorMsg === 'string' && errorMsg.trim() ? (
           <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/40 border border-red-300 text-red-700 dark:text-red-300 text-xs font-medium">
             {errorMsg}
           </div>
-        )}
+        ) : null}
 
         {/* 4 KPI CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -199,7 +189,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
             <div>
               <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
-                {loading ? '...' : (stats?.totalUsers ?? 0)}
+                {displayUsers}
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
                 Comptes utilisateurs actifs
@@ -219,7 +209,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
             <div>
               <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
-                {loading ? '...' : (stats?.totalEvents ?? 0)}
+                {displayEvents}
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
                 Sorties et événements planifiés
@@ -239,7 +229,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
             <div>
               <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
-                {loading ? '...' : (stats?.activeGroups ?? 0)}
+                {displayGroups}
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
                 Espaces de partage collaboratifs
@@ -259,7 +249,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
             <div>
               <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
-                {loading ? '...' : (stats?.totalPhotos ?? 0)}
+                {displayPhotos}
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
                 Médias hébergés dans les galeries

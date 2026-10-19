@@ -81,7 +81,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           setForgotSuccess(res.message);
         }
       } catch (err: any) {
-        setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
+        const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Impossible d\'envoyer le lien de réinitialisation.');
+        setErrorMsg(safeErr);
       } finally {
         setLoading(false);
       }
@@ -107,7 +108,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const res = await api.forgotPassword(forgotEmail.trim());
       setForgotSuccess(res.message || 'Si un compte est associé à cette adresse, un e-mail de réinitialisation de mot de passe a été envoyé.');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Impossible d\'envoyer le lien de réinitialisation.');
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Impossible d\'envoyer le lien de réinitialisation.');
+      setErrorMsg(safeErr);
     } finally {
       setLoading(false);
     }
@@ -165,7 +167,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onAuthSuccess(user);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Identifiants invalides ou mot de passe incorrect');
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Identifiants invalides ou mot de passe incorrect');
+      setErrorMsg(safeErr);
     } finally {
       setLoading(false);
     }
@@ -232,7 +235,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onAuthSuccess(user);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erreur lors de la création du compte');
+      const safeErr = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Erreur lors de la création du compte');
+      setErrorMsg(safeErr);
     } finally {
       setLoading(false);
     }
@@ -308,12 +312,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Error Feedback */}
-        {errorMsg && (
+        {typeof errorMsg === 'string' && errorMsg.trim() ? (
           <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
-        )}
+        ) : null}
 
         {/* FORM 1: LOGIN */}
         {authMode === 'login' && (

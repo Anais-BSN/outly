@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="h-full py-1.5 flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95 bg-transparent border-none p-0 focus:outline-none"
           >
             <img
-              src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
+              src={isDarkMode ? '/Logo_Outlys_Fonce.png' : '/Logo_Outlys_Clair.png'}
               alt="Logo Outlys"
               className="h-full max-h-12 w-auto object-contain select-none"
             />

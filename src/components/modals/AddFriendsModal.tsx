@@ -216,7 +216,8 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
       setPseudoInput('');
       setPseudoSearchResults([]);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Impossible d\'envoyer la demande d\'ami.');
+      const safeMsg = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Impossible d\'envoyer la demande d\'ami.');
+      setErrorMsg(safeMsg);
     } finally {
       setIsSending(false);
       setTimeout(() => {
@@ -245,7 +246,8 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
       setFeedbackMsg(`Invitation envoyée avec succès à ${cleanEmail} ! 🎉`);
       setEmail('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Impossible d\'envoyer l\'invitation.');
+      const safeMsg = typeof err?.message === 'string' ? err.message : (typeof err?.error === 'string' ? err.error : 'Impossible d\'envoyer l\'invitation.');
+      setErrorMsg(safeMsg);
     } finally {
       setIsSending(false);
       setTimeout(() => {
@@ -449,12 +451,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </div>
             )}
 
-            {errorMsg && (
+            {typeof errorMsg === 'string' && errorMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
                 <X className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
-            )}
+            ) : null}
           </div>
         ) : (
           /* Section 2: Invitation par Mail */
@@ -508,12 +510,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </div>
             )}
 
-            {errorMsg && (
+            {typeof errorMsg === 'string' && errorMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
                 <X className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

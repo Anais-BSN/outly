@@ -257,7 +257,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             </button>
 
             {/* 6. Espace d'administration réservé (uniquement visible par l'administrateur) */}
-            {isUserAdmin(currentUser) && onOpenAdmin && (
+            {Boolean(isUserAdmin(currentUser) && onOpenAdmin) ? (
               <button
                 id="drawer-nav-admin"
                 onClick={() => {
@@ -276,7 +276,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                   Admin
                 </span>
               </button>
-            )}
+            ) : null}
           </nav>
 
           {/* Section: Mes groupes */}
