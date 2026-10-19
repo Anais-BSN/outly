@@ -37,6 +37,10 @@ import { IncomingCallAlertModal } from './components/modals/IncomingCallAlertMod
 import { ExactAlarmPermissionModal } from './components/modals/ExactAlarmPermissionModal';
 import { AppDownloadBanner } from './components/AppDownloadBanner';
 import { DownloadAppPage } from './components/DownloadAppPage';
+import { LegalPage } from './components/LegalPage';
+import { LegalDocType } from './components/modals/LegalModal';
+import { AdminSite } from './components/AdminSite';
+import { NotFoundPage } from './components/NotFoundPage';
 import { formatDateOnly } from './utils/formatters';
 
 // API Client & Types
@@ -195,6 +199,26 @@ export default function App() {
   const [isDownloadPage, setIsDownloadPage] = useState<boolean>(() => {
     return window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
   });
+  const [legalDocRoute, setLegalDocRoute] = useState<LegalDocType | null>(() => {
+    const p = window.location.pathname.toLowerCase();
+    if (p.startsWith('/mentions-legales') || p.startsWith('/mentions')) return 'mentions';
+    if (p.startsWith('/cgu')) return 'cgu';
+    if (p.startsWith('/politique-de-confidentialite') || p.startsWith('/confidentialite') || p.startsWith('/rgpd')) return 'confidentialite';
+    return null;
+  });
+  const [isAdminPage, setIsAdminPage] = useState<boolean>(() => {
+    return window.location.pathname.toLowerCase().startsWith('/admin');
+  });
+  const [isNotFoundPage, setIsNotFoundPage] = useState<boolean>(() => {
+    const p = window.location.pathname.toLowerCase();
+    if (p === '' || p === '/' || p === '/index.html') return false;
+    if (p.startsWith('/telecharger') || p.startsWith('/download')) return false;
+    if (p.startsWith('/reset-password')) return false;
+    if (p.startsWith('/admin')) return false;
+    if (p.startsWith('/mentions') || p.startsWith('/cgu') || p.startsWith('/confidentialite') || p.startsWith('/rgpd') || p.startsWith('/politique')) return false;
+    if (p.startsWith('/join') || p.startsWith('/invite') || p.startsWith('/group')) return false;
+    return true;
+  });
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [isMembersListOpen, setIsMembersListOpen] = useState(false);
@@ -262,7 +286,9 @@ export default function App() {
         setCurrentUser(null);
         const isResetRoute = window.location.pathname.startsWith('/reset-password') || window.location.search.includes('token=');
         const isDownloadRoute = window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
-        if (!isResetRoute && !isDownloadRoute) {
+        const isLegalRoute = window.location.pathname.startsWith('/mentions') || window.location.pathname.startsWith('/cgu') || window.location.pathname.startsWith('/confidentialite') || window.location.pathname.startsWith('/politique') || window.location.pathname.startsWith('/rgpd');
+        const isAdminRoute = window.location.pathname.startsWith('/admin');
+        if (!isResetRoute && !isDownloadRoute && !isLegalRoute && !isAdminRoute && !isNotFoundPage) {
           setIsAuthOpen(true);
         }
         setIsLoading(false);
@@ -1015,8 +1041,20 @@ export default function App() {
     handleIncomingUrl(window.location.href);
 
     const handlePopState = () => {
-      const isDl = window.location.pathname.startsWith('/telecharger') || window.location.pathname.startsWith('/download');
-      setIsDownloadPage(isDl);
+      const p = window.location.pathname.toLowerCase();
+      setIsDownloadPage(p.startsWith('/telecharger') || p.startsWith('/download'));
+      setIsAdminPage(p.startsWith('/admin'));
+      if (p.startsWith('/mentions-legales') || p.startsWith('/mentions')) setLegalDocRoute('mentions');
+      else if (p.startsWith('/cgu')) setLegalDocRoute('cgu');
+      else if (p.startsWith('/politique-de-confidentialite') || p.startsWith('/confidentialite') || p.startsWith('/rgpd')) setLegalDocRoute('confidentialite');
+      else setLegalDocRoute(null);
+
+      const isValid = p === '' || p === '/' || p === '/index.html' ||
+        p.startsWith('/telecharger') || p.startsWith('/download') ||
+        p.startsWith('/reset-password') || p.startsWith('/admin') ||
+        p.startsWith('/mentions') || p.startsWith('/cgu') || p.startsWith('/confidentialite') || p.startsWith('/rgpd') || p.startsWith('/politique') ||
+        p.startsWith('/join') || p.startsWith('/invite') || p.startsWith('/group');
+      setIsNotFoundPage(!isValid);
     };
     window.addEventListener('popstate', handlePopState);
 
@@ -2576,13 +2614,49 @@ export default function App() {
           setIsDrawerOpen(false);
           navigateToDownload();
         }}
+        onOpenAdmin={() => {
+          setIsDrawerOpen(false);
+          setIsAdminPage(true);
+          setLegalDocRoute(null);
+          setIsNotFoundPage(false);
+          window.history.pushState({}, '', '/admin');
+        }}
       />
 
-      {isDownloadPage ? (
+      {legalDocRoute ? (
+        <LegalPage
+          initialDoc={legalDocRoute}
+          onGoHome={() => {
+            setLegalDocRoute(null);
+            setIsNotFoundPage(false);
+            window.history.pushState({}, '', '/');
+          }}
+          isDarkMode={isDarkMode}
+        />
+      ) : isAdminPage ? (
+        <AdminSite
+          currentUser={currentUser}
+          onGoHome={() => {
+            setIsAdminPage(false);
+            setIsNotFoundPage(false);
+            window.history.pushState({}, '', '/');
+          }}
+          isDarkMode={isDarkMode}
+        />
+      ) : isNotFoundPage ? (
+        <NotFoundPage
+          onGoHome={() => {
+            setIsNotFoundPage(false);
+            window.history.pushState({}, '', '/');
+          }}
+          isDarkMode={isDarkMode}
+        />
+      ) : isDownloadPage ? (
         <DownloadAppPage
           onOpenDrawer={() => setIsDrawerOpen(true)}
           onGoHome={() => {
             setIsDownloadPage(false);
+            setIsNotFoundPage(false);
             window.history.pushState({}, '', '/');
           }}
           isDarkMode={isDarkMode}

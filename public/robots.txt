@@ -1,0 +1,9 @@
+# robots.txt pour Outlys (https://www.outlys.fr)
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /reset-password
+
+Sitemap: https://www.outlys.fr/sitemap.xml

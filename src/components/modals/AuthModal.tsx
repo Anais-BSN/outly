@@ -16,6 +16,7 @@ import { UserProfile } from '../../types';
 import { api } from '../../services/api';
 import { CARTOON_AVATARS } from '../../constants/avatars';
 import { validatePasswordSecurity } from '../../utils/passwordValidation';
+import { LegalModal, LegalDocType } from './LegalModal';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -48,6 +49,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [registerPassword, setRegisterPassword] = useState('');
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(CARTOON_AVATARS[0].url);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+
+  // Legal Modal states
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocType>('cgu');
 
   const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
   const [checkingHandle, setCheckingHandle] = useState(false);
@@ -165,6 +172,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Protection anti-spam Honeypot
+    if (honeypot.trim()) {
+      console.warn('[Anti-Spam] Tentative d’inscription automatisée bloquée via honeypot');
+      return;
+    }
+
+    if (!acceptTerms) {
+      setErrorMsg('Veuillez accepter les Conditions Générales d’Utilisation et la Politique de confidentialité pour créer votre compte.');
+      return;
+    }
+
     if (!name.trim() || !registerEmail.trim()) {
       setErrorMsg('Le nom et l’e-mail sont requis');
       return;
@@ -207,6 +226,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         email: registerEmail.trim(),
         password: registerPassword,
         avatar: selectedAvatar,
+        honeypot: honeypot.trim(),
       });
       onAuthSuccess(user);
       onClose();
@@ -581,10 +601,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
+            {/* Protection anti-spam par champ piège invisible (Honeypot) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '-9999px',
+                top: '-9999px',
+                opacity: 0,
+                width: 0,
+                height: 0,
+                overflow: 'hidden',
+                pointerEvents: 'none',
+              }}
+              aria-hidden="true"
+            >
+              <label htmlFor="auth-register-website-hp">Site web personnel (ne pas remplir)</label>
+              <input
+                type="text"
+                id="auth-register-website-hp"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+              />
+            </div>
+
+            {/* Case à cocher obligatoire d'acceptation des CGU & Confidentialité */}
+            <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#E8D8C4]/30 dark:bg-zinc-800/50 border border-[#C7B7A3]/40">
+              <input
+                type="checkbox"
+                id="auth-register-terms-checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-[#6D2932] accent-[#6D2932] border-[#C7B7A3] focus:ring-[#6D2932] cursor-pointer"
+                required
+              />
+              <label
+                htmlFor="auth-register-terms-checkbox"
+                className="text-[11px] leading-snug text-[#27272A]/85 dark:text-zinc-300 cursor-pointer select-none"
+              >
+                J'accepte les{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setLegalDoc('cgu');
+                    setLegalModalOpen(true);
+                  }}
+                  className="font-bold text-[#6D2932] dark:text-amber-300 underline underline-offset-2 hover:opacity-80 cursor-pointer"
+                >
+                  Conditions Générales d'Utilisation
+                </button>{' '}
+                et la{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setLegalDoc('confidentialite');
+                    setLegalModalOpen(true);
+                  }}
+                  className="font-bold text-[#6D2932] dark:text-amber-300 underline underline-offset-2 hover:opacity-80 cursor-pointer"
+                >
+                  Politique de confidentialité
+                </button>
+                .
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading || !name.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false}
-              className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              disabled={loading || !name.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false || !acceptTerms}
+              className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}
               <ArrowRight className="w-4 h-4" />
@@ -592,6 +682,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </form>
         )}
       </div>
+
+      {/* Modale de lecture dédiée aux conditions & confidentialité */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialDoc={legalDoc}
+      />
     </div>
   );
 };

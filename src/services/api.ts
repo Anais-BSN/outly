@@ -144,6 +144,9 @@ export const api = {
     handle?: string;
     password?: string;
     avatar?: string;
+    website?: string;
+    website_hp?: string;
+    honeypot?: string;
   }): Promise<UserProfile> {
     const registerUrl = 'https://www.outlys.fr/api/auth/register';
     console.log('[Auth] Initiating register request to:', registerUrl);
@@ -780,6 +783,40 @@ export const api = {
     return request('/calls/update-state', {
       method: 'POST',
       body: JSON.stringify({ groupId, callId, userId, ...state }),
+    });
+  },
+
+  // 17. Espace d'administration & Statistiques
+  async getAdminStats(userId: string): Promise<{
+    success: boolean;
+    stats: {
+      totalUsers: number;
+      totalEvents: number;
+      activeGroups: number;
+      totalPhotos: number;
+    };
+    adminEmail: string;
+    timestamp: string;
+  }> {
+    return request(`/admin/stats?userId=${encodeURIComponent(userId)}`, {
+      headers: {
+        'x-user-id': userId,
+      },
+    });
+  },
+
+  // 18. Formulaire de contact
+  async sendContactMessage(data: {
+    name: string;
+    email: string;
+    subject?: string;
+    message: string;
+    website?: string;
+    honeypot?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return request('/contact', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   },
 };

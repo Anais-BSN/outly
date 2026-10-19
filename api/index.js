@@ -678,7 +678,7 @@ apiRouter.get("/users/search", async (req, res) => {
     const cleanHandleWithAt = `@${cleanHandleWithoutAt}`;
     const result = await query(
       `SELECT id, name, name as "firstName", '' as "lastName",
-              email, handle, avatar, shares
+              handle, handle as "username", avatar, avatar as "avatar_url", shares
        FROM users
        WHERE COALESCE(is_deleted, false) = false
          AND ($4 = '' OR id != $4)
@@ -738,7 +738,11 @@ function validatePasswordRules(pwd) {
 }
 apiRouter.post("/auth/register", async (req, res) => {
   try {
-    const { name, firstName, lastName = "", email, handle, password, avatar } = req.body;
+    const { name, firstName, lastName = "", email, handle, password, avatar, website, website_hp, honeypot } = req.body;
+    if (website || website_hp || honeypot) {
+      console.warn("[Anti-Spam] Tentative d\u2019inscription automatis\xE9e bloqu\xE9e via honeypot");
+      return res.status(400).json({ error: "Validation \xE9chou\xE9e (tentative automatis\xE9e d\xE9tect\xE9e)" });
+    }
     const displayName = (name !== void 0 ? name : firstName ? `${firstName} ${lastName}`.trim() : "")?.trim();
     if (!email || !displayName) {
       return res.status(400).json({ error: "Le nom et l\u2019e-mail sont obligatoires" });
@@ -1053,7 +1057,7 @@ apiRouter.get("/friends", async (req, res) => {
     }
     const result = await query(
       `SELECT u.id, u.name, u.name as "firstName", '' as "lastName",
-              u.handle, u.email, u.avatar, u.shares, f.status
+              u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, f.status
        FROM friends f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1
@@ -1365,7 +1369,9 @@ apiRouter.get("/groups", async (req, res) => {
           firstName: m.firstName,
           lastName: m.lastName,
           name: m.name.trim(),
+          username: m.handle,
           handle: m.handle,
+          avatar_url: m.avatar,
           avatar: m.avatar,
           shares: m.shares,
           role: m.role,
@@ -1420,7 +1426,9 @@ apiRouter.get(["/groups/:id", "/groups/preview/:id", "/groups/:id/preview"], asy
         firstName: m.firstName,
         lastName: m.lastName,
         name: m.name.trim(),
+        username: m.handle,
         handle: m.handle,
+        avatar_url: m.avatar,
         avatar: m.avatar,
         shares: m.shares,
         role: m.role,
@@ -1506,7 +1514,7 @@ apiRouter.post("/groups", async (req, res) => {
     }
     const membersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1`,
@@ -1634,7 +1642,7 @@ apiRouter.post("/groups/:id/members", async (req, res) => {
     );
     const allMembersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
@@ -1704,7 +1712,7 @@ apiRouter.post("/groups/:id/virtual-member", async (req, res) => {
     );
     const allMembersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
@@ -4571,6 +4579,67 @@ apiRouter.post("/calls/leave", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+apiRouter.post("/contact", async (req, res) => {
+  try {
+    const { name, email, subject, message, website, website_hp, honeypot } = req.body;
+    if (website || website_hp || honeypot) {
+      console.warn("[Anti-Spam] Message de contact bloqu\xE9 : champ pi\xE8ge honeypot d\xE9tect\xE9");
+      return res.status(400).json({ error: "Validation \xE9chou\xE9e (tentative automatis\xE9e d\xE9tect\xE9e)" });
+    }
+    if (!name || !name.trim() || !email || !email.trim() || !message || !message.trim()) {
+      return res.status(400).json({ error: "Le nom, l\u2019adresse e-mail et le message sont obligatoires." });
+    }
+    console.log(`[Contact Form] Nouveau message de ${name} (${email}) - Sujet: ${subject || "G\xE9n\xE9ral"} : ${message.trim().slice(0, 100)}`);
+    res.json({
+      success: true,
+      message: "Votre message a bien \xE9t\xE9 envoy\xE9. Nous vous r\xE9pondrons dans les plus brefs d\xE9lais."
+    });
+  } catch (err) {
+    console.error("Error in POST /contact:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+var ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "contact@outlys.fr").trim().toLowerCase();
+apiRouter.get("/admin/stats", async (req, res) => {
+  try {
+    const userId = (req.headers["x-user-id"] || req.query.userId)?.trim();
+    if (!userId || userId === "user-me") {
+      return res.status(401).json({ error: "Session non authentifi\xE9e" });
+    }
+    const userRes = await query(
+      `SELECT email FROM users WHERE id = $1 AND COALESCE(is_deleted, false) = false LIMIT 1`,
+      [userId]
+    );
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ error: "Compte utilisateur introuvable ou inactif" });
+    }
+    const userEmail = (userRes.rows[0].email || "").trim().toLowerCase();
+    if (userEmail !== ADMIN_EMAIL) {
+      console.warn(`[AdminSite Security] Tentative d'acc\xE8s non autoris\xE9e par ${userEmail} (Admin attendu: ${ADMIN_EMAIL})`);
+      return res.status(403).json({ error: "Acc\xE8s strictement r\xE9serv\xE9 \xE0 l\u2019administrateur." });
+    }
+    const [usersCountRes, eventsCountRes, groupsCountRes, photosCountRes] = await Promise.all([
+      query(`SELECT COUNT(*)::int as count FROM users WHERE COALESCE(is_deleted, false) = false`),
+      query(`SELECT COUNT(*)::int as count FROM events`),
+      query(`SELECT COUNT(*)::int as count FROM groups`),
+      query(`SELECT COUNT(*)::int as count FROM gallery_items`)
+    ]);
+    res.json({
+      success: true,
+      adminEmail: ADMIN_EMAIL,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      stats: {
+        totalUsers: usersCountRes.rows[0]?.count || 0,
+        totalEvents: eventsCountRes.rows[0]?.count || 0,
+        activeGroups: groupsCountRes.rows[0]?.count || 0,
+        totalPhotos: photosCountRes.rows[0]?.count || 0
+      }
+    });
+  } catch (err) {
+    console.error("Error in GET /admin/stats:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // server/app.ts
 dotenv4.config();
@@ -4581,6 +4650,25 @@ app.use((_req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), browsing-topics=()");
+  next();
+});
+app.use((_req, res, next) => {
+  const originalJson = res.json;
+  res.json = function(body) {
+    const sanitize = (val) => {
+      if (!val || typeof val !== "object") return val;
+      if (Array.isArray(val)) return val.map(sanitize);
+      const clean = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (/^(password|password_hash|passwordHash|reset_password_token)$/i.test(k)) {
+          continue;
+        }
+        clean[k] = sanitize(v);
+      }
+      return clean;
+    };
+    return originalJson.call(this, sanitize(body));
+  };
   next();
 });
 app.use(express.json({ limit: "10mb" }));

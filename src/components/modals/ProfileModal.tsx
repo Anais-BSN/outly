@@ -28,6 +28,7 @@ import { CARTOON_AVATARS } from '../../constants/avatars';
 import { api } from '../../services/api';
 import { compressImage } from '../../utils/imageCompressor';
 import { syncSystemBarsTheme } from '../../services/nativeService';
+import { LegalModal, LegalDocType } from './LegalModal';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -69,6 +70,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<'cartoon' | 'upload'>('cartoon');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocType>('mentions');
 
   // Field-specific inline editing states
   const [isEditingName, setIsEditingName] = useState(false);
@@ -915,8 +918,54 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Accès discret aux pages légales & conformité RGPD */}
+          <div className="pt-2 pb-1 border-t border-[#C7B7A3]/30 dark:border-zinc-800/80 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-center">
+            <button
+              type="button"
+              id="profile-legal-mentions-btn"
+              onClick={() => {
+                setLegalDoc('mentions');
+                setLegalModalOpen(true);
+              }}
+              className="text-[11px] font-medium text-[#A89F91] hover:text-[#6D2932] dark:text-zinc-500 dark:hover:text-amber-200 transition-colors cursor-pointer hover:underline underline-offset-2"
+            >
+              Mentions légales
+            </button>
+            <span className="text-[#C7B7A3]/50 dark:text-zinc-700 text-[10px] select-none">•</span>
+            <button
+              type="button"
+              id="profile-legal-cgu-btn"
+              onClick={() => {
+                setLegalDoc('cgu');
+                setLegalModalOpen(true);
+              }}
+              className="text-[11px] font-medium text-[#A89F91] hover:text-[#6D2932] dark:text-zinc-500 dark:hover:text-amber-200 transition-colors cursor-pointer hover:underline underline-offset-2"
+            >
+              Conditions Générales d'Utilisation
+            </button>
+            <span className="text-[#C7B7A3]/50 dark:text-zinc-700 text-[10px] select-none">•</span>
+            <button
+              type="button"
+              id="profile-legal-privacy-btn"
+              onClick={() => {
+                setLegalDoc('confidentialite');
+                setLegalModalOpen(true);
+              }}
+              className="text-[11px] font-medium text-[#A89F91] hover:text-[#6D2932] dark:text-zinc-500 dark:hover:text-amber-200 transition-colors cursor-pointer hover:underline underline-offset-2"
+            >
+              Politique de confidentialité
+            </button>
+          </div>
         </form>
       </div>
+
+      {/* Modale de lecture dédiée aux informations légales */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialDoc={legalDoc}
+      />
     </div>
   );
 };

@@ -155,7 +155,7 @@ apiRouter.get('/users/search', async (req: Request, res: Response) => {
 
     const result = await query(
       `SELECT id, name, name as "firstName", '' as "lastName",
-              email, handle, avatar, shares
+              handle, handle as "username", avatar, avatar as "avatar_url", shares
        FROM users
        WHERE COALESCE(is_deleted, false) = false
          AND ($4 = '' OR id != $4)
@@ -221,7 +221,14 @@ function validatePasswordRules(pwd: string): string | null {
 // Inscription (Champ unique "Nom" avec support complet des émojis et caractères Unicode)
 apiRouter.post('/auth/register', async (req: Request, res: Response) => {
   try {
-    const { name, firstName, lastName = '', email, handle, password, avatar } = req.body;
+    const { name, firstName, lastName = '', email, handle, password, avatar, website, website_hp, honeypot } = req.body;
+
+    // Protection anti-spam par champ piège invisible (honeypot)
+    if (website || website_hp || honeypot) {
+      console.warn('[Anti-Spam] Tentative d’inscription automatisée bloquée via honeypot');
+      return res.status(400).json({ error: 'Validation échouée (tentative automatisée détectée)' });
+    }
+
     const displayName = (name !== undefined ? name : (firstName ? `${firstName} ${lastName}`.trim() : ''))?.trim();
 
     if (!email || !displayName) {
@@ -620,7 +627,7 @@ apiRouter.get('/friends', async (req: Request, res: Response) => {
     }
     const result = await query(
       `SELECT u.id, u.name, u.name as "firstName", '' as "lastName",
-              u.handle, u.email, u.avatar, u.shares, f.status
+              u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, f.status
        FROM friends f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1
@@ -992,7 +999,9 @@ apiRouter.get('/groups', async (req: Request, res: Response) => {
           firstName: m.firstName,
           lastName: m.lastName,
           name: m.name.trim(),
+          username: m.handle,
           handle: m.handle,
+          avatar_url: m.avatar,
           avatar: m.avatar,
           shares: m.shares,
           role: m.role,
@@ -1056,7 +1065,9 @@ apiRouter.get(['/groups/:id', '/groups/preview/:id', '/groups/:id/preview'], asy
         firstName: m.firstName,
         lastName: m.lastName,
         name: m.name.trim(),
+        username: m.handle,
         handle: m.handle,
+        avatar_url: m.avatar,
         avatar: m.avatar,
         shares: m.shares,
         role: m.role,
@@ -1156,7 +1167,7 @@ apiRouter.post('/groups', async (req: Request, res: Response) => {
     // Récupérer le groupe complet avec ses membres
     const membersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1`,
@@ -1304,7 +1315,7 @@ apiRouter.post('/groups/:id/members', async (req: Request, res: Response) => {
     );
     const allMembersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
@@ -1385,7 +1396,7 @@ apiRouter.post('/groups/:id/virtual-member', async (req: Request, res: Response)
     );
     const allMembersRes = await query(
       `SELECT u.id, u.id as "userId", u.name as "firstName", '' as "lastName",
-              u.name, u.handle, u.avatar, u.shares, gm.role
+              u.name, u.handle, u.handle as "username", u.avatar, u.avatar as "avatar_url", u.shares, gm.role
        FROM group_members gm
        JOIN users u ON gm.user_id = u.id
        WHERE gm.group_id = $1
@@ -4793,4 +4804,87 @@ apiRouter.post('/calls/leave', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ==========================================
+// FORMULAIRE DE CONTACT & PROTECTION ANTI-SPAM (HONEYPOT)
+// ==========================================
+apiRouter.post('/contact', async (req: Request, res: Response) => {
+  try {
+    const { name, email, subject, message, website, website_hp, honeypot } = req.body;
+
+    // Protection anti-spam par champ piège invisible (honeypot)
+    if (website || website_hp || honeypot) {
+      console.warn('[Anti-Spam] Message de contact bloqué : champ piège honeypot détecté');
+      return res.status(400).json({ error: 'Validation échouée (tentative automatisée détectée)' });
+    }
+
+    if (!name || !name.trim() || !email || !email.trim() || !message || !message.trim()) {
+      return res.status(400).json({ error: 'Le nom, l’adresse e-mail et le message sont obligatoires.' });
+    }
+
+    console.log(`[Contact Form] Nouveau message de ${name} (${email}) - Sujet: ${subject || 'Général'} : ${message.trim().slice(0, 100)}`);
+
+    res.json({
+      success: true,
+      message: 'Votre message a bien été envoyé. Nous vous répondrons dans les plus brefs délais.',
+    });
+  } catch (err: any) {
+    console.error('Error in POST /contact:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// ESPACE D'ADMINISTRATION ET STATISTIQUES (« AdminSite »)
+// ==========================================
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'contact@outlys.fr').trim().toLowerCase();
+
+apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
+  try {
+    const userId = ((req.headers['x-user-id'] || req.query.userId) as string)?.trim();
+    if (!userId || userId === 'user-me') {
+      return res.status(401).json({ error: 'Session non authentifiée' });
+    }
+
+    // Vérification stricte en base de données de l'adresse email de l'administrateur
+    const userRes = await query(
+      `SELECT email FROM users WHERE id = $1 AND COALESCE(is_deleted, false) = false LIMIT 1`,
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ error: 'Compte utilisateur introuvable ou inactif' });
+    }
+
+    const userEmail = (userRes.rows[0].email || '').trim().toLowerCase();
+    if (userEmail !== ADMIN_EMAIL) {
+      console.warn(`[AdminSite Security] Tentative d'accès non autorisée par ${userEmail} (Admin attendu: ${ADMIN_EMAIL})`);
+      return res.status(403).json({ error: 'Accès strictement réservé à l’administrateur.' });
+    }
+
+    // Récupération des 4 métriques analytiques clés
+    const [usersCountRes, eventsCountRes, groupsCountRes, photosCountRes] = await Promise.all([
+      query(`SELECT COUNT(*)::int as count FROM users WHERE COALESCE(is_deleted, false) = false`),
+      query(`SELECT COUNT(*)::int as count FROM events`),
+      query(`SELECT COUNT(*)::int as count FROM groups`),
+      query(`SELECT COUNT(*)::int as count FROM gallery_items`),
+    ]);
+
+    res.json({
+      success: true,
+      adminEmail: ADMIN_EMAIL,
+      timestamp: new Date().toISOString(),
+      stats: {
+        totalUsers: usersCountRes.rows[0]?.count || 0,
+        totalEvents: eventsCountRes.rows[0]?.count || 0,
+        activeGroups: groupsCountRes.rows[0]?.count || 0,
+        totalPhotos: photosCountRes.rows[0]?.count || 0,
+      },
+    });
+  } catch (err: any) {
+    console.error('Error in GET /admin/stats:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 

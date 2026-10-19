@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Smartphone,
   Bell,
+  ShieldCheck,
 } from 'lucide-react';
 import { UserProfile, Group, AppNotification } from '../types';
 import { isNativePlatform } from '../services/nativeService';
@@ -26,6 +27,7 @@ interface SidebarDrawerProps {
   onOpenAddFriends: () => void;
   onOpenProfile: () => void;
   onOpenDownloadPage?: () => void;
+  onOpenAdmin?: () => void;
   notifications?: AppNotification[];
   isDarkMode?: boolean;
   onViewAvatar?: (imageUrl: string, title?: string, subtitle?: string) => void;
@@ -104,6 +106,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   onOpenAddFriends,
   onOpenProfile,
   onOpenDownloadPage,
+  onOpenAdmin,
   notifications = [],
   isDarkMode = false,
   onViewAvatar,
@@ -251,6 +254,28 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 Nouveau
               </span>
             </button>
+
+            {/* 6. Espace d'administration réservé (uniquement visible par l'administrateur) */}
+            {currentUser?.email?.toLowerCase() === 'contact@outlys.fr' && onOpenAdmin && (
+              <button
+                id="drawer-nav-admin"
+                onClick={() => {
+                  onClose();
+                  onOpenAdmin();
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-left text-sm font-semibold text-amber-900 dark:text-amber-200 bg-amber-100/70 dark:bg-amber-950/40 hover:bg-amber-200/80 dark:hover:bg-amber-900/60 transition-colors border border-amber-300 dark:border-amber-800 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-amber-600 text-white">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span>Administration & Stats</span>
+                </div>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100">
+                  Admin
+                </span>
+              </button>
+            )}
           </nav>
 
           {/* Section: Mes groupes */}

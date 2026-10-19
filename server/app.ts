@@ -19,6 +19,27 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Durcissement de sécurité : Désinfection récursive interdisant strictement password et password_hash
+app.use((_req, res, next) => {
+  const originalJson = res.json;
+  res.json = function (body: any) {
+    const sanitize = (val: any): any => {
+      if (!val || typeof val !== 'object') return val;
+      if (Array.isArray(val)) return val.map(sanitize);
+      const clean: Record<string, any> = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (/^(password|password_hash|passwordHash|reset_password_token)$/i.test(k)) {
+          continue;
+        }
+        clean[k] = sanitize(v);
+      }
+      return clean;
+    };
+    return originalJson.call(this, sanitize(body));
+  };
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
