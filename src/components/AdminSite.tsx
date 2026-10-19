@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { api } from '../services/api';
+import { isUserAdmin } from '../utils/admin';
 
 interface AdminSiteProps {
   currentUser: UserProfile | null;
@@ -45,7 +46,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
   const [isForbidden, setIsForbidden] = useState<boolean>(false);
 
   const fetchStats = useCallback(async () => {
-    if (!currentUser || !currentUser.id) {
+    if (!currentUser || !currentUser.id || !isUserAdmin(currentUser)) {
       setIsForbidden(true);
       setLoading(false);
       return;
@@ -58,7 +59,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
       const res = await api.getAdminStats(currentUser.id);
       if (res && res.stats) {
         setStats(res.stats);
-        setAdminEmail(res.adminEmail || currentUser.email);
+        setAdminEmail(typeof res.adminEmail === 'string' ? res.adminEmail : (currentUser.email || ''));
         setLastUpdated(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
         setIsForbidden(false);
       } else {
@@ -66,7 +67,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
       }
     } catch (err: any) {
       console.error('[AdminSite] Erreur chargement statistiques:', err);
-      if (err.status === 403 || (err.message && err.message.toLowerCase().includes('réservé'))) {
+      if (err.status === 403 || (typeof err?.message === 'string' && err.message.toLowerCase().includes('réservé'))) {
         setIsForbidden(true);
       } else {
         setErrorMsg(err.message || 'Impossible de récupérer les statistiques administratives.');
@@ -81,7 +82,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
   }, [fetchStats]);
 
   // Écran d'accès refusé (Sécurité stricte)
-  if (!currentUser || isForbidden) {
+  if (!currentUser || isForbidden || !isUserAdmin(currentUser)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] font-sans">
         <div className="w-full max-w-md p-8 rounded-3xl bg-[#E8D8C4]/60 dark:bg-zinc-900/80 border border-red-300 dark:border-red-900/60 shadow-xl text-center space-y-5 animate-scale-in">
@@ -132,7 +133,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
 
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-800/50">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Session Administrateur vérifiée ({adminEmail || currentUser.email})</span>
+            <span>Session Administrateur vérifiée ({adminEmail || currentUser?.email || 'Admin'})</span>
           </div>
         </div>
 

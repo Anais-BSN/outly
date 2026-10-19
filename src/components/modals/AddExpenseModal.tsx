@@ -132,17 +132,23 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const parsedAmount = parseFloat(amount) || 0;
 
   const toggleParticipant = (userId: string) => {
-    if (participantIds.includes(userId)) {
-      if (participantIds.length > 1) {
-        setParticipantIds(participantIds.filter((id) => id !== userId));
+    if (!userId) return;
+    const safeIds = Array.isArray(participantIds) ? participantIds : [];
+    if (safeIds.includes(userId)) {
+      if (safeIds.length > 1) {
+        setParticipantIds(safeIds.filter((id) => id !== userId));
       }
     } else {
-      setParticipantIds([...participantIds, userId]);
+      setParticipantIds([...safeIds, userId]);
     }
   };
 
   // Compute live breakdown preview with individual shares in integer cents
-  const activeParticipants = uniqueMembers.filter((m) => participantIds.includes(m.userId || m.id));
+  const activeParticipants = (Array.isArray(uniqueMembers) ? uniqueMembers : []).filter((m) => {
+    if (!m) return false;
+    const uid = m.userId || m.id;
+    return Boolean(uid && Array.isArray(participantIds) && participantIds.includes(uid));
+  });
   const totalShares = activeParticipants.reduce((acc, m) => acc + (m.shares || 1), 0);
 
   const liveAllocatedMap = React.useMemo(() => {
@@ -327,8 +333,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 const isSupprime = Boolean(
                   m.isDeleted ||
                   m.status === 'deleted' ||
-                  m.name?.toLowerCase().includes('utilisateur supprimé') ||
-                  m.firstName?.toLowerCase().includes('utilisateur supprimé')
+                  (typeof m.name === 'string' && m.name.toLowerCase().includes('utilisateur supprimé')) ||
+                  (typeof m.firstName === 'string' && m.firstName.toLowerCase().includes('utilisateur supprimé'))
                 );
                 return (
                   <option key={uid} value={uid}>
@@ -343,7 +349,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB]">
-                Participants concernés ({participantIds.length}/{uniqueMembers.length})
+                Participants concernés ({Array.isArray(participantIds) ? participantIds.length : 0}/{uniqueMembers.length})
               </label>
               <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 font-medium">
                 Cochez ou décochez individuellement
@@ -354,14 +360,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             <div className="p-3 bg-[#E8D8C4]/40 dark:bg-zinc-800/40 rounded-2xl border border-[#C7B7A3]/50 dark:border-zinc-700 max-h-44 overflow-y-auto space-y-1.5 custom-scrollbar">
               {uniqueMembers.map((member) => {
                 const memberUid = member.userId || member.id;
-                const isSelected = participantIds.includes(memberUid);
+                const isSelected = Array.isArray(participantIds) && participantIds.includes(memberUid);
                 const memberShareCents = isSelected ? (liveAllocatedMap.get(memberUid) || 0) : 0;
                 const memberShare = memberShareCents / 100;
                 const isMemberSupprime = Boolean(
                   member.isDeleted ||
                   member.status === 'deleted' ||
-                  member.name?.toLowerCase().includes('utilisateur supprimé') ||
-                  member.firstName?.toLowerCase().includes('utilisateur supprimé')
+                  (typeof member.name === 'string' && member.name.toLowerCase().includes('utilisateur supprimé')) ||
+                  (typeof member.firstName === 'string' && member.firstName.toLowerCase().includes('utilisateur supprimé'))
                 );
 
                 return (

@@ -50,10 +50,12 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   const acceptedFriends = safeFriends.filter((f) => f && f.status === 'accepted');
 
   const toggleFriend = (id: string) => {
-    if (selectedFriendIds.includes(id)) {
-      setSelectedFriendIds(selectedFriendIds.filter((fId) => fId !== id));
+    if (!id) return;
+    const safeSelected = Array.isArray(selectedFriendIds) ? selectedFriendIds : [];
+    if (safeSelected.includes(id)) {
+      setSelectedFriendIds(safeSelected.filter((fId) => fId !== id));
     } else {
-      setSelectedFriendIds([...selectedFriendIds, id]);
+      setSelectedFriendIds([...safeSelected, id]);
     }
   };
 
@@ -199,7 +201,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
               <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                 {acceptedFriends.map((friend) => {
-                  const isSelected = selectedFriendIds.includes(friend.id);
+                  const isSelected = Array.isArray(selectedFriendIds) && selectedFriendIds.includes(friend.id);
 
                   return (
                     <div

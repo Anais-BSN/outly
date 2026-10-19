@@ -50,8 +50,8 @@ const NotificationItem = React.memo<NotificationItemProps>(({
   const isFriendRequest =
     notif.type === 'invite' ||
     notif.type === 'friend' ||
-    notif.message.toLowerCase().includes("demande d'ami") ||
-    notif.title.toLowerCase().includes("ami");
+    (typeof notif.message === 'string' && notif.message.toLowerCase().includes("demande d'ami")) ||
+    (typeof notif.title === 'string' && notif.title.toLowerCase().includes("ami"));
 
   const getNotifIcon = (type: string) => {
     switch (type) {

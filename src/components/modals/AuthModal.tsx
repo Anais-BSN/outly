@@ -63,8 +63,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleForgotPasswordInstant = async (providedInput?: string) => {
-    const raw = (providedInput !== undefined ? providedInput : emailOrHandle).trim();
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) || (raw.includes('@') && raw.includes('.'));
+    const candidate = providedInput !== undefined ? providedInput : emailOrHandle;
+    const raw = typeof candidate === 'string' ? candidate.trim() : '';
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) || (typeof raw.includes === 'function' && raw.includes('@') && raw.includes('.'));
 
     setErrorMsg(null);
 
@@ -85,7 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setLoading(false);
       }
     } else {
-      setForgotEmail(raw.includes('@') ? raw : '');
+      setForgotEmail(typeof raw === 'string' && raw.includes('@') ? raw : '');
       setForgotSuccess(null);
       setAuthMode('forgot-password');
     }

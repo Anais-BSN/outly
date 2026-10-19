@@ -106,8 +106,8 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
       (m.isVirtual || (m.id && m.id.startsWith('user-virt-')) || (m.userId && m.userId.startsWith('user-virt-'))) &&
       !m.isDeleted &&
       m.status !== 'deleted' &&
-      !m.name?.toLowerCase().includes('utilisateur supprimé') &&
-      !m.firstName?.toLowerCase().includes('utilisateur supprimé')
+      !(typeof m.name === 'string' && m.name.toLowerCase().includes('utilisateur supprimé')) &&
+      !(typeof m.firstName === 'string' && m.firstName.toLowerCase().includes('utilisateur supprimé'))
   );
 
   const acceptedFriends = (friends || []).filter(
@@ -120,13 +120,15 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
   );
 
   const filteredFriends = eligibleFriends.filter((f) => {
-    const q = searchQuery.toLowerCase();
+    if (!f || typeof f !== 'object') return false;
+    const q = typeof searchQuery === 'string' ? searchQuery.toLowerCase() : '';
+    if (!q) return true;
     return (
-      (f.name && f.name.toLowerCase().includes(q)) ||
-      (f.firstName && f.firstName.toLowerCase().includes(q)) ||
-      (f.lastName && f.lastName.toLowerCase().includes(q)) ||
-      (f.handle && f.handle.toLowerCase().includes(q)) ||
-      (f.email && f.email.toLowerCase().includes(q))
+      (typeof f.name === 'string' && f.name.toLowerCase().includes(q)) ||
+      (typeof f.firstName === 'string' && f.firstName.toLowerCase().includes(q)) ||
+      (typeof f.lastName === 'string' && f.lastName.toLowerCase().includes(q)) ||
+      (typeof f.handle === 'string' && f.handle.toLowerCase().includes(q)) ||
+      (typeof f.email === 'string' && f.email.toLowerCase().includes(q))
     );
   });
 

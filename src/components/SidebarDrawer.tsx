@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, Group, AppNotification } from '../types';
 import { isNativePlatform } from '../services/nativeService';
+import { isUserAdmin } from '../utils/admin';
 
 interface SidebarDrawerProps {
   isOpen: boolean;
@@ -256,7 +257,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             </button>
 
             {/* 6. Espace d'administration réservé (uniquement visible par l'administrateur) */}
-            {currentUser?.email?.toLowerCase() === 'contact@outlys.fr' && onOpenAdmin && (
+            {isUserAdmin(currentUser) && onOpenAdmin && (
               <button
                 id="drawer-nav-admin"
                 onClick={() => {

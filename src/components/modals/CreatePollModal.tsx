@@ -302,9 +302,10 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       }
     } else {
       // Inclure les options existantes + la saisie en cours si non vide (avec déduplication)
-      const allChoices = [...choiceOptions];
-      if (newChoiceInput.trim() && !allChoices.includes(newChoiceInput.trim())) {
-        allChoices.push(newChoiceInput.trim());
+      const allChoices = Array.isArray(choiceOptions) ? [...choiceOptions] : [];
+      const cleanNew = typeof newChoiceInput === 'string' ? newChoiceInput.trim() : '';
+      if (cleanNew && !allChoices.includes(cleanNew)) {
+        allChoices.push(cleanNew);
       }
       const validChoices = Array.from(new Set(allChoices.map(c => c.trim()).filter(Boolean)));
       if (validChoices.length < 2) {

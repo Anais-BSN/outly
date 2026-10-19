@@ -514,9 +514,9 @@ apiRouter.post('/users/:id/password', async (req: Request, res: Response) => {
 });
 
 // Obtenir l'utilisateur connecté (aucun fallback - validation stricte de session)
-apiRouter.get(['/user/me', '/users/:id?'], async (req: Request, res: Response) => {
+apiRouter.get(['/me', '/user/me', '/users/:id?'], async (req: Request, res: Response) => {
   try {
-    const userId = ((req.params.id || req.query.userId) as string)?.trim();
+    const userId = ((req.params.id || req.query.userId || req.headers['x-user-id']) as string)?.trim();
     if (!userId || userId === 'user-me') {
       return res.status(401).json({ error: 'Session non authentifiée' });
     }
@@ -4837,7 +4837,19 @@ apiRouter.post('/contact', async (req: Request, res: Response) => {
 // ==========================================
 // ESPACE D'ADMINISTRATION ET STATISTIQUES (« AdminSite »)
 // ==========================================
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'contact@outlys.fr').trim().toLowerCase();
+const getAdminEmailsList = (): string[] => {
+  try {
+    const envAdmin = typeof process.env.ADMIN_EMAIL === 'string' ? process.env.ADMIN_EMAIL : '';
+    const fallbackAdmins = ['contact@outlys.fr', 'boisson.ana@gmail.com'];
+    const merged = envAdmin.trim() ? `${envAdmin.trim()},${fallbackAdmins.join(',')}` : fallbackAdmins.join(',');
+    return merged
+      .split(/[,;\s]+/)
+      .map((e) => (typeof e === 'string' ? e.trim().toLowerCase() : ''))
+      .filter((e) => typeof e === 'string' && e.length > 0 && typeof e.includes === 'function' && e.includes('@'));
+  } catch {
+    return ['contact@outlys.fr', 'boisson.ana@gmail.com'];
+  }
+};
 
 apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
   try {
@@ -4856,9 +4868,10 @@ apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Compte utilisateur introuvable ou inactif' });
     }
 
-    const userEmail = (userRes.rows[0].email || '').trim().toLowerCase();
-    if (userEmail !== ADMIN_EMAIL) {
-      console.warn(`[AdminSite Security] Tentative d'accès non autorisée par ${userEmail} (Admin attendu: ${ADMIN_EMAIL})`);
+    const userEmail = typeof userRes.rows[0]?.email === 'string' ? userRes.rows[0].email.trim().toLowerCase() : '';
+    const allowedAdmins = getAdminEmailsList();
+    if (!userEmail || !Array.isArray(allowedAdmins) || !allowedAdmins.includes(userEmail)) {
+      console.warn(`[AdminSite Security] Tentative d'accès non autorisée par "${userEmail}" (Admins autorisés: ${allowedAdmins.join(', ')})`);
       return res.status(403).json({ error: 'Accès strictement réservé à l’administrateur.' });
     }
 
@@ -4872,7 +4885,7 @@ apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      adminEmail: ADMIN_EMAIL,
+      adminEmail: userEmail || 'contact@outlys.fr',
       timestamp: new Date().toISOString(),
       stats: {
         totalUsers: usersCountRes.rows[0]?.count || 0,

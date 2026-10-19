@@ -307,7 +307,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                             Moi
                           </span>
                         )}
-                        {item.isVirtual && !item.displayName?.toLowerCase().includes('utilisateur supprimé') && (
+                        {item.isVirtual && !(typeof item.displayName === 'string' && item.displayName.toLowerCase().includes('utilisateur supprimé')) && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-semibold border border-amber-300/60 dark:border-amber-800">
                             Sans compte
                           </span>

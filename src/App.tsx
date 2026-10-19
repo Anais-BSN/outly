@@ -465,7 +465,7 @@ export default function App() {
             setMessages((prev) =>
               prev.map((m) => {
                 if (m.groupId === event.data.groupId) {
-                  const currentReadBy = m.readBy || [];
+                  const currentReadBy = Array.isArray(m.readBy) ? m.readBy : [];
                   if (!currentReadBy.includes(event.data.userId)) {
                     return { ...m, readBy: [...currentReadBy, event.data.userId] };
                   }
@@ -1120,8 +1120,8 @@ export default function App() {
             const isDeleted = Boolean(
               m.isDeleted ||
               m.status === 'deleted' ||
-              m.name?.toLowerCase().includes('utilisateur supprimé') ||
-              m.firstName?.toLowerCase().includes('utilisateur supprimé')
+              (typeof m.name === 'string' && m.name.toLowerCase().includes('utilisateur supprimé')) ||
+              (typeof m.firstName === 'string' && m.firstName.toLowerCase().includes('utilisateur supprimé'))
             );
             return !isDeleted;
           });
@@ -1240,7 +1240,7 @@ export default function App() {
       !m.isSystem &&
       currentUser?.id &&
       m.senderId !== currentUser.id &&
-      (!m.readBy || !m.readBy.includes(currentUser.id))
+      (!Array.isArray(m.readBy) || !m.readBy.includes(currentUser.id))
   ).length;
 
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
@@ -1251,8 +1251,9 @@ export default function App() {
       api.markGroupMessagesAsRead(activeGroupId, currentUser.id).catch(() => {});
       setMessages((prev) =>
         prev.map((m) => {
-          if (m.groupId === activeGroupId && (!m.readBy || !m.readBy.includes(currentUser.id))) {
-            return { ...m, readBy: [...(m.readBy || []), currentUser.id] };
+          if (m.groupId === activeGroupId && (!Array.isArray(m.readBy) || !m.readBy.includes(currentUser.id))) {
+            const currentReadBy = Array.isArray(m.readBy) ? m.readBy : [];
+            return { ...m, readBy: [...currentReadBy, currentUser.id] };
           }
           return m;
         })
@@ -1396,7 +1397,9 @@ export default function App() {
         const existingGroup = reactions.find((r) => r.emoji === emoji);
 
         if (existingGroup) {
-          if (existingGroup.users.includes(currentUser.id)) {
+          if (!Array.isArray(existingGroup.users)) {
+            existingGroup.users = [currentUser.id];
+          } else if (existingGroup.users.includes(currentUser.id)) {
             existingGroup.users = existingGroup.users.filter((u) => u !== currentUser.id);
           } else {
             existingGroup.users.push(currentUser.id);
@@ -2094,8 +2097,8 @@ export default function App() {
               newPaidByAvatar = res.member?.avatar || exp.paidByAvatar;
               changed = true;
             }
-            let newParticipants = exp.participantIds;
-            if (exp.participantIds.includes(virtualUserId)) {
+            let newParticipants = Array.isArray(exp.participantIds) ? exp.participantIds : [];
+            if (Array.isArray(exp.participantIds) && exp.participantIds.includes(virtualUserId)) {
               newParticipants = exp.participantIds.map((id) => (id === virtualUserId ? targetUserId : id));
               newParticipants = [...new Set(newParticipants)];
               changed = true;

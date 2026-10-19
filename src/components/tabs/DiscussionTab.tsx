@@ -240,7 +240,7 @@ const MessageItem = React.memo<MessageItemProps>(({
         (message.text.includes('Appel') || message.text.includes('appel')));
 
     if (isCallMsg) {
-      const rawText = message.text || '';
+      const rawText = typeof message.text === 'string' ? message.text : '';
       const cleanCallText = rawText.replace(/^[\s\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}📞📹☎️📱]+/u, '').trim();
       const isVideoCall = rawText.includes('📹') || rawText.toLowerCase().includes('vidéo');
       const CallIcon = isVideoCall ? Video : PhoneCall;
@@ -701,7 +701,7 @@ const MessageItem = React.memo<MessageItemProps>(({
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2 pt-1 border-t border-black/10 dark:border-white/10">
               {message.reactions.map((r, i) => {
-                const hasReacted = r.users.includes(currentUser.id);
+                const hasReacted = Array.isArray(r?.users) && currentUser?.id ? r.users.includes(currentUser.id) : false;
                 return (
                   <button
                     key={i}
@@ -794,12 +794,17 @@ export const DiscussionTab: React.FC<DiscussionTabProps> = ({
     const map: Record<string, GroupMember[]> = {};
     const seenMemberIds = new Set<string>();
 
-    // On parcourt les messages chronologiquement inversés (du plus récent au plus ancien)
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      const readByList = msg.readBy || [];
+    const msgList = Array.isArray(messages) ? messages : [];
+    const memberList = Array.isArray(members) ? members : [];
 
-      for (const member of members) {
+    // On parcourt les messages chronologiquement inversés (du plus récent au plus ancien)
+    for (let i = msgList.length - 1; i >= 0; i--) {
+      const msg = msgList[i];
+      if (!msg) continue;
+      const readByList = Array.isArray(msg.readBy) ? msg.readBy : [];
+
+      for (const member of memberList) {
+        if (!member) continue;
         const mId = member.userId || member.id;
         if (!mId) continue;
 

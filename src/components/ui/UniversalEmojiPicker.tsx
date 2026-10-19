@@ -152,13 +152,17 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
 
   // Filtrage intelligent des émojis
   const filteredEmojis = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = typeof searchQuery === 'string' ? searchQuery.trim().toLowerCase() : '';
     if (!query) return null;
 
     return ALL_EMOJIS_DATA.filter((item) => {
-      if (item.name.toLowerCase().includes(query)) return true;
-      if (item.emoji.includes(query)) return true;
-      return item.keywords.some((kw) => kw.toLowerCase().includes(query));
+      if (!item || typeof item !== 'object') return false;
+      if (typeof item.name === 'string' && item.name.toLowerCase().includes(query)) return true;
+      if (typeof item.emoji === 'string' && item.emoji.includes(query)) return true;
+      if (Array.isArray(item.keywords)) {
+        return item.keywords.some((kw) => typeof kw === 'string' && kw.toLowerCase().includes(query));
+      }
+      return false;
     });
   }, [searchQuery]);
 

@@ -189,15 +189,16 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
     };
   }, [pseudoInput, currentUser.id]);
 
-  const filteredFriends = acceptedFriends.filter((f) => {
-    if (!f) return false;
-    const q = searchQuery.toLowerCase();
+  const filteredFriends = (Array.isArray(acceptedFriends) ? acceptedFriends : []).filter((f) => {
+    if (!f || typeof f !== 'object') return false;
+    const q = typeof searchQuery === 'string' ? searchQuery.toLowerCase() : '';
+    if (!q) return true;
     return (
-      (f.name && f.name.toLowerCase().includes(q)) ||
-      (f.firstName && f.firstName.toLowerCase().includes(q)) ||
-      (f.lastName && f.lastName.toLowerCase().includes(q)) ||
-      (f.handle && f.handle.toLowerCase().includes(q)) ||
-      (f.email && f.email.toLowerCase().includes(q))
+      (typeof f.name === 'string' && f.name.toLowerCase().includes(q)) ||
+      (typeof f.firstName === 'string' && f.firstName.toLowerCase().includes(q)) ||
+      (typeof f.lastName === 'string' && f.lastName.toLowerCase().includes(q)) ||
+      (typeof f.handle === 'string' && f.handle.toLowerCase().includes(q)) ||
+      (typeof f.email === 'string' && f.email.toLowerCase().includes(q))
     );
   });
 

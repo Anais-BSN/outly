@@ -102,8 +102,18 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
     const past: EventItem[] = [];
 
     const getEventEndTimestamp = (ev: EventItem): number => {
-      const dateStr = ev.endDateTime || ev.startDateTime;
-      if (!dateStr) return 0;
+      if (!ev || typeof ev !== 'object') return 0;
+      const rawDate = ev.endDateTime || ev.startDateTime;
+      if (!rawDate) return 0;
+
+      const dateStr = typeof rawDate === 'string'
+        ? rawDate
+        : ((rawDate as any) instanceof Date ? (rawDate as any).toISOString() : String(rawDate || ''));
+
+      if (!dateStr || typeof dateStr !== 'string' || typeof dateStr.includes !== 'function') {
+        return 0;
+      }
+
       // Date brute sans heure explicite (ex: YYYY-MM-DD) -> fin de journée 23:59:59.999
       if (!dateStr.includes('T') && !dateStr.includes(':')) {
         const parts = dateStr.split('-');
@@ -116,12 +126,15 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       }
       const parsed = new Date(dateStr).getTime();
       if (!isNaN(parsed)) return parsed;
-      return new Date(ev.startDateTime).getTime() || 0;
+      return ev.startDateTime ? new Date(ev.startDateTime).getTime() || 0 : 0;
     };
 
-    for (const ev of safeEvents) {
+    const eventList = Array.isArray(safeEvents) ? safeEvents : [];
+
+    for (const ev of eventList) {
+      if (!ev) continue;
       const endMs = getEventEndTimestamp(ev);
-      const startMs = new Date(ev.startDateTime).getTime();
+      const startMs = ev.startDateTime ? new Date(ev.startDateTime).getTime() || 0 : 0;
 
       // Si l'événement est antérieur à la date/heure actuelle (ex: daté d'hier),
       // le placer automatiquement et directement dans l'historique des événements passés
@@ -135,8 +148,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       }
     }
 
-    upcoming.sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
-    past.sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
+    upcoming.sort((a, b) => (new Date(a?.startDateTime || 0).getTime() || 0) - (new Date(b?.startDateTime || 0).getTime() || 0));
+    past.sort((a, b) => (new Date(b?.startDateTime || 0).getTime() || 0) - (new Date(a?.startDateTime || 0).getTime() || 0));
 
     return { upcomingEvents: upcoming, pastEvents: past };
   }, [safeEvents, currentTimestamp]);

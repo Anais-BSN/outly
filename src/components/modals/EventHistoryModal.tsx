@@ -37,15 +37,18 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredEvents = useMemo(() => {
-    if (!searchTerm.trim()) return events;
-    const term = searchTerm.toLowerCase();
-    return events.filter(
-      (ev) =>
-        ev.title.toLowerCase().includes(term) ||
-        (ev.location && ev.location.toLowerCase().includes(term)) ||
-        (ev.description && ev.description.toLowerCase().includes(term)) ||
-        (ev.organizerName && ev.organizerName.toLowerCase().includes(term))
-    );
+    const list = Array.isArray(events) ? events : [];
+    const term = typeof searchTerm === 'string' ? searchTerm.trim().toLowerCase() : '';
+    if (!term) return list;
+
+    return list.filter((ev) => {
+      if (!ev || typeof ev !== 'object') return false;
+      const titleMatch = typeof ev.title === 'string' && ev.title.toLowerCase().includes(term);
+      const locMatch = typeof ev.location === 'string' && ev.location.toLowerCase().includes(term);
+      const descMatch = typeof ev.description === 'string' && ev.description.toLowerCase().includes(term);
+      const orgMatch = typeof ev.organizerName === 'string' && ev.organizerName.toLowerCase().includes(term);
+      return titleMatch || locMatch || descMatch || orgMatch;
+    });
   }, [events, searchTerm]);
 
   if (!isOpen) return null;
