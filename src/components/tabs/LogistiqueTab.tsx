@@ -35,8 +35,8 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 }) => {
   const [filter, setFilter] = useState<'all' | 'todo' | 'mine'>('all');
 
-  const safeTasks = tasks || [];
-  const safeMembers = members || [];
+  const safeTasks = Array.isArray(tasks) ? tasks.filter(Boolean) : [];
+  const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
   const totalCount = safeTasks.length;
   const completedCount = safeTasks.filter((t) => t.completed).length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;

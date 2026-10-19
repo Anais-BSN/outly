@@ -142,7 +142,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           <div className="relative px-4 py-3 border-b border-[#C7B7A3]/40 dark:border-zinc-800 flex items-center justify-center min-h-[60px]">
             <div className="w-full flex justify-center items-center">
               <img
-                src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
+                src={isDarkMode ? '/Logo_Outlys_Fonce.png' : '/Logo_Outlys_Clair.png'}
                 alt="Logo Outlys"
                 className="h-10 sm:h-11 w-auto max-w-[170px] object-contain select-none transition-all duration-200"
               />

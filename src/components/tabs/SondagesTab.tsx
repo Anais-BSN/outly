@@ -40,8 +40,8 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
   onDeletePoll,
   onViewAvatar,
 }) => {
-  const safePolls = polls || [];
-  const safeMembers = members || [];
+  const safePolls = Array.isArray(polls) ? polls.filter(Boolean) : [];
+  const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-16 px-4 sm:px-6 pt-4">
@@ -80,7 +80,7 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
       ) : (
         <div className="space-y-4">
           {safePolls.map((poll) => {
-            const pollOptions = poll.options || [];
+            const pollOptions = Array.isArray(poll?.options) ? poll.options.filter(Boolean) : [];
 
             // Calculate positive vote count for each option
             const counts = pollOptions.map((opt) => {

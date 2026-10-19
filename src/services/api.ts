@@ -136,7 +136,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw error;
   }
 
-  return (data !== null ? data : {}) as T;
+  return (data !== null && data !== undefined ? data : null) as T;
 }
 
 export const api = {
@@ -146,7 +146,8 @@ export const api = {
   },
 
   async getAllUsers(): Promise<UserProfile[]> {
-    return request<UserProfile[]>('/users');
+    const res = await request<UserProfile[]>('/users');
+    return Array.isArray(res) ? res : [];
   },
 
   async checkHandle(handle: string): Promise<{ available: boolean }> {
@@ -270,12 +271,14 @@ export const api = {
 
   // 2. Amis & Recherche d'utilisateurs
   async getFriends(userId: string): Promise<Friend[]> {
-    return request<Friend[]>(`/friends?userId=${encodeURIComponent(userId)}`);
+    const res = await request<Friend[]>(`/friends?userId=${encodeURIComponent(userId)}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async searchUsers(query: string, currentUserId?: string): Promise<UserProfile[]> {
     const userParam = currentUserId ? `&userId=${encodeURIComponent(currentUserId)}` : '';
-    return request<UserProfile[]>(`/users/search?q=${encodeURIComponent(query.trim())}${userParam}`);
+    const res = await request<UserProfile[]>(`/users/search?q=${encodeURIComponent(query.trim())}${userParam}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async sendFriendRequest(handleOrEmail: string, userId: string): Promise<Friend> {
@@ -314,7 +317,8 @@ export const api = {
   // 3. Groupes & Membres
   async getGroups(userId?: string): Promise<Group[]> {
     const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
-    return request<Group[]>(`/groups${query}`);
+    const res = await request<Group[]>(`/groups${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async getGroup(groupId: string): Promise<Group> {
@@ -416,7 +420,8 @@ export const api = {
     if (groupId) params.append('groupId', groupId);
     if (userId) params.append('userId', userId);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return request<EventItem[]>(`/events${query}`);
+    const res = await request<EventItem[]>(`/events${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async createEvent(eventData: Partial<EventItem>): Promise<EventItem> {
@@ -471,7 +476,8 @@ export const api = {
     if (limit) params.append('limit', String(limit));
     if (before) params.append('before', before);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return request<ChatMessage[]>(`/messages${query}`);
+    const res = await request<ChatMessage[]>(`/messages${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async sendMessage(msgData: Partial<ChatMessage>): Promise<ChatMessage> {
@@ -515,7 +521,8 @@ export const api = {
   // 7. Sondages & Votes
   async getPolls(groupId?: string): Promise<Poll[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
-    return request<Poll[]>(`/polls${query}`);
+    const res = await request<Poll[]>(`/polls${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async createPoll(pollData: Partial<Poll>): Promise<Poll> {
@@ -553,7 +560,8 @@ export const api = {
   // 8. Galerie Médias
   async getGallery(groupId?: string): Promise<GalleryItem[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
-    return request<GalleryItem[]>(`/gallery${query}`);
+    const res = await request<GalleryItem[]>(`/gallery${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async uploadGalleryItem(itemData: Partial<GalleryItem>): Promise<GalleryItem> {
@@ -575,7 +583,8 @@ export const api = {
     if (groupId) params.append('groupId', groupId);
     if (eventId) params.append('eventId', eventId);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return request<LogisticsTask[]>(`/tasks${query}`);
+    const res = await request<LogisticsTask[]>(`/tasks${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async createTask(taskData: Partial<LogisticsTask>): Promise<LogisticsTask> {
@@ -619,7 +628,8 @@ export const api = {
   // 10. Partage des Frais & Règlements
   async getExpenses(groupId?: string): Promise<Expense[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
-    return request<Expense[]>(`/expenses${query}`);
+    const res = await request<Expense[]>(`/expenses${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async createExpense(expenseData: Partial<Expense>): Promise<Expense> {
@@ -644,7 +654,8 @@ export const api = {
 
   async getSettlements(groupId?: string): Promise<DebtSettlement[]> {
     const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
-    return request<DebtSettlement[]>(`/settlements${query}`);
+    const res = await request<DebtSettlement[]>(`/settlements${query}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async toggleSettlement(data: {
@@ -663,7 +674,8 @@ export const api = {
 
   // 11. Notifications & Resend
   async getNotifications(userId: string): Promise<AppNotification[]> {
-    return request<AppNotification[]>(`/notifications?userId=${encodeURIComponent(userId)}`);
+    const res = await request<AppNotification[]>(`/notifications?userId=${encodeURIComponent(userId)}`);
+    return Array.isArray(res) ? res : [];
   },
 
   async markAllNotificationsRead(userId: string): Promise<{ success: boolean }> {

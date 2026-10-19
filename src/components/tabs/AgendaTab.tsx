@@ -66,8 +66,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
   onDeleteTask,
   onViewAvatar,
 }) => {
-  const safeEvents = events || [];
-  const safeMembers = members || [];
+  const safeEvents = Array.isArray(events) ? events.filter(Boolean) : [];
+  const safeMembers = Array.isArray(members) ? members.filter(Boolean) : [];
   const [activeSubView, setActiveSubView] = useState<'events' | 'teams_scheduler'>('events');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString(new Date()));
   const [availabilityData, setAvailabilityData] = useState<any>(null);
@@ -449,7 +449,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 {upcomingEvents.map((event) => {
                   const userRsvp = event.rsvp?.[currentUser.id] || 'pending';
                   const goingCount = Object.values(event.rsvp || {}).filter((s) => s === 'going').length;
-                  const eventTasks = tasks.filter((t) => t.eventId === event.id);
+                  const eventTasks = (Array.isArray(tasks) ? tasks : []).filter((t) => t && t.eventId === event.id);
                   const isOrgExpanded = expandedOrganisationEventId === event.id;
 
                   return (

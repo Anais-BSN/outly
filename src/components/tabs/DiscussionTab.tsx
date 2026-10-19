@@ -295,7 +295,7 @@ const MessageItem = React.memo<MessageItemProps>(({
       >
         <div className="flex items-center gap-2 max-w-lg px-4 py-1.5 rounded-full bg-[#E8D8C4] dark:bg-zinc-800 border border-[#C7B7A3] dark:border-zinc-700 text-xs text-[#6D2932] dark:text-zinc-300 shadow-xs">
           {getSystemIcon(message.systemType)}
-          <span className="font-medium text-center">{message.text}</span>
+          <span className="font-medium text-center">{typeof message.text === 'string' ? message.text : ''}</span>
           <span className="text-[10px] opacity-60">
             {formatTimeOnly(message.timestamp)}
           </span>
@@ -690,11 +690,11 @@ const MessageItem = React.memo<MessageItemProps>(({
               </div>
             </div>
           ) : (
-            message.text && (
+            typeof message.text === 'string' && message.text.trim() ? (
               <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
                 {message.text}
               </p>
-            )
+            ) : null
           )}
 
           {/* Badges de réactions avec fort contraste et bordeaux sombre en mode sombre */}

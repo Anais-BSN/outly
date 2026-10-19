@@ -332,41 +332,46 @@ export default function App() {
         api.getNotifications(activeUserId),
       ]);
 
-      setCurrentUser(userRes);
-      localStorage.setItem('outly_user_id', userRes.id);
-      saveLocalSession(userRes);
-      saveNativeSession(userRes);
-      initPushNotifications(userRes.id);
+      if (userRes && typeof userRes === 'object' && userRes.id) {
+        setCurrentUser(userRes);
+        localStorage.setItem('outly_user_id', userRes.id);
+        saveLocalSession(userRes);
+        saveNativeSession(userRes);
+        initPushNotifications(userRes.id);
+      } else {
+        setCurrentUser(null);
+      }
       
-      const themeFromDb = userRes.themePreference || (localStorage.getItem('outly_theme') as any) || 'light';
+      const themeFromDb = (userRes && userRes.themePreference) || (localStorage.getItem('outly_theme') as any) || 'light';
       const isDark = themeFromDb === 'dark';
       setIsDarkMode(isDark);
       syncSystemBarsTheme(isDark);
 
-      setGroups(groupsRes);
-      if (groupsRes.length > 0) {
+      const safeGroups = Array.isArray(groupsRes) ? groupsRes.filter(Boolean) : [];
+      setGroups(safeGroups);
+      if (safeGroups.length > 0) {
         setActiveGroupId((prev) => {
           const savedId = localStorage.getItem('outly_active_group_id');
-          if (savedId && groupsRes.some((g) => g.id === savedId)) {
+          if (savedId && safeGroups.some((g) => g && g.id === savedId)) {
             return savedId;
           }
-          if (prev && groupsRes.some((g) => g.id === prev)) {
+          if (prev && safeGroups.some((g) => g && g.id === prev)) {
             return prev;
           }
-          return groupsRes[0].id;
+          return safeGroups[0].id;
         });
       } else {
         setActiveGroupId('');
       }
-      setEvents(eventsRes);
-      setMessages(messagesRes);
-      setPolls(pollsRes);
-      setGalleryItems(galleryRes);
-      setTasks(tasksRes);
-      setExpenses(expensesRes);
-      setSettlements(settlementsRes);
-      setFriends(friendsRes);
-      setNotifications(notifsRes);
+      setEvents(Array.isArray(eventsRes) ? eventsRes.filter(Boolean) : []);
+      setMessages(Array.isArray(messagesRes) ? messagesRes.filter(Boolean) : []);
+      setPolls(Array.isArray(pollsRes) ? pollsRes.filter(Boolean) : []);
+      setGalleryItems(Array.isArray(galleryRes) ? galleryRes.filter(Boolean) : []);
+      setTasks(Array.isArray(tasksRes) ? tasksRes.filter(Boolean) : []);
+      setExpenses(Array.isArray(expensesRes) ? expensesRes.filter(Boolean) : []);
+      setSettlements(Array.isArray(settlementsRes) ? settlementsRes.filter(Boolean) : []);
+      setFriends(Array.isArray(friendsRes) ? friendsRes.filter(Boolean) : []);
+      setNotifications(Array.isArray(notifsRes) ? notifsRes.filter(Boolean) : []);
     } catch (err: any) {
       console.error('Failed to load data from PostgreSQL database:', err);
       // En cas d'erreur d'authentification ou session introuvable : purge immédiate et affichage du login sans fallback
@@ -1211,9 +1216,10 @@ export default function App() {
   }, [activeGroupId]);
 
   // Derived current group & active datasets
+  const safeGroups = Array.isArray(groups) ? groups.filter(Boolean) : [];
   const activeGroup: Group =
-    groups.find((g) => g.id === activeGroupId) ||
-    groups[0] || {
+    safeGroups.find((g) => g && g.id === activeGroupId) ||
+    safeGroups[0] || {
       id: 'default',
       name: 'Mon Groupe',
       description: '',
@@ -1224,19 +1230,20 @@ export default function App() {
 
   const groupEvents = useMemo(() => {
     const seen = new Set<string>();
-    return events.filter((e) => {
-      if (e.groupId !== activeGroupId) return false;
+    const safeEvents = Array.isArray(events) ? events.filter(Boolean) : [];
+    return safeEvents.filter((e) => {
+      if (!e || e.groupId !== activeGroupId) return false;
       if (seen.has(e.id)) return false;
       seen.add(e.id);
       return true;
     });
   }, [events, activeGroupId]);
 
-  const groupMessages = messages.filter((m) => m.groupId === activeGroupId);
-  const groupPolls = polls.filter((p) => p.groupId === activeGroupId);
-  const groupGallery = galleryItems.filter((item) => item.groupId === activeGroupId);
-  const groupTasks = tasks.filter((t) => t.groupId === activeGroupId);
-  const groupExpenses = expenses.filter((exp) => exp.groupId === activeGroupId);
+  const groupMessages = (Array.isArray(messages) ? messages : []).filter((m) => m && m.groupId === activeGroupId);
+  const groupPolls = (Array.isArray(polls) ? polls : []).filter((p) => p && p.groupId === activeGroupId);
+  const groupGallery = (Array.isArray(galleryItems) ? galleryItems : []).filter((item) => item && item.groupId === activeGroupId);
+  const groupTasks = (Array.isArray(tasks) ? tasks : []).filter((t) => t && t.groupId === activeGroupId);
+  const groupExpenses = (Array.isArray(expenses) ? expenses : []).filter((exp) => exp && exp.groupId === activeGroupId);
 
   const unreadMessagesCount = groupMessages.filter(
     (m) =>

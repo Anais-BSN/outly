@@ -139,12 +139,14 @@ export const GalerieTab: React.FC<GalerieTabProps> = ({
   onUploadImage,
   onViewImage,
 }) => {
-  const [photos, setPhotos] = useState<GalleryItem[]>(galleryItems || []);
+  const [photos, setPhotos] = useState<GalleryItem[]>(() =>
+    Array.isArray(galleryItems) ? galleryItems.filter(Boolean) : []
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Synchronisation des photos avec les props
   useEffect(() => {
-    setPhotos(galleryItems || []);
+    setPhotos(Array.isArray(galleryItems) ? galleryItems.filter(Boolean) : []);
   }, [galleryItems]);
 
   // Écouteur en direct Pusher pour l'insertion instantanée des nouvelles photos

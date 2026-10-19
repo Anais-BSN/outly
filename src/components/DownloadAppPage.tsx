@@ -60,7 +60,7 @@ export const DownloadAppPage: React.FC<DownloadAppPageProps> = ({
               className="h-full py-1.5 flex items-center justify-center bg-transparent border-none p-0 cursor-pointer active:scale-95 transition-transform"
             >
               <img
-                src={isDarkMode ? '/Logo_Outlys_Foncé.png' : '/Logo_Outlys_Clair.png'}
+                src={isDarkMode ? '/Logo_Outlys_Fonce.png' : '/Logo_Outlys_Clair.png'}
                 alt="Outlys"
                 className="h-full max-h-12 w-auto object-contain select-none"
               />

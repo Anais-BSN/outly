@@ -53,7 +53,7 @@ const NotificationItem = React.memo<NotificationItemProps>(({
     (typeof notif.message === 'string' && notif.message.toLowerCase().includes("demande d'ami")) ||
     (typeof notif.title === 'string' && notif.title.toLowerCase().includes("ami"));
 
-  const getNotifIcon = (type: string) => {
+  const getNotifIcon = (type?: string) => {
     switch (type) {
       case 'reminder':
         return <BellRing className="w-5 h-5 text-amber-600 dark:text-amber-300 stroke-[2.5]" />;
@@ -106,17 +106,17 @@ const NotificationItem = React.memo<NotificationItemProps>(({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs sm:text-sm font-bold text-[#27272A] dark:text-[#FFF9EB]">
-              {notif.title}
+              {typeof notif.title === 'string' ? notif.title : ''}
             </span>
-            {group && (
+            {group && typeof group.name === 'string' ? (
               <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-[#6D2932] text-[#FFF9EB]">
                 {group.name}
               </span>
-            )}
+            ) : null}
           </div>
 
           <p className="text-xs text-[#27272A]/85 dark:text-zinc-300 mt-0.5 leading-relaxed">
-            {notif.message}
+            {typeof notif.message === 'string' ? notif.message : ''}
           </p>
 
           <div className="text-[10px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
@@ -171,8 +171,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const safeNotifications = notifications || [];
-  const safeGroups = groups || [];
+  const safeNotifications = Array.isArray(notifications) ? notifications.filter(Boolean) : [];
+  const safeGroups = Array.isArray(groups) ? groups.filter(Boolean) : [];
   const unreadCount = safeNotifications.filter((n) => !n.read).length;
 
   return (
@@ -225,7 +225,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {/* 24h Reminder Spotlight Banner */}
-        {notifications.some((n) => n.type === 'reminder') && (
+        {safeNotifications.some((n) => n && n.type === 'reminder') && (
           <div className="p-3.5 rounded-2xl bg-amber-100/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 flex items-start gap-3">
             <BellRing className="w-5 h-5 text-amber-800 dark:text-amber-300 shrink-0 mt-0.5 animate-bounce" />
             <div className="text-xs text-amber-950 dark:text-amber-200">

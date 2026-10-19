@@ -119,13 +119,13 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     });
   }, [settlements]);
 
-  const safeExpenses = expenses || [];
+  const safeExpenses = Array.isArray(expenses) ? expenses.filter(Boolean) : [];
 
   // Deduplicate members list
   const safeMembers = useMemo(() => {
     const map = new Map<string, GroupMember>();
-    (members || []).forEach((m) => {
-      const uid = m.userId || m.id;
+    (Array.isArray(members) ? members : []).forEach((m) => {
+      const uid = m?.userId || m?.id;
       if (uid && !map.has(uid)) {
         map.set(uid, m);
       }
@@ -133,8 +133,8 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
     return Array.from(map.values());
   }, [members]);
 
-  const safeSettlements = (localSettlements || []).filter(
-    (s) => !groupId || !s.groupId || s.groupId === groupId || s.groupId === 'group-current'
+  const safeSettlements = (Array.isArray(localSettlements) ? localSettlements : []).filter(
+    (s) => s && (!groupId || !s.groupId || s.groupId === groupId || s.groupId === 'group-current')
   );
 
   // Instant calculation of balances and simplified debts matrix
