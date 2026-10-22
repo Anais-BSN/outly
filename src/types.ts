@@ -10,6 +10,7 @@ export interface UserProfile {
   avatar: string;
   shares: number; // 1 to 20
   themePreference: 'light' | 'dark';
+  birthDate?: string;
 }
 
 export interface Friend {

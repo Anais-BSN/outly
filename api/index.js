@@ -577,6 +577,14 @@ var handleSseConnection = (req, res) => {
 };
 apiRouter.get("/events/stream", handleSseConnection);
 apiRouter.get("/sse", handleSseConnection);
+apiRouter.use(async (req, _res, next) => {
+  const userId = (req.headers["x-user-id"] || req.query.userId)?.trim();
+  if (userId && userId.startsWith("user-") && userId !== "user-me") {
+    query(`UPDATE users SET last_active_at = NOW() WHERE id = $1`, [userId]).catch(() => {
+    });
+  }
+  next();
+});
 (async () => {
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;`);
@@ -584,6 +592,8 @@ apiRouter.get("/sse", handleSseConnection);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();`);
     await query(`ALTER TABLE poll_options ADD COLUMN IF NOT EXISTS end_date_value TEXT;`);
     await query(`ALTER TABLE logistics_tasks ADD COLUMN IF NOT EXISTS event_id VARCHAR(50) REFERENCES events(id) ON DELETE CASCADE;`);
     await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS system_type VARCHAR(50);`);
@@ -733,7 +743,7 @@ function validatePasswordRules(pwd) {
 }
 apiRouter.post("/auth/register", async (req, res) => {
   try {
-    const { name, firstName, lastName = "", email, handle, password, avatar, website, website_hp, honeypot } = req.body;
+    const { name, firstName, lastName = "", email, handle, password, avatar, birthDate, birth_date, parentalConsent, website, website_hp, honeypot } = req.body;
     if (website || website_hp || honeypot) {
       console.warn("[Anti-Spam] Tentative d\u2019inscription automatis\xE9e bloqu\xE9e via honeypot");
       return res.status(400).json({ error: "Validation \xE9chou\xE9e (tentative automatis\xE9e d\xE9tect\xE9e)" });
@@ -744,6 +754,28 @@ apiRouter.post("/auth/register", async (req, res) => {
     }
     if (!handle || !handle.trim()) {
       return res.status(400).json({ error: "Le pseudo est obligatoire" });
+    }
+    const rawBirthDate = (birthDate || birth_date)?.trim();
+    if (!rawBirthDate) {
+      return res.status(400).json({ error: "La date de naissance est obligatoire" });
+    }
+    const birth = new Date(rawBirthDate);
+    if (isNaN(birth.getTime())) {
+      return res.status(400).json({ error: "Date de naissance invalide" });
+    }
+    const today = /* @__PURE__ */ new Date();
+    let calculatedAge = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || monthDiff === 0 && today.getDate() < birth.getDate()) {
+      calculatedAge--;
+    }
+    if (calculatedAge < 13) {
+      return res.status(400).json({ error: "Vous devez avoir au moins 13 ans pour cr\xE9er un compte Outlys." });
+    }
+    if ((calculatedAge === 13 || calculatedAge === 14) && !parentalConsent) {
+      return res.status(400).json({
+        error: "L\u2019accord de vos parents ou repr\xE9sentants l\xE9gaux est obligatoire pour cr\xE9er un compte."
+      });
     }
     const passwordError = validatePasswordRules(password);
     if (passwordError) {
@@ -761,10 +793,10 @@ apiRouter.post("/auth/register", async (req, res) => {
     const userId = `user-${crypto.randomUUID()}`;
     const userAvatar = avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80";
     const insertRes = await query(
-      `INSERT INTO users (id, name, email, handle, avatar, shares, theme_preference, password_hash)
-       VALUES ($1, $2, $3, $4, $5, 1, 'light', $6)
-       RETURNING id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference"`,
-      [userId, displayName, email, cleanHandle, userAvatar, password]
+      `INSERT INTO users (id, name, email, handle, avatar, shares, theme_preference, password_hash, birth_date, last_active_at)
+       VALUES ($1, $2, $3, $4, $5, 1, 'light', $6, $7, NOW())
+       RETURNING id, name, name as "firstName", '' as "lastName", email, handle, avatar, shares, theme_preference as "themePreference", birth_date as "birthDate"`,
+      [userId, displayName, email, cleanHandle, userAvatar, password, rawBirthDate]
     );
     res.json(insertRes.rows[0]);
   } catch (err) {
@@ -783,7 +815,7 @@ apiRouter.post("/auth/login", async (req, res) => {
     }
     const result = await query(
       `SELECT id, name, name as "firstName", '' as "lastName",
-              email, handle, avatar, shares, theme_preference as "themePreference", password_hash
+              email, handle, avatar, shares, theme_preference as "themePreference", birth_date as "birthDate", password_hash
        FROM users
        WHERE email ILIKE $1 OR handle ILIKE $1
        LIMIT 1`,
@@ -796,6 +828,7 @@ apiRouter.post("/auth/login", async (req, res) => {
     if (!user.password_hash || user.password_hash !== password.trim()) {
       return res.status(401).json({ error: "Mot de passe incorrect" });
     }
+    await query(`UPDATE users SET last_active_at = NOW() WHERE id = $1`, [user.id]);
     const { password_hash, ...profile } = user;
     res.json(profile);
   } catch (err) {
@@ -812,7 +845,7 @@ apiRouter.post("/auth/google", async (req, res) => {
     }
     const existing = await query(
       `SELECT id, name, name as "firstName", '' as "lastName",
-              email, handle, avatar, shares, theme_preference as "themePreference"
+              email, handle, avatar, shares, theme_preference as "themePreference", birth_date as "birthDate"
        FROM users
        WHERE (google_id IS NOT NULL AND google_id = $1) OR email ILIKE $2
        LIMIT 1`,
@@ -820,7 +853,9 @@ apiRouter.post("/auth/google", async (req, res) => {
     );
     if (existing.rows.length > 0) {
       if (googleId) {
-        await query(`UPDATE users SET google_id = $1 WHERE id = $2 AND (google_id IS NULL OR google_id = '')`, [googleId, existing.rows[0].id]);
+        await query(`UPDATE users SET google_id = $1, last_active_at = NOW() WHERE id = $2 AND (google_id IS NULL OR google_id = '')`, [googleId, existing.rows[0].id]);
+      } else {
+        await query(`UPDATE users SET last_active_at = NOW() WHERE id = $1`, [existing.rows[0].id]);
       }
       return res.json(existing.rows[0]);
     }
@@ -4623,21 +4658,44 @@ apiRouter.get("/admin/stats", async (req, res) => {
       console.warn(`[AdminSite Security] Tentative d'acc\xE8s non autoris\xE9e par "${userEmail}" (Admins autoris\xE9s: ${allowedAdmins.join(", ")})`);
       return res.status(403).json({ error: "Acc\xE8s strictement r\xE9serv\xE9 \xE0 l\u2019administrateur." });
     }
-    const [usersCountRes, eventsCountRes, groupsCountRes, photosCountRes] = await Promise.all([
+    const [
+      usersCountRes,
+      recentActiveRes,
+      eventsCountRes,
+      groupsCountRes,
+      photosCountRes,
+      financialVolumeRes,
+      messagesCountRes,
+      groupMembersCountRes
+    ] = await Promise.all([
       query(`SELECT COUNT(*)::int as count FROM users WHERE COALESCE(is_deleted, false) = false`),
+      query(`SELECT COUNT(*)::int as count FROM users WHERE COALESCE(is_deleted, false) = false AND (last_active_at >= NOW() - INTERVAL '7 days' OR created_at >= NOW() - INTERVAL '7 days')`),
       query(`SELECT COUNT(*)::int as count FROM events`),
       query(`SELECT COUNT(*)::int as count FROM groups`),
-      query(`SELECT COUNT(*)::int as count FROM gallery_items`)
+      query(`SELECT COUNT(*)::int as count FROM gallery_items`),
+      query(`SELECT COALESCE(SUM(amount), 0)::float as sum FROM expenses`),
+      query(`SELECT COUNT(*)::int as count FROM chat_messages`),
+      query(`SELECT COUNT(*)::int as count FROM group_members`)
     ]);
+    const totalGroups = groupsCountRes.rows[0]?.count || 0;
+    const totalMembers = groupMembersCountRes.rows[0]?.count || 0;
+    const avgGroupSize = totalGroups > 0 ? Math.round(totalMembers / totalGroups * 10) / 10 : 0;
+    const financialVolume = Math.round((financialVolumeRes.rows[0]?.sum || 0) * 100) / 100;
+    const totalMessages = messagesCountRes.rows[0]?.count || 0;
+    const recentActiveUsers = recentActiveRes.rows[0]?.count || 0;
     res.json({
       success: true,
       adminEmail: userEmail || "contact@outlys.fr",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stats: {
         totalUsers: usersCountRes.rows[0]?.count || 0,
+        recentActiveUsers,
         totalEvents: eventsCountRes.rows[0]?.count || 0,
-        activeGroups: groupsCountRes.rows[0]?.count || 0,
-        totalPhotos: photosCountRes.rows[0]?.count || 0
+        activeGroups: totalGroups,
+        totalPhotos: photosCountRes.rows[0]?.count || 0,
+        financialVolume,
+        totalMessages,
+        avgGroupSize
       }
     });
   } catch (err) {

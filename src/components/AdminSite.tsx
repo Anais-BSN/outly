@@ -15,6 +15,10 @@ import {
   Sparkles,
   Server,
   Database,
+  UserCheck,
+  Coins,
+  MessageSquare,
+  PieChart,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { api } from '../services/api';
@@ -28,9 +32,13 @@ interface AdminSiteProps {
 
 interface AdminStats {
   totalUsers: number;
+  recentActiveUsers?: number;
   totalEvents: number;
   activeGroups: number;
   totalPhotos: number;
+  financialVolume?: number;
+  totalMessages?: number;
+  avgGroupSize?: number;
 }
 
 export const AdminSite: React.FC<AdminSiteProps> = ({
@@ -95,6 +103,10 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
     ? stats.totalUsers
     : (loading ? '-' : 0);
 
+  const displayRecentActive = typeof stats?.recentActiveUsers === 'number' && !isNaN(stats.recentActiveUsers)
+    ? stats.recentActiveUsers
+    : (loading ? '-' : 0);
+
   const displayEvents = typeof stats?.totalEvents === 'number' && !isNaN(stats.totalEvents)
     ? stats.totalEvents
     : (loading ? '-' : 0);
@@ -106,6 +118,18 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
   const displayPhotos = typeof stats?.totalPhotos === 'number' && !isNaN(stats.totalPhotos)
     ? stats.totalPhotos
     : (loading ? '-' : 0);
+
+  const displayFinancialVolume = typeof stats?.financialVolume === 'number' && !isNaN(stats.financialVolume)
+    ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(stats.financialVolume)
+    : (loading ? '-' : '0,00 €');
+
+  const displayMessages = typeof stats?.totalMessages === 'number' && !isNaN(stats.totalMessages)
+    ? stats.totalMessages
+    : (loading ? '-' : 0);
+
+  const displayAvgGroupSize = typeof stats?.avgGroupSize === 'number' && !isNaN(stats.avgGroupSize)
+    ? `${stats.avgGroupSize} membres`
+    : (loading ? '-' : '0 membre');
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] font-sans antialiased selection:bg-[#5D0D18] selection:text-[#FFF9EB]">
@@ -175,7 +199,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
           </div>
         ) : null}
 
-        {/* 4 KPI CARDS */}
+        {/* 8 KPI CARDS (2 RANGÉES DE 4 SUR DESKTOP) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 1. Utilisateurs Inscrits */}
           <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
@@ -192,12 +216,32 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
                 {displayUsers}
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
-                Comptes utilisateurs actifs
+                Comptes utilisateurs enregistrés
               </p>
             </div>
           </div>
 
-          {/* 2. Événements Créés */}
+          {/* 2. Utilisateurs Actifs Récents (7 derniers jours) */}
+          <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
+                Actifs récents (7j)
+              </span>
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                <UserCheck className="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
+                {displayRecentActive}
+              </div>
+              <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+                Connectés ou actifs sous 7 jours
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Événements Créés */}
           <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
@@ -217,13 +261,13 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
           </div>
 
-          {/* 3. Groupes Actifs */}
+          {/* 4. Groupes Actifs */}
           <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
                 Groupes actifs
               </span>
-              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+              <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-700 dark:text-teal-300">
                 <Layers className="w-5 h-5" />
               </div>
             </div>
@@ -237,7 +281,7 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
             </div>
           </div>
 
-          {/* 4. Photos Partagées */}
+          {/* 5. Photos Partagées */}
           <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
@@ -253,6 +297,66 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
               </div>
               <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
                 Médias hébergés dans les galeries
+              </p>
+            </div>
+          </div>
+
+          {/* 6. Volume Financier */}
+          <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
+                Volume financier
+              </span>
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                <Coins className="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div className="font-serif font-bold text-2xl sm:text-3xl text-[#27272A] dark:text-[#FFF9EB] tracking-tight">
+                {displayFinancialVolume}
+              </div>
+              <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+                Total des dépenses partagées
+              </p>
+            </div>
+          </div>
+
+          {/* 7. Engagement (Messages de groupe) */}
+          <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
+                Engagement (Chat)
+              </span>
+              <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div className="font-serif font-bold text-3xl sm:text-4xl text-[#27272A] dark:text-[#FFF9EB]">
+                {displayMessages}
+              </div>
+              <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+                Messages envoyés dans les groupes
+              </p>
+            </div>
+          </div>
+
+          {/* 8. Taille Moyenne des Groupes */}
+          <div className="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/70 border border-[#C7B7A3]/50 dark:border-zinc-800 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6D2932] dark:text-amber-200">
+                Taille moy. groupes
+              </span>
+              <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
+                <PieChart className="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div className="font-serif font-bold text-2xl sm:text-3xl text-[#27272A] dark:text-[#FFF9EB]">
+                {displayAvgGroupSize}
+              </div>
+              <p className="text-[11px] text-[#27272A]/60 dark:text-zinc-400 mt-1">
+                Ratio membres par groupe
               </p>
             </div>
           </div>

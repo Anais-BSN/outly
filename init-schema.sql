@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS users (
     reset_password_token VARCHAR(255),
     reset_password_expires TIMESTAMPTZ,
     is_deleted BOOLEAN DEFAULT FALSE,
+    birth_date DATE,
+    last_active_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

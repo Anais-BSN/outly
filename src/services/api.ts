@@ -162,6 +162,8 @@ export const api = {
     handle?: string;
     password?: string;
     avatar?: string;
+    birthDate?: string;
+    parentalConsent?: boolean;
     website?: string;
     website_hp?: string;
     honeypot?: string;
@@ -820,9 +822,13 @@ export const api = {
     success: boolean;
     stats: {
       totalUsers: number;
+      recentActiveUsers?: number;
       totalEvents: number;
       activeGroups: number;
       totalPhotos: number;
+      financialVolume?: number;
+      totalMessages?: number;
+      avgGroupSize?: number;
     };
     adminEmail: string;
     timestamp: string;

@@ -10,7 +10,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Eye,
-  EyeOff
+  EyeOff,
+  Calendar
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { api } from '../../services/api';
@@ -46,11 +47,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [parentalConsent, setParentalConsent] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(CARTOON_AVATARS[0].url);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+
+  // Calcul d'âge en temps réel (Majorité numérique RGPD)
+  const userAge: number | null = (() => {
+    if (!birthDate) return null;
+    const parts = birthDate.split('-');
+    if (parts.length !== 3) return null;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const birth = new Date(year, month, day);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  })();
 
   // Legal Modal states
   const [legalModalOpen, setLegalModalOpen] = useState(false);
@@ -221,6 +243,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    if (!birthDate) {
+      setErrorMsg('La date de naissance est obligatoire.');
+      return;
+    }
+
+    if (userAge !== null && userAge < 13) {
+      setErrorMsg('Vous devez avoir au moins 13 ans pour créer un compte Outlys.');
+      return;
+    }
+
+    if (userAge !== null && (userAge === 13 || userAge === 14) && !parentalConsent) {
+      setErrorMsg('Veuillez confirmer l’accord de vos parents ou représentants légaux pour créer votre compte.');
+      return;
+    }
+
     try {
       const user = await api.register({
         name: name.trim(),
@@ -230,6 +267,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         email: registerEmail.trim(),
         password: registerPassword,
         avatar: selectedAvatar,
+        birthDate,
+        parentalConsent,
         honeypot: honeypot.trim(),
       });
       onAuthSuccess(user);
@@ -533,6 +572,75 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
+            {/* Date de naissance (Conformité RGPD et Majorité Numérique) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB]">
+                  Date de naissance *
+                </label>
+                <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
+                  Majorité numérique requise
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="date"
+                  id="auth-register-birthdate-input"
+                  value={birthDate}
+                  onChange={(e) => {
+                    setBirthDate(e.target.value);
+                    setErrorMsg(null);
+                  }}
+                  max={new Date().toISOString().split('T')[0]}
+                  required
+                  className={`w-full pl-8 pr-3 py-2 rounded-xl bg-[#E8D8C4]/60 dark:bg-zinc-800 border text-xs text-[#27272A] dark:text-[#FFF9EB] ${
+                    userAge !== null && userAge < 13
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-[#C7B7A3]/60'
+                  }`}
+                />
+                <Calendar className="w-3.5 h-3.5 text-[#6D2932] absolute left-2.5 top-2.5" />
+              </div>
+
+              {/* Cas 1: Moins de 13 ans (Blocage strict) */}
+              {userAge !== null && userAge < 13 && (
+                <div className="mt-2 p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-900/60 flex items-start gap-2 text-red-800 dark:text-red-300 text-xs animate-fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
+                  <span className="font-semibold leading-snug">
+                    Vous devez avoir au moins 13 ans pour créer un compte Outlys.
+                  </span>
+                </div>
+              )}
+
+              {/* Cas 2: Entre 13 et 14 ans inclus (Accord parental obligatoire) */}
+              {userAge !== null && (userAge === 13 || userAge === 14) && (
+                <div className="mt-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/60 flex items-start gap-2.5 animate-fade-in">
+                  <input
+                    type="checkbox"
+                    id="auth-register-parental-consent"
+                    checked={parentalConsent}
+                    onChange={(e) => setParentalConsent(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-[#6D2932] accent-[#6D2932] border-[#C7B7A3] focus:ring-[#6D2932] cursor-pointer shrink-0"
+                    required
+                  />
+                  <label
+                    htmlFor="auth-register-parental-consent"
+                    className="text-[11px] leading-snug text-amber-900 dark:text-amber-200 cursor-pointer select-none font-medium"
+                  >
+                    Je confirme avoir l'accord de mes parents ou représentants légaux pour créer un compte et accepter le traitement de mes données.
+                  </label>
+                </div>
+              )}
+
+              {/* Cas 3: 15 ans ou plus (Majorité numérique autonome) */}
+              {userAge !== null && userAge >= 15 && (
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium animate-fade-in">
+                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                  <span>Majorité numérique vérifiée ({userAge} ans)</span>
+                </div>
+              )}
+            </div>
+
             {/* Password */}
             <div>
               <label className="block text-[11px] font-bold text-[#27272A] dark:text-[#FFF9EB] mb-1">
@@ -678,7 +786,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <button
               type="submit"
-              disabled={loading || !name.trim() || !handle.trim() || !registerEmail.trim() || handleAvailable === false || !acceptTerms}
+              disabled={
+                loading ||
+                !name.trim() ||
+                !handle.trim() ||
+                !registerEmail.trim() ||
+                !birthDate ||
+                handleAvailable === false ||
+                !acceptTerms ||
+                (userAge !== null && userAge < 13) ||
+                (userAge !== null && (userAge === 13 || userAge === 14) && !parentalConsent)
+              }
               className="w-full py-2.5 rounded-full bg-[#6D2932] text-[#FFF9EB] text-xs font-bold hover:bg-[#541C24] transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}
