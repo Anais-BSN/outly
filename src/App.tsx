@@ -2522,19 +2522,29 @@ export default function App() {
   const nowMs = Date.now();
   const upcomingGroupEventsCount = groupEvents.filter((ev) => {
     let endMs = 0;
-    const dateStr = ev.endDateTime || ev.startDateTime;
+    const dateStr =
+      ev.endDateTime ||
+      (ev as any).end_datetime ||
+      (ev as any).endDate ||
+      (ev as any).end_date ||
+      ev.startDateTime ||
+      (ev as any).start_datetime ||
+      (ev as any).startDate ||
+      (ev as any).date;
     if (dateStr) {
       if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
         const parts = dateStr.split('-');
         endMs = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 23, 59, 59, 999).getTime();
       } else {
-        endMs = new Date(dateStr).getTime();
+        endMs = new Date(dateStr).getTime() || 0;
       }
     }
-    const startMs = new Date(ev.startDateTime).getTime();
+    const rawStart = ev.startDateTime || (ev as any).start_datetime || (ev as any).startDate || (ev as any).date;
+    const startMs = rawStart ? new Date(rawStart).getTime() || 0 : 0;
+    const hasEnd = Boolean(ev.endDateTime || (ev as any).end_datetime || (ev as any).endDate);
     const isPast =
       (endMs > 0 && endMs < nowMs) ||
-      (startMs > 0 && startMs < nowMs && (!ev.endDateTime || endMs < nowMs));
+      (startMs > 0 && startMs < nowMs && (!hasEnd || endMs < nowMs));
     return !isPast;
   }).length;
 

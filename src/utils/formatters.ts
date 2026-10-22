@@ -15,46 +15,82 @@ export function formatCurrency(amount?: number | string | null, currency: string
   }
 }
 
-export function formatDateTime(isoString: any): string {
-  if (!isoString) return '';
-  if (typeof isoString !== 'string') {
-    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
-      isoString = isoString.toISOString();
-    } else if (typeof isoString === 'object') {
-      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
-      if (typeof candidate === 'string') isoString = candidate;
-      else return '';
-    } else {
-      return '';
+export function extractDateCandidate(value: any): string | Date | number | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  if (typeof value === 'number' && !isNaN(value) && value > 0) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return trimmed;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.date === 'string' && typeof value.time === 'string') {
+      return `${value.date.trim()}T${value.time.trim()}`;
+    }
+    const candidate =
+      value.startDateTime ||
+      value.start_datetime ||
+      value.startDate ||
+      value.start_date ||
+      value.date ||
+      value.dateValue ||
+      value.dateTime ||
+      value.datetime ||
+      value.timestamp ||
+      value.start ||
+      value.iso ||
+      value.isoString;
+    if (candidate) return extractDateCandidate(candidate);
+  }
+  return null;
+}
+
+export function parseToValidDate(candidate: any): Date | null {
+  const extracted = extractDateCandidate(candidate);
+  if (!extracted) return null;
+  if (extracted instanceof Date) return isNaN(extracted.getTime()) ? null : extracted;
+  if (typeof extracted === 'number') {
+    const d = new Date(extracted);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof extracted === 'string') {
+    const trimmed = extracted.trim();
+    if (!trimmed) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [y, m, d] = trimmed.split('-').map(Number);
+      const dt = new Date(y, m - 1, d, 12, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+    const direct = new Date(trimmed);
+    if (!isNaN(direct.getTime())) return direct;
+    if (trimmed.includes(' ') && !trimmed.includes('T')) {
+      const dt = new Date(trimmed.replace(' ', 'T'));
+      if (!isNaN(dt.getTime())) return dt;
     }
   }
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
+  return null;
+}
 
-  return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'short',
+export function formatDateTime(isoString: any, fallbackObj?: any): string {
+  const date = parseToValidDate(isoString) || (fallbackObj ? parseToValidDate(fallbackObj) : null);
+  if (!date) return '';
+
+  const day = date.toLocaleDateString('fr-FR', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
+    year: 'numeric',
+  });
+  const time = date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
+  });
+  return `Le ${day} à ${time}`;
 }
 
 export function formatDateOnly(isoString: any): string {
-  if (!isoString) return '';
-  if (typeof isoString !== 'string') {
-    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
-      isoString = isoString.toISOString();
-    } else if (typeof isoString === 'object') {
-      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
-      if (typeof candidate === 'string') isoString = candidate;
-      else return '';
-    } else {
-      return '';
-    }
-  }
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
+  const date = parseToValidDate(isoString);
+  if (!date) return '';
 
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
@@ -64,20 +100,8 @@ export function formatDateOnly(isoString: any): string {
 }
 
 export function formatTimeOnly(isoString: any): string {
-  if (!isoString) return '';
-  if (typeof isoString !== 'string') {
-    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
-      isoString = isoString.toISOString();
-    } else if (typeof isoString === 'object') {
-      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
-      if (typeof candidate === 'string') isoString = candidate;
-      else return '';
-    } else {
-      return '';
-    }
-  }
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
+  const date = parseToValidDate(isoString);
+  if (!date) return '';
 
   return new Intl.DateTimeFormat('fr-FR', {
     hour: '2-digit',
@@ -86,20 +110,8 @@ export function formatTimeOnly(isoString: any): string {
 }
 
 export function formatRelativeTime(isoString: any): string {
-  if (!isoString) return '';
-  if (typeof isoString !== 'string') {
-    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
-      isoString = isoString.toISOString();
-    } else if (typeof isoString === 'object') {
-      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
-      if (typeof candidate === 'string') isoString = candidate;
-      else return '';
-    } else {
-      return '';
-    }
-  }
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return '';
+  const date = parseToValidDate(isoString);
+  if (!date) return '';
 
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -112,55 +124,78 @@ export function formatRelativeTime(isoString: any): string {
   return formatDateTime(isoString);
 }
 
-function formatShortDateWithHour(date: Date): string {
-  const day = date.getDate();
-  const months = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
-  const month = months[date.getMonth()];
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const timeStr = minutes === 0 ? `${hours}h` : `${hours}h${String(minutes).padStart(2, '0')}`;
-  return `${day} ${month}, ${timeStr}`;
-}
+export function formatEventCardDate(
+  startIsoOrEvent?: any,
+  maybeEndIso?: any,
+  fallbackEvent?: any
+): string {
+  let startCandidate = extractDateCandidate(startIsoOrEvent);
+  let endCandidate = extractDateCandidate(maybeEndIso);
 
-export function formatEventCardDate(startIso: any, endIso?: any): string {
-  if (!startIso) return '';
-  let startStrRaw = '';
-  if (typeof startIso === 'string') {
-    startStrRaw = startIso;
-  } else if (startIso instanceof Date && !isNaN(startIso.getTime())) {
-    startStrRaw = startIso.toISOString();
-  } else if (typeof startIso === 'object') {
-    const candidate = startIso.start || startIso.date || startIso.startDateTime || startIso.iso;
-    if (typeof candidate === 'string') startStrRaw = candidate;
-    else return '';
-  } else {
-    return '';
+  if (!startCandidate && fallbackEvent && typeof fallbackEvent === 'object') {
+    startCandidate = extractDateCandidate(fallbackEvent);
+    if (!endCandidate) {
+      endCandidate = extractDateCandidate(
+        fallbackEvent.endDateTime ||
+        fallbackEvent.end_datetime ||
+        fallbackEvent.endDate ||
+        fallbackEvent.end_date ||
+        fallbackEvent.end
+      );
+    }
   }
 
-  const startDate = new Date(startStrRaw);
-  if (isNaN(startDate.getTime())) return typeof startStrRaw === 'string' ? startStrRaw : '';
-  const startStr = formatShortDateWithHour(startDate);
-
-  if (!endIso) return startStr;
-  let endStrRaw = '';
-  if (typeof endIso === 'string') {
-    endStrRaw = endIso;
-  } else if (endIso instanceof Date && !isNaN(endIso.getTime())) {
-    endStrRaw = endIso.toISOString();
-  } else if (typeof endIso === 'object') {
-    const candidate = endIso.end || endIso.date || endIso.endDateTime || endIso.iso;
-    if (typeof candidate === 'string') endStrRaw = candidate;
+  if (!endCandidate && startIsoOrEvent && typeof startIsoOrEvent === 'object') {
+    endCandidate = extractDateCandidate(
+      startIsoOrEvent.endDateTime ||
+      startIsoOrEvent.end_datetime ||
+      startIsoOrEvent.endDate ||
+      startIsoOrEvent.end_date ||
+      startIsoOrEvent.end
+    );
   }
 
-  if (!endStrRaw) return startStr;
-  const endDate = new Date(endStrRaw);
-  if (isNaN(endDate.getTime())) return startStr;
+  const startDate = parseToValidDate(startCandidate);
+  if (!startDate) {
+    return 'Date à préciser';
+  }
 
-  const endStr = formatShortDateWithHour(endDate);
-  return `${startStr} – ${endStr}`;
+  const startDay = startDate.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const startTime = startDate.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const endDate = parseToValidDate(endCandidate);
+  if (!endDate || endDate.getTime() <= startDate.getTime()) {
+    return `Le ${startDay} à ${startTime}`;
+  }
+
+  const endDay = endDate.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const endTime = endDate.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  if (startDay === endDay) {
+    if (startTime === endTime) {
+      return `Le ${startDay} à ${startTime}`;
+    }
+    return `Le ${startDay} de ${startTime} à ${endTime}`;
+  }
+
+  return `Du ${startDay} à ${startTime} au ${endDay} à ${endTime}`;
 }
 
-export function parseIsoToLocalDate(isoString?: string | null): { date: string; time: string } {
+export function parseIsoToLocalDate(isoString?: any): { date: string; time: string } {
   if (!isoString) {
     const now = new Date();
     return {
@@ -168,8 +203,8 @@ export function parseIsoToLocalDate(isoString?: string | null): { date: string; 
       time: '10:00',
     };
   }
-  const d = new Date(isoString);
-  if (isNaN(d.getTime())) {
+  const d = parseToValidDate(isoString);
+  if (!d) {
     return { date: '', time: '' };
   }
   return {

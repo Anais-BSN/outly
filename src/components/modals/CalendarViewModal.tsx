@@ -13,7 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { EventItem, Group, UserProfile } from '../../types';
-import { formatDateTime, formatDateOnly, formatTimeOnly, parseIsoToLocalDate } from '../../utils/formatters';
+import { formatDateTime, formatDateOnly, formatTimeOnly, parseIsoToLocalDate, formatEventCardDate } from '../../utils/formatters';
 
 interface CalendarViewModalProps {
   isOpen: boolean;
@@ -51,15 +51,18 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
     if (selectedGroupId !== 'all' && event.groupId !== selectedGroupId) return false;
 
     // Time filter
-    if (filterTime === 'upcoming' && event.startDateTime < now) return false;
-    if (filterTime === 'past' && event.startDateTime >= now) return false;
+    const eventStart = event.startDateTime || (event as any).start_datetime || (event as any).startDate || (event as any).date || '';
+    if (filterTime === 'upcoming' && eventStart < now) return false;
+    if (filterTime === 'past' && eventStart >= now) return false;
 
     return true;
   });
 
-  const sortedEvents = [...filteredEvents].sort((a, b) =>
-    a.startDateTime.localeCompare(b.startDateTime)
-  );
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    const aStart = a.startDateTime || (a as any).start_datetime || (a as any).startDate || (a as any).date || '';
+    const bStart = b.startDateTime || (b as any).start_datetime || (b as any).startDate || (b as any).date || '';
+    return String(aStart).localeCompare(String(bStart));
+  });
 
   // Calendar month math
   const year = currentMonthDate.getFullYear();
@@ -88,7 +91,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
     const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     return safeEvents.filter((e) => {
       if (selectedGroupId !== 'all' && e.groupId !== selectedGroupId) return false;
-      const { date } = parseIsoToLocalDate(e.startDateTime);
+      const { date } = parseIsoToLocalDate(e.startDateTime || (e as any).start_datetime || (e as any).startDate || (e as any).date || e);
       return date === dayStr;
     });
   };
@@ -359,7 +362,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                             </span>
                           </div>
                           <span className="text-[11px] text-[#27272A]/70 dark:text-zinc-400 block mt-0.5">
-                            ⏰ {formatTimeOnly(evt.startDateTime)} {evt.location ? `• 📍 ${evt.location}` : ''}
+                            ⏰ {formatTimeOnly(evt.startDateTime || (evt as any).start_datetime || (evt as any).startDate || evt)} {evt.location ? `• 📍 ${evt.location}` : ''}
                           </span>
                         </div>
                         <button
@@ -411,7 +414,7 @@ export const CalendarViewModal: React.FC<CalendarViewModalProps> = ({
                         <div className="flex items-center gap-3 text-xs text-[#27272A]/80 dark:text-zinc-300">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300" />
-                            <span>{typeof formatDateTime(event.startDateTime) === 'string' ? formatDateTime(event.startDateTime) : ''}</span>
+                            <span>{formatEventCardDate(event.startDateTime, event.endDateTime, event)}</span>
                           </div>
 
                           {event.location && (

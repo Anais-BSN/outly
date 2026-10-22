@@ -103,7 +103,15 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
     const getEventEndTimestamp = (ev: EventItem): number => {
       if (!ev || typeof ev !== 'object') return 0;
-      const rawDate = ev.endDateTime || ev.startDateTime;
+      const rawDate =
+        ev.endDateTime ||
+        (ev as any).end_datetime ||
+        (ev as any).endDate ||
+        (ev as any).end_date ||
+        ev.startDateTime ||
+        (ev as any).start_datetime ||
+        (ev as any).startDate ||
+        (ev as any).date;
       if (!rawDate) return 0;
 
       const dateStr = typeof rawDate === 'string'
@@ -126,7 +134,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       }
       const parsed = new Date(dateStr).getTime();
       if (!isNaN(parsed)) return parsed;
-      return ev.startDateTime ? new Date(ev.startDateTime).getTime() || 0 : 0;
+      const fallbackStart = ev.startDateTime || (ev as any).start_datetime || (ev as any).startDate || (ev as any).date;
+      return fallbackStart ? new Date(fallbackStart).getTime() || 0 : 0;
     };
 
     const eventList = Array.isArray(safeEvents) ? safeEvents : [];
@@ -134,7 +143,8 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
     for (const ev of eventList) {
       if (!ev) continue;
       const endMs = getEventEndTimestamp(ev);
-      const startMs = ev.startDateTime ? new Date(ev.startDateTime).getTime() || 0 : 0;
+      const rawStart = ev.startDateTime || (ev as any).start_datetime || (ev as any).startDate || (ev as any).date;
+      const startMs = rawStart ? new Date(rawStart).getTime() || 0 : 0;
 
       // Si l'événement est antérieur à la date/heure actuelle (ex: daté d'hier),
       // le placer automatiquement et directement dans l'historique des événements passés
@@ -148,8 +158,12 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       }
     }
 
-    upcoming.sort((a, b) => (new Date(a?.startDateTime || 0).getTime() || 0) - (new Date(b?.startDateTime || 0).getTime() || 0));
-    past.sort((a, b) => (new Date(b?.startDateTime || 0).getTime() || 0) - (new Date(a?.startDateTime || 0).getTime() || 0));
+    const getStartMs = (e: any) => {
+      const raw = e?.startDateTime || e?.start_datetime || e?.startDate || e?.date;
+      return raw ? new Date(raw).getTime() || 0 : 0;
+    };
+    upcoming.sort((a, b) => getStartMs(a) - getStartMs(b));
+    past.sort((a, b) => getStartMs(b) - getStartMs(a));
 
     return { upcomingEvents: upcoming, pastEvents: past };
   }, [safeEvents, currentTimestamp]);
@@ -516,11 +530,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         {/* Date & Time */}
                         <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
                           <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                          <span>
-                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime) === 'string'
-                              ? formatEventCardDate(event.startDateTime, event.endDateTime)
-                              : ''}
-                          </span>
+                          <span>{formatEventCardDate(event.startDateTime, event.endDateTime, event)}</span>
                         </div>
 
                         {/* Location */}
@@ -831,9 +841,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
                           <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
                           <span className="truncate">
-                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime) === 'string'
-                              ? formatEventCardDate(event.startDateTime, event.endDateTime)
-                              : ''}
+                            {formatEventCardDate(event.startDateTime, event.endDateTime, event)}
                           </span>
                         </div>
                         {event.location && typeof event.location === 'string' && (
@@ -898,7 +906,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                     Présences : {viewingAttendeesEvent.title}
                   </h3>
                   <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-                    {formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime)}
+                    {formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime, viewingAttendeesEvent)}
                   </p>
                 </div>
               </div>
