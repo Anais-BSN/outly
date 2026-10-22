@@ -2713,7 +2713,7 @@ export default function App() {
             </div>
             <div>
               <h3 className="text-xl font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] mb-1.5">
-                Bienvenue sur Outlys, {currentUser.firstName} !
+                Bienvenue sur Outlys, {typeof currentUser.firstName === 'string' && currentUser.firstName ? currentUser.firstName : (typeof currentUser.name === 'string' && currentUser.name ? currentUser.name : 'Ami')} !
               </h3>
               <p className="text-xs sm:text-sm text-[#27272A]/80 dark:text-zinc-300 leading-relaxed">
                 Vous ne faites partie d'aucun groupe actif pour le moment. Créez un nouveau groupe pour organiser vos sorties entre amis ou demandez à vos proches de vous inviter !
@@ -2791,20 +2791,20 @@ export default function App() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white">
                           <span className="text-xs font-semibold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-full">
-                            {memberCount} membre{memberCount > 1 ? 's' : ''}
+                            {typeof memberCount === 'number' ? memberCount : 0} membre{(typeof memberCount === 'number' && memberCount > 1) ? 's' : ''}
                           </span>
                         </div>
                       </div>
 
                       <div className="p-4 space-y-1.5">
                         <h3 className="font-serif font-bold text-base text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                          {group.name}
+                          {typeof group.name === 'string' ? group.name : 'Groupe'}
                         </h3>
-                        {group.description && (
+                        {group.description && typeof group.description === 'string' ? (
                           <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
                             {group.description}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
@@ -2967,12 +2967,12 @@ export default function App() {
 
       {/* 6. All Interactive Application Modals */}
       {/* Floating Invite / Action Toast */}
-      {inviteToast && (
+      {inviteToast ? (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 animate-bounce-in max-w-md px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border backdrop-blur-md bg-[#FFF9EB] dark:bg-zinc-900 border-[#C7B7A3] dark:border-zinc-700 text-[#27272A] dark:text-[#FFF9EB]">
           <span className="text-base">{inviteToast.success ? '🎉' : '⚠️'}</span>
-          <span>{typeof inviteToast.text === 'string' ? inviteToast.text : ((inviteToast.text as any)?.message || 'Information')}</span>
+          <span>{typeof inviteToast.text === 'string' ? inviteToast.text : (typeof (inviteToast as any)?.message === 'string' ? (inviteToast as any).message : 'Information')}</span>
         </div>
-      )}
+      ) : null}
 
       {/* Reset Password Modal */}
       <ResetPasswordModal

@@ -123,7 +123,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
           <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
             {virtualMembers.map((vm) => {
               const vId = vm.userId || vm.id;
-              const vName = vm.name || vm.firstName || 'Participant';
+              const vName = typeof vm.name === 'string' && vm.name ? vm.name : (typeof vm.firstName === 'string' && vm.firstName ? vm.firstName : 'Participant');
               const isThisMerging = mergingId === vId;
 
               return (
@@ -142,7 +142,7 @@ export const InviteReconcileModal: React.FC<InviteReconcileModalProps> = ({
                     />
                     <div className="min-w-0">
                       <span className="text-xs sm:text-sm font-bold text-[#27272A] dark:text-[#FFF9EB] block truncate">
-                        {vName}
+                        {typeof vName === 'string' ? vName : 'Participant'}
                       </span>
                       <p className="text-[10px] text-[#27272A]/70 dark:text-zinc-400 truncate mt-0.5">
                         Fusionner l'historique des dépenses et dettes

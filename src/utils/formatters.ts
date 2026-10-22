@@ -15,10 +15,21 @@ export function formatCurrency(amount?: number | string | null, currency: string
   }
 }
 
-export function formatDateTime(isoString: string): string {
+export function formatDateTime(isoString: any): string {
   if (!isoString) return '';
+  if (typeof isoString !== 'string') {
+    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
+      isoString = isoString.toISOString();
+    } else if (typeof isoString === 'object') {
+      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
+      if (typeof candidate === 'string') isoString = candidate;
+      else return '';
+    } else {
+      return '';
+    }
+  }
   const date = new Date(isoString);
-  if (isNaN(date.getTime())) return isoString;
+  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
 
   return new Intl.DateTimeFormat('fr-FR', {
     weekday: 'short',
@@ -29,10 +40,21 @@ export function formatDateTime(isoString: string): string {
   }).format(date);
 }
 
-export function formatDateOnly(isoString: string): string {
+export function formatDateOnly(isoString: any): string {
   if (!isoString) return '';
+  if (typeof isoString !== 'string') {
+    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
+      isoString = isoString.toISOString();
+    } else if (typeof isoString === 'object') {
+      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
+      if (typeof candidate === 'string') isoString = candidate;
+      else return '';
+    } else {
+      return '';
+    }
+  }
   const date = new Date(isoString);
-  if (isNaN(date.getTime())) return isoString;
+  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
 
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
@@ -41,10 +63,21 @@ export function formatDateOnly(isoString: string): string {
   }).format(date);
 }
 
-export function formatTimeOnly(isoString: string): string {
+export function formatTimeOnly(isoString: any): string {
   if (!isoString) return '';
+  if (typeof isoString !== 'string') {
+    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
+      isoString = isoString.toISOString();
+    } else if (typeof isoString === 'object') {
+      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
+      if (typeof candidate === 'string') isoString = candidate;
+      else return '';
+    } else {
+      return '';
+    }
+  }
   const date = new Date(isoString);
-  if (isNaN(date.getTime())) return isoString;
+  if (isNaN(date.getTime())) return typeof isoString === 'string' ? isoString : '';
 
   return new Intl.DateTimeFormat('fr-FR', {
     hour: '2-digit',
@@ -52,8 +85,19 @@ export function formatTimeOnly(isoString: string): string {
   }).format(date);
 }
 
-export function formatRelativeTime(isoString: string): string {
+export function formatRelativeTime(isoString: any): string {
   if (!isoString) return '';
+  if (typeof isoString !== 'string') {
+    if (isoString instanceof Date && !isNaN(isoString.getTime())) {
+      isoString = isoString.toISOString();
+    } else if (typeof isoString === 'object') {
+      const candidate = isoString.start || isoString.date || isoString.startDateTime || isoString.iso;
+      if (typeof candidate === 'string') isoString = candidate;
+      else return '';
+    } else {
+      return '';
+    }
+  }
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return '';
 
@@ -78,14 +122,38 @@ function formatShortDateWithHour(date: Date): string {
   return `${day} ${month}, ${timeStr}`;
 }
 
-export function formatEventCardDate(startIso: string, endIso?: string): string {
+export function formatEventCardDate(startIso: any, endIso?: any): string {
   if (!startIso) return '';
-  const startDate = new Date(startIso);
-  if (isNaN(startDate.getTime())) return startIso;
+  let startStrRaw = '';
+  if (typeof startIso === 'string') {
+    startStrRaw = startIso;
+  } else if (startIso instanceof Date && !isNaN(startIso.getTime())) {
+    startStrRaw = startIso.toISOString();
+  } else if (typeof startIso === 'object') {
+    const candidate = startIso.start || startIso.date || startIso.startDateTime || startIso.iso;
+    if (typeof candidate === 'string') startStrRaw = candidate;
+    else return '';
+  } else {
+    return '';
+  }
+
+  const startDate = new Date(startStrRaw);
+  if (isNaN(startDate.getTime())) return typeof startStrRaw === 'string' ? startStrRaw : '';
   const startStr = formatShortDateWithHour(startDate);
 
   if (!endIso) return startStr;
-  const endDate = new Date(endIso);
+  let endStrRaw = '';
+  if (typeof endIso === 'string') {
+    endStrRaw = endIso;
+  } else if (endIso instanceof Date && !isNaN(endIso.getTime())) {
+    endStrRaw = endIso.toISOString();
+  } else if (typeof endIso === 'object') {
+    const candidate = endIso.end || endIso.date || endIso.endDateTime || endIso.iso;
+    if (typeof candidate === 'string') endStrRaw = candidate;
+  }
+
+  if (!endStrRaw) return startStr;
+  const endDate = new Date(endStrRaw);
   if (isNaN(endDate.getTime())) return startStr;
 
   const endStr = formatShortDateWithHour(endDate);

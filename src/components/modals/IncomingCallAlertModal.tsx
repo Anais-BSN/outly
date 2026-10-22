@@ -64,10 +64,10 @@ export const IncomingCallAlertModal: React.FC<IncomingCallAlertModalProps> = ({
             {isVideo ? 'Appel vidéo de groupe' : 'Appel audio de groupe'}
           </span>
           <h3 className="text-xl font-bold text-white font-serif">
-            {callSession.groupName || 'Groupe Outlys'}
+            {typeof callSession.groupName === 'string' ? callSession.groupName : 'Groupe Outlys'}
           </h3>
           <p className="text-xs text-zinc-300">
-            Lancé par <span className="font-semibold text-white">{callSession.initiatorName}</span>
+            Lancé par <span className="font-semibold text-white">{typeof callSession.initiatorName === 'string' ? callSession.initiatorName : (typeof (callSession.initiatorName as any)?.name === 'string' ? (callSession.initiatorName as any).name : 'un membre')}</span>
           </p>
         </div>
 

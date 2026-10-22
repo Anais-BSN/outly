@@ -478,7 +478,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
                             <div className="min-w-0">
                               <h4 className="text-sm sm:text-base font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] leading-snug truncate">
-                                {event.title}
+                                {typeof event.title === 'string' ? event.title : 'Événement'}
                               </h4>
                               <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
                                 Par {typeof event.organizerName === 'string' ? event.organizerName : 'Organisateur'}
@@ -516,15 +516,19 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         {/* Date & Time */}
                         <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
                           <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                          <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
+                          <span>
+                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime) === 'string'
+                              ? formatEventCardDate(event.startDateTime, event.endDateTime)
+                              : ''}
+                          </span>
                         </div>
 
                         {/* Location */}
-                        {event.location && (
+                        {event.location && typeof event.location === 'string' && (
                           <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300">
                             <MapPin className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
                             <span className="truncate">{event.location}</span>
-                            {event.gpsUrl && (
+                            {event.gpsUrl && typeof event.gpsUrl === 'string' && (
                               <a
                                 href={event.gpsUrl}
                                 target="_blank"
@@ -538,7 +542,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         )}
 
                         {/* Description */}
-                        {event.description && (
+                        {event.description && typeof event.description === 'string' && (
                           <p className="text-xs text-[#27272A]/70 dark:text-zinc-400 line-clamp-2">
                             {event.description}
                           </p>
@@ -821,14 +825,18 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                       <div className="space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
                           <h5 className="text-xs sm:text-sm font-bold font-serif text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                            {event.title}
+                            {typeof event.title === 'string' ? event.title : 'Événement'}
                           </h5>
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
                           <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                          <span className="truncate">{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
+                          <span className="truncate">
+                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime) === 'string'
+                              ? formatEventCardDate(event.startDateTime, event.endDateTime)
+                              : ''}
+                          </span>
                         </div>
-                        {event.location && (
+                        {event.location && typeof event.location === 'string' && (
                           <div className="flex items-center gap-1 text-[11px] text-[#27272A]/70 dark:text-zinc-400">
                             <MapPin className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
                             <span className="truncate">{event.location}</span>

@@ -157,7 +157,11 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                   {/* Date & Time */}
                   <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
                     <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
-                    <span>{formatEventCardDate(event.startDateTime, event.endDateTime)}</span>
+                    <span>
+                      {typeof formatEventCardDate(event.startDateTime, event.endDateTime) === 'string'
+                        ? formatEventCardDate(event.startDateTime, event.endDateTime)
+                        : ''}
+                    </span>
                   </div>
 
                   {/* Location */}
