@@ -478,7 +478,7 @@ export const AddGroupMemberModal: React.FC<AddGroupMemberModalProps> = ({
                 ) : (
                   <AlertCircle className="w-4 h-4 shrink-0" />
                 )}
-                <span>{feedbackMsg.text}</span>
+                <span>{typeof feedbackMsg.text === 'string' ? feedbackMsg.text : ((feedbackMsg.text as any)?.message || '')}</span>
               </div>
             ) : null}
 

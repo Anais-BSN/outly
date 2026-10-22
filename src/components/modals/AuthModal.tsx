@@ -312,10 +312,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Error Feedback */}
-        {typeof errorMsg === 'string' && errorMsg.trim() ? (
+        {errorMsg ? (
           <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+            <span>{typeof errorMsg === 'string' ? errorMsg : ((errorMsg as any)?.message || (errorMsg as any)?.error || 'Une erreur est survenue')}</span>
           </div>
         ) : null}
 
@@ -399,7 +399,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="space-y-3">
                 <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{forgotSuccess}</span>
+                  <span>{typeof forgotSuccess === 'string' ? forgotSuccess : ((forgotSuccess as any)?.message || 'E-mail de réinitialisation envoyé.')}</span>
                 </div>
                 <button
                   type="button"

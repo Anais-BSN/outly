@@ -536,7 +536,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                         </span>
                         <span>•</span>
                         <span className="bg-[#FFF9EB] dark:bg-zinc-800 px-2 py-0.5 rounded-full font-semibold text-[#6D2932] dark:text-amber-200">
-                          {expense.category}
+                          {typeof expense.category === 'string' ? expense.category : 'Autre'}
                         </span>
                         <span>{formatDateOnly(expense.date)}</span>
                       </div>
@@ -720,7 +720,7 @@ export const PartageFraisTab: React.FC<PartageFraisTabProps> = ({
                     />
                     <div className="min-w-0">
                       <span className="text-xs font-bold text-[#27272A] dark:text-[#FFF9EB] truncate block">
-                        {item.category}
+                        {typeof item.category === 'string' ? item.category : 'Autre'}
                       </span>
                       <span className="text-[10px] text-[#27272A]/60 dark:text-zinc-400">
                         {item.count} dépense{item.count > 1 ? 's' : ''}

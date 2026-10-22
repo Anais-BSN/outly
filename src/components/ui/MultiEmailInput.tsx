@@ -35,7 +35,9 @@ export const MultiEmailInput: React.FC<MultiEmailInputProps> = ({
   const [internalError, setInternalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const displayError = typeof externalError === 'string' ? externalError : (typeof internalError === 'string' ? internalError : null);
+  const displayError = externalError
+    ? (typeof externalError === 'string' ? externalError : ((externalError as any)?.message || 'Erreur'))
+    : (typeof internalError === 'string' ? internalError : ((internalError as any)?.message || null));
 
   const setError = (msg: string | null) => {
     if (onErrorChange) {
@@ -221,10 +223,10 @@ export const MultiEmailInput: React.FC<MultiEmailInputProps> = ({
       </div>
 
       {/* Message d'erreur éventuel */}
-      {typeof displayError === 'string' && displayError.trim() ? (
+      {displayError ? (
         <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-red-600 dark:text-red-400 animate-fade-in">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-          <span>{displayError}</span>
+          <span>{typeof displayError === 'string' ? displayError : ((displayError as any)?.message || 'Erreur de saisie')}</span>
         </div>
       ) : null}
     </div>

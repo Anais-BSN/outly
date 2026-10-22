@@ -481,7 +481,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                 {event.title}
                               </h4>
                               <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
-                                Par {event.organizerName || 'Organisateur'}
+                                Par {typeof event.organizerName === 'string' ? event.organizerName : 'Organisateur'}
                               </span>
                             </div>
                           </div>

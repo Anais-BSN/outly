@@ -160,11 +160,11 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               Retourner à l'accueil
             </button>
           </div>
-        ) : typeof successMsg === 'string' && successMsg.trim() ? (
+        ) : successMsg ? (
           <div className="py-4 space-y-4 text-center">
             <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
+              <span>{typeof successMsg === 'string' ? successMsg : ((successMsg as any)?.message || 'Mot de passe réinitialisé avec succès.')}</span>
             </div>
             <p className="text-xs text-[#27272A]/70 dark:text-zinc-400">
               Redirection automatique vers la connexion...
@@ -185,10 +185,10 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               </p>
             )}
 
-            {typeof errorMsg === 'string' && errorMsg.trim() ? (
+            {errorMsg ? (
               <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
+                <span>{typeof errorMsg === 'string' ? errorMsg : ((errorMsg as any)?.message || (errorMsg as any)?.error || 'Une erreur est survenue')}</span>
               </div>
             ) : null}
 

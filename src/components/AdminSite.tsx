@@ -169,9 +169,9 @@ export const AdminSite: React.FC<AdminSiteProps> = ({
           </div>
         </div>
 
-        {typeof errorMsg === 'string' && errorMsg.trim() ? (
+        {errorMsg ? (
           <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/40 border border-red-300 text-red-700 dark:text-red-300 text-xs font-medium">
-            {errorMsg}
+            <span>{typeof errorMsg === 'string' ? errorMsg : ((errorMsg as any)?.message || (errorMsg as any)?.error || 'Une erreur est survenue')}</span>
           </div>
         ) : null}
 

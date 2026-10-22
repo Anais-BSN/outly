@@ -2559,12 +2559,12 @@ export default function App() {
     );
   }
 
-  if (typeof loadError === 'string' && loadError.trim() && groups.length === 0) {
+  if (loadError && groups.length === 0) {
     return (
       <div className="min-h-screen bg-[#FFF9EB] dark:bg-[#18181B] text-[#27272A] dark:text-[#FFF9EB] flex flex-col items-center justify-center p-6 space-y-4">
         <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl max-w-md text-center">
           <h3 className="font-semibold text-lg mb-2">Erreur de connexion à la base de données</h3>
-          <p className="text-sm">{loadError}</p>
+          <p className="text-sm">{typeof loadError === 'string' ? loadError : ((loadError as any)?.message || 'Une erreur de connexion est survenue.')}</p>
           <button
             onClick={() => loadData()}
             className="mt-4 px-4 py-2 bg-[#6D2932] text-white rounded-full font-medium hover:bg-[#541C24] transition inline-flex items-center gap-2 cursor-pointer"
@@ -2970,7 +2970,7 @@ export default function App() {
       {inviteToast && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 animate-bounce-in max-w-md px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border backdrop-blur-md bg-[#FFF9EB] dark:bg-zinc-900 border-[#C7B7A3] dark:border-zinc-700 text-[#27272A] dark:text-[#FFF9EB]">
           <span className="text-base">{inviteToast.success ? '🎉' : '⚠️'}</span>
-          <span>{inviteToast.text}</span>
+          <span>{typeof inviteToast.text === 'string' ? inviteToast.text : ((inviteToast.text as any)?.message || 'Information')}</span>
         </div>
       )}
 

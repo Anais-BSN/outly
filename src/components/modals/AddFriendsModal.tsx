@@ -444,17 +444,17 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </div>
             )}
 
-            {typeof feedbackMsg === 'string' && feedbackMsg.trim() ? (
+            {feedbackMsg ? (
               <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
                 <Sparkles className="w-4 h-4 shrink-0" />
-                <span>{feedbackMsg}</span>
+                <span>{typeof feedbackMsg === 'string' ? feedbackMsg : ((feedbackMsg as any)?.message || '')}</span>
               </div>
             ) : null}
 
-            {typeof errorMsg === 'string' && errorMsg.trim() ? (
+            {errorMsg ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
                 <X className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
+                <span>{typeof errorMsg === 'string' ? errorMsg : ((errorMsg as any)?.message || (errorMsg as any)?.error || 'Une erreur est survenue')}</span>
               </div>
             ) : null}
           </div>
@@ -503,17 +503,17 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </button>
             </form>
 
-            {typeof feedbackMsg === 'string' && feedbackMsg.trim() ? (
+            {feedbackMsg ? (
               <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
                 <Sparkles className="w-4 h-4 shrink-0" />
-                <span>{feedbackMsg}</span>
+                <span>{typeof feedbackMsg === 'string' ? feedbackMsg : ((feedbackMsg as any)?.message || '')}</span>
               </div>
             ) : null}
 
-            {typeof errorMsg === 'string' && errorMsg.trim() ? (
+            {errorMsg ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
                 <X className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
+                <span>{typeof errorMsg === 'string' ? errorMsg : ((errorMsg as any)?.message || (errorMsg as any)?.error || 'Une erreur est survenue')}</span>
               </div>
             ) : null}
           </div>
