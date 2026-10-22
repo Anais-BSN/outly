@@ -101,7 +101,7 @@ export const PollTieBreakModal: React.FC<PollTieBreakModalProps> = ({
 
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[#6D2932]/15 text-[#6D2932] dark:text-amber-200'}`}>
-                      {opt.votes?.length || 0} votes
+                      {`${Array.isArray(opt.votes) ? opt.votes.length : 0} votes`}
                     </span>
                     {isSelected && (
                       <div className="w-5 h-5 rounded-full bg-[#FFF9EB] text-[#6D2932] flex items-center justify-center">

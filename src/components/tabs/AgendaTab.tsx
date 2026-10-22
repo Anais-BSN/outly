@@ -424,7 +424,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
             <div className="flex items-center justify-between px-1">
               <h4 className="font-bold font-serif text-base text-[#6D2932] dark:text-[#FFF9EB] flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#6D2932] dark:text-[#FFF9EB]" />
-                <span>Événements à venir ({upcomingEvents.length})</span>
+                <span>{`Événements à venir (${upcomingEvents.length})`}</span>
               </h4>
             </div>
 
@@ -557,7 +557,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           >
                             <Users className="w-3.5 h-3.5" />
                             <span>
-                              {goingCount} participant{goingCount > 1 ? 's' : ''} confirmé{goingCount > 1 ? 's' : ''} (voir le détail)
+                              {`${goingCount} participant${goingCount > 1 ? 's' : ''} confirmé${goingCount > 1 ? 's' : ''} (voir le détail)`}
                             </span>
                           </button>
                         </div>
@@ -654,7 +654,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           >
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4" />
-                              <span>Organisation & matériel ({eventTasks.length} éléments)</span>
+                              <span>{`Organisation & matériel (${eventTasks.length} éléments)`}</span>
                             </div>
                             {isOrgExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
@@ -707,22 +707,25 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                                             </button>
                                           )}
                                           <span className="truncate font-semibold text-[#27272A] dark:text-[#FFF9EB]">
-                                            {t.title}{' '}
-                                            {t.quantity && (() => {
-                                              const str = String(t.quantity).trim();
-                                              const num = parseFloat(str);
-                                              if (!isNaN(num)) {
-                                                return num > 1 ? `×${num}` : '';
-                                              }
-                                              return `×${str.replace(/^[×xX\s]+/, '')}`;
-                                            })()}
+                                            {typeof t.title === 'string' ? t.title : ''}{' '}
+                                            {t.quantity != null && typeof t.quantity !== 'object'
+                                              ? (() => {
+                                                  const str = String(t.quantity).trim();
+                                                  const num = parseFloat(str);
+                                                  if (!isNaN(num)) {
+                                                    return num > 1 ? `×${num}` : '';
+                                                  }
+                                                  const clean = str.replace(/^[×xX\s]+/, '');
+                                                  return clean ? `×${clean}` : '';
+                                                })()
+                                              : null}
                                           </span>
                                         </div>
 
                                         <div className="flex items-center gap-1.5 shrink-0">
                                           {t.assignedToId ? (
                                             <div className="flex items-center gap-1 bg-[#E8D8C4]/60 dark:bg-zinc-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#6D2932] dark:text-amber-200">
-                                              <span>{isAssignedToMe ? 'Moi' : t.assignedToName}</span>
+                                              <span>{isAssignedToMe ? 'Moi' : typeof t.assignedToName === 'string' ? t.assignedToName : 'Assigné'}</span>
                                               {onUnclaimTask && (
                                                 <button
                                                   type="button"
@@ -841,7 +844,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           title="Voir la liste détaillée des présences"
                         >
                           <Users className="w-3 h-3" />
-                          <span>{goingCount} participant{goingCount > 1 ? 's' : ''} (voir le détail)</span>
+                          <span>{`${goingCount} participant${goingCount > 1 ? 's' : ''} (voir le détail)`}</span>
                         </button>
                         {userRsvp === 'going' && (
                           <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-0.5">

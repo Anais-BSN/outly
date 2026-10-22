@@ -84,7 +84,7 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
         <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] mb-2">
           <span>Progression de la logistique</span>
           <span>
-            {completedCount} / {totalCount} complètes ({progressPercent}%)
+            {`${completedCount} / ${totalCount} complètes (${progressPercent}%)`}
           </span>
         </div>
         <div className="w-full h-3 bg-[#C7B7A3]/50 dark:bg-zinc-700 rounded-full overflow-hidden">
@@ -167,21 +167,24 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
 
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                    {task.title}{' '}
-                    {task.quantity && (() => {
-                      const str = String(task.quantity).trim();
-                      const num = parseFloat(str);
-                      if (!isNaN(num)) {
-                        return num > 1 ? `×${num}` : '';
-                      }
-                      return `×${str.replace(/^[×xX\s]+/, '')}`;
-                    })()}
+                    {typeof task.title === 'string' ? task.title : ''}{' '}
+                    {task.quantity != null && typeof task.quantity !== 'object'
+                      ? (() => {
+                          const str = String(task.quantity).trim();
+                          const num = parseFloat(str);
+                          if (!isNaN(num)) {
+                            return num > 1 ? `×${num}` : '';
+                          }
+                          const clean = str.replace(/^[×xX\s]+/, '');
+                          return clean ? `×${clean}` : '';
+                        })()
+                      : null}
                   </div>
-                  {creatorName && (
+                  {creatorName && typeof creatorName === 'string' ? (
                     <div className="text-[10px] opacity-75 font-semibold text-[#6D2932] dark:text-zinc-400 mt-0.5">
                       <span>Créé par {creatorName}</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -203,7 +206,7 @@ export const LogistiqueTab: React.FC<LogistiqueTabProps> = ({
                         referrerPolicy="no-referrer"
                       />
                       <span className="text-[11px] font-bold text-[#6D2932] dark:text-[#FFF9EB]">
-                        {isAssignedToMe ? 'Moi' : task.assignedToName}
+                        {isAssignedToMe ? 'Moi' : typeof task.assignedToName === 'string' ? task.assignedToName : 'Assigné'}
                       </span>
                     </div>
 

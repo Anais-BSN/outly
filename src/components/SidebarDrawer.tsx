@@ -112,7 +112,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   isDarkMode = false,
   onViewAvatar,
 }) => {
-  const safeNotifications = notifications || [];
+  const safeNotifications = Array.isArray(notifications) ? notifications.filter(Boolean) : [];
   const unreadCount = safeNotifications.filter((n) => !n.read).length;
 
   return (
@@ -174,11 +174,11 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 </div>
                 <span>Notifications</span>
               </div>
-              {unreadCount > 0 && (
+              {typeof unreadCount === 'number' && unreadCount > 0 ? (
                 <span className="px-2.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-xs">
                   {unreadCount}
                 </span>
-              )}
+              ) : null}
             </button>
 
             {/* 2. Mon calendrier */}

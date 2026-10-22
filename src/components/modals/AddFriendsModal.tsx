@@ -444,12 +444,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </div>
             )}
 
-            {feedbackMsg && (
+            {typeof feedbackMsg === 'string' && feedbackMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
                 <Sparkles className="w-4 h-4 shrink-0" />
                 <span>{feedbackMsg}</span>
               </div>
-            )}
+            ) : null}
 
             {typeof errorMsg === 'string' && errorMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">
@@ -503,12 +503,12 @@ export const AddFriendsModal: React.FC<AddFriendsModalProps> = ({
               </button>
             </form>
 
-            {feedbackMsg && (
+            {typeof feedbackMsg === 'string' && feedbackMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 animate-fade-in">
                 <Sparkles className="w-4 h-4 shrink-0" />
                 <span>{feedbackMsg}</span>
               </div>
-            )}
+            ) : null}
 
             {typeof errorMsg === 'string' && errorMsg.trim() ? (
               <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5 animate-fade-in">

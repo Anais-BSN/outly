@@ -50,44 +50,53 @@ export function isAllowedOrigin(origin?: string): boolean {
     if (normalized === cleanEnv) return true;
   }
 
-  // 4. Environnements de développement locaux
+  // 4. Environnements de développement locaux (localhost, 127.0.0.1 et adresses IP LAN 192.168.x, 10.x, 172.x)
   const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized);
-  if (isLocalhost) return true;
+  const isLanIp = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(normalized);
+  if (isLocalhost || isLanIp) return true;
 
   // 5. Déploiements preview Vercel légitimes (*.vercel.app)
   const isVercelPreview = /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(normalized);
   if (isVercelPreview) return true;
 
-  return false;
+  // 6. Autorisation universelle pour environnements externes / Capacitor
+  return true;
 }
 
 /**
- * Middleware de sécurité CORS pour Express restreignant les origines aux domaines autorisés
+ * Middleware de sécurité CORS dynamique pour Express :
+ * - Lis l'en-tête Origin de la requête entrante
+ * - Règle "Access-Control-Allow-Origin" avec cet Origin exact (jamais le wildcard *)
+ * - Utilise une valeur de repli sécurisée (URL de production) si l'Origin n'est pas défini
+ * - Injecte obligatoirement "Access-Control-Allow-Credentials": "true"
+ * - Intercepte les requêtes OPTIONS (preflight) et renvoie immédiatement un statut 200 OK
  */
 export function corsMiddleware(req: Request, res: Response, next: NextFunction) {
   const origin = req.headers.origin;
 
-  if (origin) {
-    if (isAllowedOrigin(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Custom-Header');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Max-Age', '86400');
-      res.setHeader('Vary', 'Origin');
-    } else {
-      if (req.method === 'OPTIONS') {
-        return res.status(403).json({ error: 'Origine non autorisée par la politique CORS' });
-      }
-    }
-  } else {
-    // Requêtes directes ou natives sans header Origin explicite
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  }
+  // Valeur de repli sécurisée ou URL de production si l'en-tête Origin n'est pas défini
+  const fallbackOrigin =
+    process.env.APP_URL ||
+    process.env.CLIENT_URL ||
+    process.env.FRONTEND_URL ||
+    'https://www.outlys.fr';
 
+  const allowedOrigin = origin ? origin : fallbackOrigin;
+
+  // Règle dynamiquement l'en-tête Access-Control-Allow-Origin avec l'Origin exact
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Vary', 'Origin');
+
+  // Preflight (OPTIONS) : renvoi immédiat de 200 OK avec en-têtes CORS avant toute vérification de token
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
+    return res.status(200).end();
   }
 
   next();

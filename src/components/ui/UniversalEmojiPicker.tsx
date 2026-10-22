@@ -382,8 +382,8 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                   }`}
                   title={cat.name}
                 >
-                  <span className="text-sm">{cat.icon}</span>
-                  <span className="text-[11px] font-bold">{cat.name}</span>
+                  <span className="text-sm">{typeof cat.icon === 'string' ? cat.icon : ''}</span>
+                  <span className="text-[11px] font-bold">{typeof cat.name === 'string' ? cat.name : ''}</span>
                 </button>
               );
             })}
@@ -437,8 +437,8 @@ export const UniversalEmojiPicker: React.FC<UniversalEmojiPickerProps> = ({
                   <div key={cat.id} id={`emoji-cat-${cat.id}`} className="scroll-mt-2">
                     <div className="sticky top-0 bg-[#FFF9EB]/95 dark:bg-[#18181B]/95 backdrop-blur-xs py-1 px-1 z-10 flex items-center justify-between border-b border-[#C7B7A3]/30 dark:border-zinc-800/60 mb-1.5">
                       <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200 flex items-center gap-1.5">
-                        <span>{cat.icon}</span>
-                        <span>{cat.name}</span>
+                        <span>{typeof cat.icon === 'string' ? cat.icon : ''}</span>
+                        <span>{typeof cat.name === 'string' ? cat.name : ''}</span>
                       </span>
                     </div>
 

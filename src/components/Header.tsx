@@ -26,7 +26,9 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount =
     typeof unreadNotificationsCount === 'number'
       ? unreadNotificationsCount
-      : (notifications || []).filter((n) => !n.read).length;
+      : Array.isArray(notifications)
+      ? notifications.filter((n) => n && !n.read).length
+      : 0;
 
   return (
     <header className="sticky top-0 z-30 w-full bg-[#E8D8C4] dark:bg-[#18181B] border-b border-[#C7B7A3] dark:border-zinc-800 transition-colors">
@@ -80,11 +82,11 @@ export const Header: React.FC<HeaderProps> = ({
             className="p-2 rounded-full text-[#6D2932] dark:text-[#FFF9EB] hover:bg-[#FFF9EB]/60 dark:hover:bg-zinc-800 transition-all active:scale-95 relative cursor-pointer"
           >
             <Bell className="w-5 h-5 stroke-[2.2]" />
-            {unreadCount > 0 && (
+            {typeof unreadCount === 'number' && unreadCount > 0 ? (
               <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-[#E8D8C4] dark:ring-[#18181B] shadow-xs">
                 {unreadCount}
               </span>
-            )}
+            ) : null}
           </button>
 
           {/* Quick Profile Avatar Shortcut */}

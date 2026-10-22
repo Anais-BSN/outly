@@ -962,11 +962,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       </div>
 
       {/* Modale de lecture dédiée aux informations légales */}
-      <LegalModal
-        isOpen={legalModalOpen}
-        onClose={() => setLegalModalOpen(false)}
-        initialDoc={legalDoc}
-      />
+      {Boolean(legalModalOpen) ? (
+        <LegalModal
+          isOpen={true}
+          onClose={() => setLegalModalOpen(false)}
+          initialDoc={legalDoc}
+        />
+      ) : null}
     </div>
   );
 };

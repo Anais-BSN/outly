@@ -160,7 +160,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               Retourner à l'accueil
             </button>
           </div>
-        ) : successMsg ? (
+        ) : typeof successMsg === 'string' && successMsg.trim() ? (
           <div className="py-4 space-y-4 text-center">
             <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />

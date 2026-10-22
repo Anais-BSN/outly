@@ -59,7 +59,8 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
-          const badgeCount = badges[tab.id];
+          const rawBadge = badges && typeof badges === 'object' ? badges[tab.id] : undefined;
+          const badgeCount = typeof rawBadge === 'number' && rawBadge > 0 ? rawBadge : null;
           const Icon = tab.icon;
 
           return (
@@ -75,11 +76,11 @@ export const GroupTabs: React.FC<GroupTabsProps> = ({
             >
               <div className="relative flex items-center justify-center">
                 <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
-                {tab.id !== 'galerie' && typeof badgeCount === 'number' && badgeCount > 0 && (
+                {tab.id !== 'galerie' && badgeCount !== null ? (
                   <span className="absolute -top-1.5 -right-3 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#6D2932] text-[#FFF9EB] flex items-center justify-center shadow-xs">
                     {badgeCount}
                   </span>
-                )}
+                ) : null}
               </div>
 
               <span className="text-[10px] sm:text-xs leading-tight tracking-tight mt-1 truncate max-w-full text-center">

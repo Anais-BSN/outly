@@ -148,7 +148,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                           {event.title}
                         </h4>
                         <span className="text-[10px] text-[#27272A]/70 dark:text-zinc-400">
-                          Par {event.organizerName || 'Organisateur'}
+                          Par {typeof event.organizerName === 'string' ? event.organizerName : 'Organisateur'}
                         </span>
                       </div>
                     </div>
@@ -187,7 +187,7 @@ export const EventHistoryModal: React.FC<EventHistoryModalProps> = ({
                       title="Voir la liste détaillée des participants"
                     >
                       <Users className="w-3.5 h-3.5" />
-                      <span>{goingCount} participant{goingCount > 1 ? 's' : ''} (voir le détail)</span>
+                      <span>{`${goingCount} participant${goingCount > 1 ? 's' : ''} (voir le détail)`}</span>
                     </button>
 
                     <div className="flex items-center gap-1">

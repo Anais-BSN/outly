@@ -142,11 +142,11 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                     <div className="flex items-center gap-1.5 text-xs text-[#27272A]/70 dark:text-zinc-400">
                       <img
                         src={poll.creatorAvatar}
-                        alt={poll.creatorName}
+                        alt={typeof poll.creatorName === 'string' ? poll.creatorName : 'Créateur'}
                         className="w-6 h-6 rounded-full object-cover ring-1 ring-[#C7B7A3]"
                         referrerPolicy="no-referrer"
                       />
-                      <span className="hidden sm:inline">Par {poll.creatorName}</span>
+                      <span className="hidden sm:inline">Par {typeof poll.creatorName === 'string' ? poll.creatorName : 'un membre'}</span>
                     </div>
 
                     {canManage && (
@@ -213,12 +213,12 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-xs sm:text-sm font-bold text-[#6D2932] dark:text-[#FFF9EB] truncate">
-                              {option.text}
+                              {typeof option.text === 'string' ? option.text : ''}
                             </span>
                           </div>
 
                           <span className="text-xs font-bold text-[#6D2932] dark:text-amber-200 shrink-0">
-                            {totalVotedCount} / {safeMembers.length} ({percent}%)
+                            {`${totalVotedCount} / ${safeMembers.length} (${percent}%)`}
                           </span>
                         </div>
 
@@ -332,12 +332,12 @@ export const SondagesTab: React.FC<SondagesTabProps> = ({
                       <>
                         <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
                         <span className="text-amber-800 dark:text-amber-300 font-semibold">
-                          Égalité en tête ({topCandidates.length} options à {maxCount} votes)
+                          {`Égalité en tête (${topCandidates.length} options à ${maxCount} votes)`}
                         </span>
                       </>
                     ) : (
                       <span>
-                        {poll.type === 'date' ? 'Date en tête :' : 'Option en tête :'} <strong>{bestOption?.text}</strong>
+                        {poll.type === 'date' ? 'Date en tête :' : 'Option en tête :'} <strong>{typeof bestOption?.text === 'string' ? bestOption.text : '-'}</strong>
                       </span>
                     )}
                   </div>

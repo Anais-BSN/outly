@@ -196,11 +196,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <h3 className="text-lg font-bold text-[#6D2932] dark:text-[#FFF9EB] font-serif">
               Notifications
             </h3>
-            {unreadCount > 0 && (
+            {typeof unreadCount === 'number' && unreadCount > 0 ? (
               <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-xs">
                 {unreadCount}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">

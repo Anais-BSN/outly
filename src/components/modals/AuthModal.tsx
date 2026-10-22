@@ -689,11 +689,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       </div>
 
       {/* Modale de lecture dédiée aux conditions & confidentialité */}
-      <LegalModal
-        isOpen={legalModalOpen}
-        onClose={() => setLegalModalOpen(false)}
-        initialDoc={legalDoc}
-      />
+      {Boolean(legalModalOpen) ? (
+        <LegalModal
+          isOpen={true}
+          onClose={() => setLegalModalOpen(false)}
+          initialDoc={legalDoc}
+        />
+      ) : null}
     </div>
   );
 };
