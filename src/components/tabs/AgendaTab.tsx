@@ -531,23 +531,9 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         <div className="flex items-center gap-1.5 text-xs text-[#27272A]/80 dark:text-zinc-300 font-semibold bg-[#FFF9EB]/60 dark:bg-zinc-800/60 p-2 rounded-xl border border-[#C7B7A3]/40 dark:border-zinc-700/60">
                           <Clock className="w-3.5 h-3.5 text-[#6D2932] dark:text-amber-300 shrink-0" />
                           <span>
-                            {event.startDateTime
-                              ? new Date(event.startDateTime).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : (event as any).start_datetime
-                              ? new Date((event as any).start_datetime).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : 'Date à préciser'}
+                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime, event) === 'string'
+                              ? formatEventCardDate(event.startDateTime, event.endDateTime, event)
+                              : ''}
                           </span>
                         </div>
 
@@ -859,23 +845,9 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                         <div className="flex items-center gap-1 text-[11px] text-[#27272A]/80 dark:text-zinc-300">
                           <Clock className="w-3 h-3 text-[#6D2932] dark:text-amber-300 shrink-0" />
                           <span className="truncate">
-                            {event.startDateTime
-                              ? new Date(event.startDateTime).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : (event as any).start_datetime
-                              ? new Date((event as any).start_datetime).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : 'Date à préciser'}
+                            {typeof formatEventCardDate(event.startDateTime, event.endDateTime, event) === 'string'
+                              ? formatEventCardDate(event.startDateTime, event.endDateTime, event)
+                              : ''}
                           </span>
                         </div>
                         {event.location && typeof event.location === 'string' && (
@@ -940,7 +912,9 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                     Présences : {viewingAttendeesEvent.title}
                   </h3>
                   <p className="text-[11px] text-[#27272A]/70 dark:text-zinc-400">
-                    {formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime, viewingAttendeesEvent)}
+                    {typeof formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime, viewingAttendeesEvent) === 'string'
+                      ? formatEventCardDate(viewingAttendeesEvent.startDateTime, viewingAttendeesEvent.endDateTime, viewingAttendeesEvent)
+                      : ''}
                   </p>
                 </div>
               </div>
